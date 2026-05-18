@@ -4,6 +4,7 @@ struct TimelineMemory: Identifiable, Hashable {
     let id: UUID
     let mood: MoodType
     let narrative: String
+    let narrativeState: NarrativeDisplayState
     let timestamp: Date
     let thumbnailPath: String?
     let palette: [Color]
@@ -17,6 +18,7 @@ extension TimelineMemory {
         id: UUID(),
         mood: .peaceful,
         narrative: "The afternoon softened around the window, leaving everything warm and still for a little while.",
+        narrativeState: .generated,
         timestamp: Date(),
         thumbnailPath: nil,
         palette: [
@@ -32,12 +34,18 @@ extension TimelineMemory {
 
 @MainActor
 final class TimelineViewModel: ObservableObject {
-    func memories(from entries: [JournalEntry]) -> [TimelineMemory] {
+    func memories(
+        from entries: [JournalEntry],
+        generationStates: [UUID: NarrativeDisplayState] = [:]
+    ) -> [TimelineMemory] {
         entries.map { entry in
-            TimelineMemory(
+            let displayState = narrativeState(for: entry, generationStates: generationStates)
+
+            return TimelineMemory(
                 id: entry.id,
                 mood: entry.mood,
-                narrative: narrative(for: entry),
+                narrative: narrative(for: entry, state: displayState),
+                narrativeState: displayState,
                 timestamp: entry.createdAt,
                 thumbnailPath: entry.thumbnailPath,
                 palette: palette(for: entry.mood),
@@ -48,13 +56,32 @@ final class TimelineViewModel: ObservableObject {
         }
     }
 
-    private func narrative(for entry: JournalEntry) -> String {
+    private func narrativeState(
+        for entry: JournalEntry,
+        generationStates: [UUID: NarrativeDisplayState]
+    ) -> NarrativeDisplayState {
+        if let aiNarrative = entry.aiNarrative, !aiNarrative.isEmpty {
+            return .generated
+        }
+
+        if let state = generationStates[entry.id] {
+            return state
+        }
+
+        if entry.syncStatus == .failed {
+            return .failed
+        }
+
+        return .pending
+    }
+
+    private func narrative(for entry: JournalEntry, state: NarrativeDisplayState) -> String {
         if let aiNarrative = entry.aiNarrative, !aiNarrative.isEmpty {
             return aiNarrative
         }
 
-        if let rawNote = entry.rawNote, !rawNote.isEmpty {
-            return rawNote
+        if let message = state.message {
+            return message
         }
 
         return "Narrative will appear shortly."

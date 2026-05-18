@@ -3,6 +3,8 @@ import Foundation
 enum AppRoute: Hashable {
     case timeline
     case memoryDetail(id: UUID)
+    case recap
+    case onThisDay
 }
 
 final class AppRouter: ObservableObject {

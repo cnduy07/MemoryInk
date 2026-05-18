@@ -20,13 +20,16 @@ final class MemoryCreationViewModel: ObservableObject {
 
     private let repository: JournalEntryRepository
     private let imagePipeline: ImagePipelineService
+    private let narrativeGenerationService: NarrativeGenerationService
 
     init(
         repository: JournalEntryRepository,
-        imagePipeline: ImagePipelineService
+        imagePipeline: ImagePipelineService,
+        narrativeGenerationService: NarrativeGenerationService
     ) {
         self.repository = repository
         self.imagePipeline = imagePipeline
+        self.narrativeGenerationService = narrativeGenerationService
     }
 
     var canSave: Bool {
@@ -61,7 +64,7 @@ final class MemoryCreationViewModel: ObservableObject {
         do {
             let storedImages = try imagePipeline.saveImage(selectedImage, id: id)
 
-            try repository.createEntry(
+            let entry = try repository.createEntry(
                 id: id,
                 photoPath: storedImages.originalPath,
                 thumbnailPath: storedImages.thumbnailPath,
@@ -74,6 +77,10 @@ final class MemoryCreationViewModel: ObservableObject {
             )
 
             saveState = .saved
+
+            Task {
+                await narrativeGenerationService.generateNarrativeIfNeeded(for: entry)
+            }
         } catch {
             saveState = .failed
         }

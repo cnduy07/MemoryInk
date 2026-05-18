@@ -4,6 +4,7 @@ struct TimelineView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var repository: JournalEntryRepository
     @EnvironmentObject private var imagePipeline: ImagePipelineService
+    @EnvironmentObject private var narrativeGenerationService: NarrativeGenerationService
     @StateObject private var viewModel = TimelineViewModel()
     @Namespace private var cardNamespace
     @State private var appearedCards: Set<UUID> = []
@@ -14,7 +15,10 @@ struct TimelineView: View {
         NavigationStack(path: $router.path) {
             GeometryReader { proxy in
                 let metrics = layoutMetrics(for: proxy.size)
-                let memories = viewModel.memories(from: repository.entries)
+                let memories = viewModel.memories(
+                    from: repository.entries,
+                    generationStates: narrativeGenerationService.states
+                )
 
                 ZStack {
                     background
@@ -29,7 +33,12 @@ struct TimelineView: View {
                                     .frame(maxWidth: metrics.cardMaxWidth, alignment: .leading)
 
                                 ForEach(memories) { memory in
-                                    TimelineCard(memory: memory, namespace: cardNamespace, isCompact: metrics.isCompact) {
+                                    TimelineCard(
+                                        memory: memory,
+                                        namespace: cardNamespace,
+                                        isCompact: metrics.isCompact,
+                                        retryAction: retryAction(for: memory)
+                                    ) {
                                         withAnimation(.easeInOut(duration: 0.25)) {
                                             selectedMemory = memory
                                         }
@@ -59,7 +68,8 @@ struct TimelineView: View {
                     }
 
                     if let selectedMemory {
-                        detailOverlay(for: selectedMemory, metrics: metrics, viewport: proxy.size)
+                        let currentMemory = memories.first { $0.id == selectedMemory.id } ?? selectedMemory
+                        detailOverlay(for: currentMemory, metrics: metrics, viewport: proxy.size)
                     }
                 }
                 .navigationBarHidden(true)
@@ -67,8 +77,12 @@ struct TimelineView: View {
             .sheet(isPresented: $isShowingCreation) {
                 MemoryCreationView(
                     repository: repository,
-                    imagePipeline: imagePipeline
+                    imagePipeline: imagePipeline,
+                    narrativeGenerationService: narrativeGenerationService
                 )
+            }
+            .task {
+                await narrativeGenerationService.generatePendingNarratives()
             }
         }
     }
@@ -205,7 +219,13 @@ struct TimelineView: View {
                     .accessibilityLabel("Close memory")
                 }
 
-                TimelineCard(memory: memory, namespace: cardNamespace, isExpanded: true, isCompact: metrics.isCompact) {
+                TimelineCard(
+                    memory: memory,
+                    namespace: cardNamespace,
+                    isExpanded: true,
+                    isCompact: metrics.isCompact,
+                    retryAction: retryAction(for: memory)
+                ) {
                     closeDetail()
                 }
                 .frame(width: metrics.detailMaxWidth)
@@ -229,6 +249,14 @@ struct TimelineView: View {
     private func closeDetail() {
         withAnimation(.easeInOut(duration: 0.24)) {
             selectedMemory = nil
+        }
+    }
+
+    private func retryAction(for memory: TimelineMemory) -> (() -> Void)? {
+        guard memory.narrativeState.canRetry else { return nil }
+
+        return {
+            narrativeGenerationService.retry(entryId: memory.id)
         }
     }
 
@@ -267,10 +295,18 @@ struct TimelineView_Previews: PreviewProvider {
     static var previews: some View {
         let stack = CoreDataStack(inMemory: true)
         let repository = JournalEntryRepository(context: stack.viewContext)
+        let aiService = AIService()
+        let usageTracker = AIUsageTracker()
+        let narrativeService = NarrativeGenerationService(
+            aiService: aiService,
+            repository: repository,
+            usageTracker: usageTracker
+        )
 
         TimelineView()
             .environmentObject(AppRouter())
             .environmentObject(repository)
             .environmentObject(ImagePipelineService())
+            .environmentObject(narrativeService)
     }
 }

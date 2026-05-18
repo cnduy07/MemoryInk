@@ -6,6 +6,7 @@ struct TimelineCard: View {
     let namespace: Namespace.ID?
     let isExpanded: Bool
     let isCompact: Bool
+    let retryAction: (() -> Void)?
     let onTap: () -> Void
 
     init(
@@ -13,56 +14,64 @@ struct TimelineCard: View {
         namespace: Namespace.ID? = nil,
         isExpanded: Bool = false,
         isCompact: Bool = false,
+        retryAction: (() -> Void)? = nil,
         onTap: @escaping () -> Void
     ) {
         self.memory = memory
         self.namespace = namespace
         self.isExpanded = isExpanded
         self.isCompact = isCompact
+        self.retryAction = retryAction
         self.onTap = onTap
     }
 
     var body: some View {
-        Button {
+        VStack(alignment: .leading, spacing: isCompact ? 12 : 16) {
+            imageArea
+
+            VStack(alignment: .leading, spacing: isCompact ? 8 : 10) {
+                Text(memory.narrative)
+                    .font(isCompact ? MemoryInkTypography.narrativeCompact : MemoryInkTypography.narrative)
+                    .foregroundStyle(memory.narrativeState == .generated ? MemoryInkColors.ink : MemoryInkColors.secondaryInk)
+                    .lineSpacing(isCompact ? 5 : 7)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if memory.narrativeState == .pending {
+                    pendingLabel
+                }
+
+                if let retryAction {
+                    retryControl(action: retryAction)
+                }
+
+                timestampRow
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(isCompact ? 16 : MemoryInkSpacing.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    MemoryInkColors.paper,
+                    MemoryInkColors.paperWarm
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
+                .stroke(MemoryInkColors.hairline.opacity(0.20), lineWidth: 0.7)
+        }
+        .shadow(color: MemoryInkColors.filmShadow.opacity(isExpanded ? 0.16 : 0.10), radius: isExpanded ? 28 : 18, x: 0, y: isExpanded ? 16 : 10)
+        .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
+        .onTapGesture {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
-        } label: {
-            VStack(alignment: .leading, spacing: isCompact ? 12 : 16) {
-                imageArea
-
-                VStack(alignment: .leading, spacing: isCompact ? 8 : 10) {
-                    Text(memory.narrative)
-                        .font(isCompact ? MemoryInkTypography.narrativeCompact : MemoryInkTypography.narrative)
-                        .foregroundStyle(MemoryInkColors.ink)
-                        .lineSpacing(isCompact ? 5 : 7)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    timestampRow
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(isCompact ? 16 : MemoryInkSpacing.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [
-                        MemoryInkColors.paper,
-                        MemoryInkColors.paperWarm
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
-                    .stroke(MemoryInkColors.hairline.opacity(0.20), lineWidth: 0.7)
-            }
-            .shadow(color: MemoryInkColors.filmShadow.opacity(isExpanded ? 0.16 : 0.10), radius: isExpanded ? 28 : 18, x: 0, y: isExpanded ? 16 : 10)
-            .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
         }
-        .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(memory.mood.title) memory from \(memory.timestamp.formatted(date: .abbreviated, time: .shortened))")
@@ -205,6 +214,31 @@ struct TimelineCard: View {
                 .font(MemoryInkTypography.timestamp)
                 .foregroundStyle(MemoryInkColors.tertiaryInk)
         }
+    }
+
+    private var pendingLabel: some View {
+        Text("Writing quietly")
+            .font(MemoryInkTypography.timestamp)
+            .foregroundStyle(MemoryInkColors.tertiaryInk)
+    }
+
+    private func retryControl(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Text("Try Again")
+                .font(MemoryInkTypography.timestamp.weight(.medium))
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(MemoryInkColors.paper.opacity(0.72))
+                .clipShape(Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                }
+        }
+        .buttonStyle(.plain)
     }
 
     private var subtleGrain: some View {

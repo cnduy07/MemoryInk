@@ -7,12 +7,14 @@ struct MemoryCreationView: View {
 
     init(
         repository: JournalEntryRepository,
-        imagePipeline: ImagePipelineService
+        imagePipeline: ImagePipelineService,
+        narrativeGenerationService: NarrativeGenerationService
     ) {
         _viewModel = StateObject(
             wrappedValue: MemoryCreationViewModel(
                 repository: repository,
-                imagePipeline: imagePipeline
+                imagePipeline: imagePipeline,
+                narrativeGenerationService: narrativeGenerationService
             )
         )
     }

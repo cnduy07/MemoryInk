@@ -60,6 +60,67 @@ final class JournalEntryRepository: ObservableObject {
         return entry
     }
 
+    func entry(id: UUID) -> JournalEntry? {
+        entryObject(id: id)?.toDomainModel()
+    }
+
+    func updateNarrative(
+        _ narrative: String,
+        generatedAt: Date,
+        for id: UUID
+    ) {
+        guard let object = entryObject(id: id) else { return }
+
+        object.aiNarrative = normalized(narrative)
+        object.aiGenerationDate = generatedAt
+        object.syncStatusRawValue = SyncStatus.completed.rawValue
+
+        saveAndRefresh()
+    }
+
+    func updateSyncStatus(_ status: SyncStatus, for id: UUID) {
+        guard let object = entryObject(id: id) else { return }
+
+        object.syncStatusRawValue = status.rawValue
+        saveAndRefresh()
+    }
+
+    func entriesSince(_ date: Date) -> [JournalEntry] {
+        entries.filter { $0.createdAt >= date }
+    }
+
+    func entriesMatchingMonthAndDay(
+        _ date: Date,
+        excludingYear year: Int,
+        calendar: Calendar = .current
+    ) -> [JournalEntry] {
+        let targetComponents = calendar.dateComponents([.month, .day], from: date)
+
+        return entries.filter { entry in
+            let components = calendar.dateComponents([.year, .month, .day], from: entry.createdAt)
+            return components.year != year
+                && components.month == targetComponents.month
+                && components.day == targetComponents.day
+        }
+    }
+
+    private func entryObject(id: UUID) -> JournalEntryObject? {
+        let request = NSFetchRequest<JournalEntryObject>(entityName: "JournalEntryObject")
+        request.fetchLimit = 1
+        request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+
+        return try? context.fetch(request).first
+    }
+
+    private func saveAndRefresh() {
+        do {
+            try context.save()
+            fetchEntries()
+        } catch {
+            context.rollback()
+        }
+    }
+
     private func normalized(_ value: String?) -> String? {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed?.isEmpty == false ? trimmed : nil
