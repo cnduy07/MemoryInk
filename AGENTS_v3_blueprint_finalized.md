@@ -8,15 +8,15 @@
 ## ⚡ ACTIVE PHASE
 
 ```
-Phase 2 — AI Integration
+Phase 3 — Monetization & Sync
 ```
 
 
 **In scope NOW:**
-AIService, Supabase Edge Function AI proxy contract, async narrative generation, retry logic, local AI cache behavior, weekly recap, On This Day, background task stubs, AI usage tracking logic
+RevenueCat, subscription state, paywall, 7-day free trial configuration placeholder, premium entitlement check, Supabase metadata-only sync, auth, Mixpanel analytics, onboarding polish, sync conflict handling
 
 **Out of scope — do not build until phase changes:**
-Supabase data sync, RevenueCat, Mixpanel, real authentication, cloud sync, subscription paywall, Phase 3 monetization
+CloudKit, photo sync, voice sync, realtime collaboration, social features, AI chat, embeddings, vector search, raw media upload
 
 > To change the active phase, the human must update this section and the corresponding section in the blueprint.
 
