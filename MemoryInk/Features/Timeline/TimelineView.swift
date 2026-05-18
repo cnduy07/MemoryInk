@@ -2,35 +2,39 @@ import SwiftUI
 
 struct TimelineView: View {
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var repository: JournalEntryRepository
+    @EnvironmentObject private var imagePipeline: ImagePipelineService
     @StateObject private var viewModel = TimelineViewModel()
     @Namespace private var cardNamespace
     @State private var appearedCards: Set<UUID> = []
     @State private var selectedMemory: TimelineMemory?
+    @State private var isShowingCreation = false
 
     var body: some View {
         NavigationStack(path: $router.path) {
             GeometryReader { proxy in
                 let metrics = layoutMetrics(for: proxy.size)
+                let memories = viewModel.memories(from: repository.entries)
 
                 ZStack {
                     background
                         .ignoresSafeArea()
 
-                    if viewModel.memories.isEmpty {
+                    if memories.isEmpty {
                         emptyState
                     } else {
                         ScrollView(showsIndicators: false) {
-                            LazyVStack(alignment: .leading, spacing: metrics.cardGap) {
+                            LazyVStack(alignment: .center, spacing: metrics.cardGap) {
                                 header(isCompact: metrics.isCompact)
+                                    .frame(maxWidth: metrics.cardMaxWidth, alignment: .leading)
 
-                                ForEach(viewModel.memories) { memory in
+                                ForEach(memories) { memory in
                                     TimelineCard(memory: memory, namespace: cardNamespace, isCompact: metrics.isCompact) {
                                         withAnimation(.easeInOut(duration: 0.25)) {
                                             selectedMemory = memory
                                         }
                                     }
-                                    .frame(maxWidth: metrics.cardMaxWidth)
-                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .frame(width: metrics.cardMaxWidth)
                                     .opacity(appearedCards.contains(memory.id) ? 1 : 0)
                                     .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
                                     .blur(radius: appearedCards.contains(memory.id) ? 0 : 4)
@@ -42,6 +46,7 @@ struct TimelineView: View {
                             .padding(.horizontal, metrics.horizontalPadding)
                             .padding(.top, metrics.topPadding)
                             .padding(.bottom, 52)
+                            .frame(maxWidth: .infinity)
                         }
                         .blur(radius: selectedMemory == nil ? 0 : 3.5)
                         .scaleEffect(selectedMemory == nil ? 1 : 0.992)
@@ -49,11 +54,21 @@ struct TimelineView: View {
                         .animation(.easeInOut(duration: 0.24), value: selectedMemory)
                     }
 
+                    if selectedMemory == nil {
+                        createButton
+                    }
+
                     if let selectedMemory {
                         detailOverlay(for: selectedMemory, metrics: metrics, viewport: proxy.size)
                     }
                 }
                 .navigationBarHidden(true)
+            }
+            .sheet(isPresented: $isShowingCreation) {
+                MemoryCreationView(
+                    repository: repository,
+                    imagePipeline: imagePipeline
+                )
             }
         }
     }
@@ -102,11 +117,62 @@ struct TimelineView: View {
     }
 
     private var emptyState: some View {
-        Text("Your memories will appear here ✨")
-            .font(MemoryInkTypography.narrative)
-            .foregroundStyle(MemoryInkColors.secondaryInk)
-            .multilineTextAlignment(.center)
-            .padding(28)
+        VStack(spacing: 18) {
+            Text("Your memories will appear here ✨")
+                .font(MemoryInkTypography.narrative)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .multilineTextAlignment(.center)
+
+            Button {
+                isShowingCreation = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(MemoryInkColors.ink)
+                    .frame(width: 44, height: 44)
+                    .background(MemoryInkColors.paper.opacity(0.92))
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(MemoryInkColors.hairline.opacity(0.24), lineWidth: 0.8)
+                    }
+                    .shadow(color: MemoryInkColors.filmShadow.opacity(0.10), radius: 16, x: 0, y: 8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Create memory")
+        }
+        .padding(28)
+    }
+
+    private var createButton: some View {
+        VStack {
+            Spacer()
+
+            HStack {
+                Spacer()
+
+                Button {
+                    isShowingCreation = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .frame(width: 54, height: 54)
+                        .background(.ultraThinMaterial)
+                        .background(MemoryInkColors.paper.opacity(0.62))
+                        .clipShape(Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.28), lineWidth: 0.8)
+                        }
+                        .shadow(color: MemoryInkColors.filmShadow.opacity(0.16), radius: 22, x: 0, y: 12)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Create memory")
+            }
+            .padding(.trailing, 22)
+            .padding(.bottom, 24)
+        }
     }
 
     private func detailOverlay(for memory: TimelineMemory, metrics: TimelineLayoutMetrics, viewport: CGSize) -> some View {
@@ -142,9 +208,10 @@ struct TimelineView: View {
                 TimelineCard(memory: memory, namespace: cardNamespace, isExpanded: true, isCompact: metrics.isCompact) {
                     closeDetail()
                 }
+                .frame(width: metrics.detailMaxWidth)
             }
-            .frame(maxWidth: min(metrics.detailMaxWidth, viewport.width - 36))
-            .padding(.horizontal, 18)
+            .frame(width: metrics.detailMaxWidth)
+            .padding(.horizontal, metrics.overlayPadding)
             .offset(y: metrics.isCompact ? -10 : -18)
             .transition(.opacity.combined(with: .scale(scale: 0.988)))
         }
@@ -167,10 +234,12 @@ struct TimelineView: View {
 
     private func layoutMetrics(for size: CGSize) -> TimelineLayoutMetrics {
         let isCompact = size.height <= 670 || size.width <= 340
-        let horizontalPadding: CGFloat = isCompact ? 20 : MemoryInkSpacing.screenHorizontal
+        let horizontalPadding: CGFloat = isCompact ? 14 : 20
         let availableWidth = size.width - (horizontalPadding * 2)
-        let compactWidth = min(availableWidth, 300)
+        let compactWidth = min(availableWidth, 304)
         let regularWidth = min(availableWidth, 430)
+        let overlayPadding: CGFloat = isCompact ? 14 : 20
+        let detailWidth = min(size.width - (overlayPadding * 2), isCompact ? 304 : 430)
 
         return TimelineLayoutMetrics(
             isCompact: isCompact,
@@ -178,7 +247,8 @@ struct TimelineView: View {
             topPadding: isCompact ? 16 : 28,
             cardGap: isCompact ? 28 : MemoryInkSpacing.cardGap,
             cardMaxWidth: isCompact ? compactWidth : regularWidth,
-            detailMaxWidth: isCompact ? min(size.width - 42, 284) : min(size.width - 44, 430)
+            detailMaxWidth: detailWidth,
+            overlayPadding: overlayPadding
         )
     }
 }
@@ -190,11 +260,17 @@ private struct TimelineLayoutMetrics {
     let cardGap: CGFloat
     let cardMaxWidth: CGFloat
     let detailMaxWidth: CGFloat
+    let overlayPadding: CGFloat
 }
 
 struct TimelineView_Previews: PreviewProvider {
     static var previews: some View {
+        let stack = CoreDataStack(inMemory: true)
+        let repository = JournalEntryRepository(context: stack.viewContext)
+
         TimelineView()
             .environmentObject(AppRouter())
+            .environmentObject(repository)
+            .environmentObject(ImagePipelineService())
     }
 }

@@ -21,7 +21,7 @@ enum MoodType: String, CaseIterable, Identifiable {
         case .proud:
             return "Proud"
         case .sad:
-            return "Tender"
+            return "Sad"
         case .reflective:
             return "Reflective"
         }

@@ -28,27 +28,7 @@ struct TimelineCard: View {
             onTap()
         } label: {
             VStack(alignment: .leading, spacing: isCompact ? 12 : 16) {
-                placeholderImage
-                    .aspectRatio(4.0 / 5.0, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
-                    .overlay(alignment: .topLeading) {
-                        moodBadge
-                            .padding(isCompact ? 12 : 14)
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.46),
-                                        MemoryInkColors.hairline.opacity(0.18)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    }
+                imageArea
 
                 VStack(alignment: .leading, spacing: isCompact ? 8 : 10) {
                     Text(memory.narrative)
@@ -60,8 +40,10 @@ struct TimelineCard: View {
 
                     timestampRow
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(isCompact ? 16 : MemoryInkSpacing.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 LinearGradient(
                     colors: [
@@ -81,17 +63,53 @@ struct TimelineCard: View {
             .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(memory.mood.title) memory from \(memory.timestamp.formatted(date: .abbreviated, time: .shortened))")
     }
 
+    private var imageArea: some View {
+        GeometryReader { proxy in
+            placeholderImage
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
+        }
+        .aspectRatio(4.0 / 5.0, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
+        .overlay(alignment: .topLeading) {
+            moodBadge
+                .padding(isCompact ? 12 : 14)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.46),
+                            MemoryInkColors.hairline.opacity(0.18)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
+    }
+
     private var placeholderImage: some View {
         ZStack {
-            LinearGradient(
-                colors: memory.palette,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            if let thumbnailPath = memory.thumbnailPath,
+               let thumbnail = ImagePipelineService.image(forRelativePath: thumbnailPath) {
+                Image(uiImage: thumbnail)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                LinearGradient(
+                    colors: memory.palette,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
 
             RadialGradient(
                 colors: [

@@ -20,6 +20,16 @@
 		0E79FB372FBAD8A0009A6E8E /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FB2D2FBAD8A0009A6E8E /* Colors.swift */; };
 		0E79FB382FBAD8A0009A6E8E /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FB2E2FBAD8A0009A6E8E /* Typography.swift */; };
 		0E79FB392FBAD8A0009A6E8E /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FB2F2FBAD8A0009A6E8E /* Spacing.swift */; };
+		0E79FC102FBB0001009A6E8E /* JournalEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC002FBB0001009A6E8E /* JournalEntry.swift */; };
+		0E79FC112FBB0001009A6E8E /* SyncStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC012FBB0001009A6E8E /* SyncStatus.swift */; };
+		0E79FC122FBB0001009A6E8E /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC022FBB0001009A6E8E /* CoreDataStack.swift */; };
+		0E79FC132FBB0001009A6E8E /* JournalEntryObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC032FBB0001009A6E8E /* JournalEntryObject.swift */; };
+		0E79FC142FBB0001009A6E8E /* JournalEntryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC042FBB0001009A6E8E /* JournalEntryRepository.swift */; };
+		0E79FC152FBB0001009A6E8E /* ImagePipelineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC052FBB0001009A6E8E /* ImagePipelineService.swift */; };
+		0E79FC162FBB0001009A6E8E /* VoiceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC062FBB0001009A6E8E /* VoiceService.swift */; };
+		0E79FC172FBB0001009A6E8E /* MemoryCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC072FBB0001009A6E8E /* MemoryCreationView.swift */; };
+		0E79FC182FBB0001009A6E8E /* MemoryCreationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC082FBB0001009A6E8E /* MemoryCreationViewModel.swift */; };
+		0E79FC192FBB0001009A6E8E /* MoodPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FC092FBB0001009A6E8E /* MoodPickerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +47,16 @@
 		0E79FB2D2FBAD8A0009A6E8E /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		0E79FB2E2FBAD8A0009A6E8E /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		0E79FB2F2FBAD8A0009A6E8E /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
+		0E79FC002FBB0001009A6E8E /* JournalEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalEntry.swift; sourceTree = "<group>"; };
+		0E79FC012FBB0001009A6E8E /* SyncStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatus.swift; sourceTree = "<group>"; };
+		0E79FC022FBB0001009A6E8E /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
+		0E79FC032FBB0001009A6E8E /* JournalEntryObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalEntryObject.swift; sourceTree = "<group>"; };
+		0E79FC042FBB0001009A6E8E /* JournalEntryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalEntryRepository.swift; sourceTree = "<group>"; };
+		0E79FC052FBB0001009A6E8E /* ImagePipelineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePipelineService.swift; sourceTree = "<group>"; };
+		0E79FC062FBB0001009A6E8E /* VoiceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceService.swift; sourceTree = "<group>"; };
+		0E79FC072FBB0001009A6E8E /* MemoryCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryCreationView.swift; sourceTree = "<group>"; };
+		0E79FC082FBB0001009A6E8E /* MemoryCreationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryCreationViewModel.swift; sourceTree = "<group>"; };
+		0E79FC092FBB0001009A6E8E /* MoodPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodPickerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +91,8 @@
 			children = (
 				0E79FB3A2FBAD8A0009A6E8E /* App */,
 				0E79FB3B2FBAD8A0009A6E8E /* Features */,
+				0E79FC0A2FBB0001009A6E8E /* Services */,
+				0E79FC0B2FBB0001009A6E8E /* Persistence */,
 				0E79FB3D2FBAD8A0009A6E8E /* Models */,
 				0E79FB3E2FBAD8A0009A6E8E /* Common */,
 				0E79FB1A2FBAD5A4009A6E8E /* ContentView.swift */,
@@ -101,8 +123,38 @@
 			isa = PBXGroup;
 			children = (
 				0E79FB3C2FBAD8A0009A6E8E /* Timeline */,
+				0E79FC0C2FBB0001009A6E8E /* MemoryCreation */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		0E79FC0A2FBB0001009A6E8E /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FC052FBB0001009A6E8E /* ImagePipelineService.swift */,
+				0E79FC062FBB0001009A6E8E /* VoiceService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		0E79FC0B2FBB0001009A6E8E /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FC022FBB0001009A6E8E /* CoreDataStack.swift */,
+				0E79FC032FBB0001009A6E8E /* JournalEntryObject.swift */,
+				0E79FC042FBB0001009A6E8E /* JournalEntryRepository.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		0E79FC0C2FBB0001009A6E8E /* MemoryCreation */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FC072FBB0001009A6E8E /* MemoryCreationView.swift */,
+				0E79FC082FBB0001009A6E8E /* MemoryCreationViewModel.swift */,
+				0E79FC092FBB0001009A6E8E /* MoodPickerView.swift */,
+			);
+			path = MemoryCreation;
 			sourceTree = "<group>";
 		};
 		0E79FB3C2FBAD8A0009A6E8E /* Timeline */ = {
@@ -118,8 +170,10 @@
 		0E79FB3D2FBAD8A0009A6E8E /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				0E79FC002FBB0001009A6E8E /* JournalEntry.swift */,
 				0E79FB2B2FBAD8A0009A6E8E /* MoodType.swift */,
 				0E79FB2C2FBAD8A0009A6E8E /* NarrativeStyle.swift */,
+				0E79FC012FBB0001009A6E8E /* SyncStatus.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -213,15 +267,25 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E79FB352FBAD8A0009A6E8E /* MoodType.swift in Sources */,
+				0E79FC122FBB0001009A6E8E /* CoreDataStack.swift in Sources */,
+				0E79FC172FBB0001009A6E8E /* MemoryCreationView.swift in Sources */,
+				0E79FC112FBB0001009A6E8E /* SyncStatus.swift in Sources */,
 				0E79FB382FBAD8A0009A6E8E /* Typography.swift in Sources */,
 				0E79FB312FBAD8A0009A6E8E /* AppRouter.swift in Sources */,
+				0E79FC102FBB0001009A6E8E /* JournalEntry.swift in Sources */,
+				0E79FC152FBB0001009A6E8E /* ImagePipelineService.swift in Sources */,
 				0E79FB342FBAD8A0009A6E8E /* TimelineCard.swift in Sources */,
 				0E79FB332FBAD8A0009A6E8E /* TimelineViewModel.swift in Sources */,
 				0E79FB1B2FBAD5A4009A6E8E /* ContentView.swift in Sources */,
+				0E79FC142FBB0001009A6E8E /* JournalEntryRepository.swift in Sources */,
+				0E79FC132FBB0001009A6E8E /* JournalEntryObject.swift in Sources */,
 				0E79FB372FBAD8A0009A6E8E /* Colors.swift in Sources */,
 				0E79FB392FBAD8A0009A6E8E /* Spacing.swift in Sources */,
 				0E79FB362FBAD8A0009A6E8E /* NarrativeStyle.swift in Sources */,
+				0E79FC162FBB0001009A6E8E /* VoiceService.swift in Sources */,
+				0E79FC182FBB0001009A6E8E /* MemoryCreationViewModel.swift in Sources */,
 				0E79FB302FBAD8A0009A6E8E /* MemoryInkApp.swift in Sources */,
+				0E79FC192FBB0001009A6E8E /* MoodPickerView.swift in Sources */,
 				0E79FB322FBAD8A0009A6E8E /* TimelineView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
