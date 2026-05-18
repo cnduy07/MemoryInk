@@ -2,15 +2,7 @@ import SwiftUI
 
 struct OnThisDayView: View {
     @EnvironmentObject private var service: OnThisDayService
-    @StateObject private var viewModel: OnThisDayViewModel
-
-    init(service: OnThisDayService? = nil) {
-        if let service {
-            _viewModel = StateObject(wrappedValue: OnThisDayViewModel(service: service))
-        } else {
-            _viewModel = StateObject(wrappedValue: OnThisDayViewModel(service: PreviewOnThisDayService.make()))
-        }
-    }
+    @EnvironmentObject private var analyticsService: AnalyticsService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -19,12 +11,12 @@ struct OnThisDayView: View {
                 .foregroundStyle(MemoryInkColors.tertiaryInk)
                 .textCase(.uppercase)
 
-            if viewModel.entries.isEmpty {
+            if service.entries.isEmpty {
                 Text("No memories from this day yet.")
                     .font(MemoryInkTypography.narrativeCompact)
                     .foregroundStyle(MemoryInkColors.secondaryInk)
             } else {
-                ForEach(viewModel.entries) { entry in
+                ForEach(service.entries) { entry in
                     Text(entry.aiNarrative ?? "A memory from this day is waiting quietly.")
                         .font(MemoryInkTypography.narrativeCompact)
                         .foregroundStyle(MemoryInkColors.ink)
@@ -35,16 +27,8 @@ struct OnThisDayView: View {
         .background(MemoryInkColors.paper.opacity(0.88))
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .onAppear {
-            viewModel.refresh()
+            analyticsService.track(.onThisDayOpened)
+            service.refresh()
         }
-    }
-}
-
-private enum PreviewOnThisDayService {
-    @MainActor
-    static func make() -> OnThisDayService {
-        let stack = CoreDataStack(inMemory: true)
-        let repository = JournalEntryRepository(context: stack.viewContext)
-        return OnThisDayService(repository: repository)
     }
 }

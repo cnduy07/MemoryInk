@@ -5,6 +5,8 @@ enum AppRoute: Hashable {
     case memoryDetail(id: UUID)
     case recap
     case onThisDay
+    case settings
+    case subscription
 }
 
 final class AppRouter: ObservableObject {

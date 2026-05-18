@@ -2,15 +2,7 @@ import SwiftUI
 
 struct RecapView: View {
     @EnvironmentObject private var recapService: RecapService
-    @StateObject private var viewModel: RecapViewModel
-
-    init(recapService: RecapService? = nil) {
-        if let recapService {
-            _viewModel = StateObject(wrappedValue: RecapViewModel(recapService: recapService))
-        } else {
-            _viewModel = StateObject(wrappedValue: RecapViewModel(recapService: PreviewRecapService.make()))
-        }
-    }
+    @EnvironmentObject private var analyticsService: AnalyticsService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -19,7 +11,7 @@ struct RecapView: View {
                 .foregroundStyle(MemoryInkColors.tertiaryInk)
                 .textCase(.uppercase)
 
-            Text(viewModel.recap?.recap ?? viewModel.message ?? "Your weekly recap will appear here when there is enough to reflect on.")
+            Text(recapService.latestRecap?.recap ?? recapService.errorMessage ?? "Your weekly recap will appear here when there is enough to reflect on.")
                 .font(MemoryInkTypography.narrative)
                 .foregroundStyle(MemoryInkColors.ink)
                 .lineSpacing(7)
@@ -29,20 +21,8 @@ struct RecapView: View {
         .background(MemoryInkColors.paper.opacity(0.88))
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .task {
-            await viewModel.generateWeeklyRecap()
+            analyticsService.track(.recapOpened)
+            await recapService.generateWeeklyRecapIfPossible()
         }
-    }
-}
-
-private enum PreviewRecapService {
-    @MainActor
-    static func make() -> RecapService {
-        let stack = CoreDataStack(inMemory: true)
-        let repository = JournalEntryRepository(context: stack.viewContext)
-        return RecapService(
-            aiService: AIService(),
-            repository: repository,
-            usageTracker: AIUsageTracker()
-        )
     }
 }

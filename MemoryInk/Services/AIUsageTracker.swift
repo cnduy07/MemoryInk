@@ -24,6 +24,10 @@ final class AIUsageTracker {
         count(forDateKey: Key.recapUsageDate, countKey: Key.recapUsageCount)
     }
 
+    func canGenerateNarrative(limit: Int) -> Bool {
+        narrativeRequestsToday < limit
+    }
+
     func recordNarrativeRequest() {
         increment(dateKey: Key.narrativeUsageDate, countKey: Key.narrativeUsageCount)
     }

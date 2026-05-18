@@ -39,15 +39,21 @@ final class NarrativeGenerationService: ObservableObject {
     private let aiService: AIService
     private let repository: JournalEntryRepository
     private let usageTracker: AIUsageTracker
+    private let subscriptionManager: SubscriptionManager?
+    private let analyticsService: AnalyticsService?
 
     init(
         aiService: AIService,
         repository: JournalEntryRepository,
-        usageTracker: AIUsageTracker
+        usageTracker: AIUsageTracker,
+        subscriptionManager: SubscriptionManager? = nil,
+        analyticsService: AnalyticsService? = nil
     ) {
         self.aiService = aiService
         self.repository = repository
         self.usageTracker = usageTracker
+        self.subscriptionManager = subscriptionManager
+        self.analyticsService = analyticsService
     }
 
     func generatePendingNarratives() async {
@@ -87,6 +93,12 @@ final class NarrativeGenerationService: ObservableObject {
             return
         }
 
+        if let subscriptionManager,
+           !usageTracker.canGenerateNarrative(limit: subscriptionManager.dailyNarrativeLimit) {
+            states[entry.id] = .rateLimited
+            return
+        }
+
         states[entry.id] = .pending
         repository.updateSyncStatus(.syncing, for: entry.id)
 
@@ -99,6 +111,8 @@ final class NarrativeGenerationService: ObservableObject {
                 for: entry.id
             )
             states[entry.id] = .generated
+            subscriptionManager?.markFirstEmotionalMomentSeen()
+            analyticsService?.track(.firstNarrativeGenerated)
         } catch let error as AIServiceError {
             handle(error, for: entry.id)
         } catch {

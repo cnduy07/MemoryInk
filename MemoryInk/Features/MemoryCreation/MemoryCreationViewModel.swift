@@ -21,15 +21,18 @@ final class MemoryCreationViewModel: ObservableObject {
     private let repository: JournalEntryRepository
     private let imagePipeline: ImagePipelineService
     private let narrativeGenerationService: NarrativeGenerationService
+    private let analyticsService: AnalyticsService?
 
     init(
         repository: JournalEntryRepository,
         imagePipeline: ImagePipelineService,
-        narrativeGenerationService: NarrativeGenerationService
+        narrativeGenerationService: NarrativeGenerationService,
+        analyticsService: AnalyticsService? = nil
     ) {
         self.repository = repository
         self.imagePipeline = imagePipeline
         self.narrativeGenerationService = narrativeGenerationService
+        self.analyticsService = analyticsService
     }
 
     var canSave: Bool {
@@ -77,6 +80,7 @@ final class MemoryCreationViewModel: ObservableObject {
             )
 
             saveState = .saved
+            analyticsService?.track(.firstEntryCreated)
 
             Task {
                 await narrativeGenerationService.generateNarrativeIfNeeded(for: entry)

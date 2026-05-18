@@ -8,13 +8,15 @@ struct MemoryCreationView: View {
     init(
         repository: JournalEntryRepository,
         imagePipeline: ImagePipelineService,
-        narrativeGenerationService: NarrativeGenerationService
+        narrativeGenerationService: NarrativeGenerationService,
+        analyticsService: AnalyticsService? = nil
     ) {
         _viewModel = StateObject(
             wrappedValue: MemoryCreationViewModel(
                 repository: repository,
                 imagePipeline: imagePipeline,
-                narrativeGenerationService: narrativeGenerationService
+                narrativeGenerationService: narrativeGenerationService,
+                analyticsService: analyticsService
             )
         )
     }

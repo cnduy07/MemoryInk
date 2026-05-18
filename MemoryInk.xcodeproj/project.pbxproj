@@ -42,6 +42,19 @@
 		0E79FD292FBC0001009A6E8E /* RecapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FD092FBC0001009A6E8E /* RecapViewModel.swift */; };
 		0E79FD2A2FBC0001009A6E8E /* OnThisDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FD0A2FBC0001009A6E8E /* OnThisDayView.swift */; };
 		0E79FD2B2FBC0001009A6E8E /* OnThisDayViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FD0B2FBC0001009A6E8E /* OnThisDayViewModel.swift */; };
+		0E79FE202FBD0001009A6E8E /* SubscriptionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE002FBD0001009A6E8E /* SubscriptionPlan.swift */; };
+		0E79FE212FBD0001009A6E8E /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE012FBD0001009A6E8E /* AuthModels.swift */; };
+		0E79FE222FBD0001009A6E8E /* SyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE022FBD0001009A6E8E /* SyncModels.swift */; };
+		0E79FE232FBD0001009A6E8E /* RevenueCatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE032FBD0001009A6E8E /* RevenueCatService.swift */; };
+		0E79FE242FBD0001009A6E8E /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE042FBD0001009A6E8E /* SubscriptionManager.swift */; };
+		0E79FE252FBD0001009A6E8E /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE052FBD0001009A6E8E /* AuthService.swift */; };
+		0E79FE262FBD0001009A6E8E /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE062FBD0001009A6E8E /* SyncService.swift */; };
+		0E79FE272FBD0001009A6E8E /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE072FBD0001009A6E8E /* AnalyticsService.swift */; };
+		0E79FE282FBD0001009A6E8E /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE082FBD0001009A6E8E /* SubscriptionView.swift */; };
+		0E79FE292FBD0001009A6E8E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE092FBD0001009A6E8E /* SettingsView.swift */; };
+		0E79FE2A2FBD0001009A6E8E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE0A2FBD0001009A6E8E /* OnboardingView.swift */; };
+		0E79FE2B2FBD0001009A6E8E /* PrivacyScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE0B2FBD0001009A6E8E /* PrivacyScreenView.swift */; };
+		0E79FE2C2FBD0001009A6E8E /* MoodIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE0C2FBD0001009A6E8E /* MoodIntroView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -81,6 +94,19 @@
 		0E79FD092FBC0001009A6E8E /* RecapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapViewModel.swift; sourceTree = "<group>"; };
 		0E79FD0A2FBC0001009A6E8E /* OnThisDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayView.swift; sourceTree = "<group>"; };
 		0E79FD0B2FBC0001009A6E8E /* OnThisDayViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayViewModel.swift; sourceTree = "<group>"; };
+		0E79FE002FBD0001009A6E8E /* SubscriptionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionPlan.swift; sourceTree = "<group>"; };
+		0E79FE012FBD0001009A6E8E /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		0E79FE022FBD0001009A6E8E /* SyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModels.swift; sourceTree = "<group>"; };
+		0E79FE032FBD0001009A6E8E /* RevenueCatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatService.swift; sourceTree = "<group>"; };
+		0E79FE042FBD0001009A6E8E /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
+		0E79FE052FBD0001009A6E8E /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		0E79FE062FBD0001009A6E8E /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		0E79FE072FBD0001009A6E8E /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
+		0E79FE082FBD0001009A6E8E /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
+		0E79FE092FBD0001009A6E8E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		0E79FE0A2FBD0001009A6E8E /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		0E79FE0B2FBD0001009A6E8E /* PrivacyScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyScreenView.swift; sourceTree = "<group>"; };
+		0E79FE0C2FBD0001009A6E8E /* MoodIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodIntroView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,6 +176,9 @@
 				0E79FC0C2FBB0001009A6E8E /* MemoryCreation */,
 				0E79FD0C2FBC0001009A6E8E /* Recap */,
 				0E79FD0D2FBC0001009A6E8E /* OnThisDay */,
+				0E79FE0D2FBD0001009A6E8E /* Settings */,
+				0E79FE0E2FBD0001009A6E8E /* Subscription */,
+				0E79FE0F2FBD0001009A6E8E /* Onboarding */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -163,6 +192,11 @@
 				0E79FD052FBC0001009A6E8E /* RecapService.swift */,
 				0E79FD062FBC0001009A6E8E /* OnThisDayService.swift */,
 				0E79FD072FBC0001009A6E8E /* BackgroundTaskService.swift */,
+				0E79FE032FBD0001009A6E8E /* RevenueCatService.swift */,
+				0E79FE042FBD0001009A6E8E /* SubscriptionManager.swift */,
+				0E79FE052FBD0001009A6E8E /* AuthService.swift */,
+				0E79FE062FBD0001009A6E8E /* SyncService.swift */,
+				0E79FE072FBD0001009A6E8E /* AnalyticsService.swift */,
 				0E79FC052FBB0001009A6E8E /* ImagePipelineService.swift */,
 				0E79FC062FBB0001009A6E8E /* VoiceService.swift */,
 			);
@@ -207,6 +241,32 @@
 			path = OnThisDay;
 			sourceTree = "<group>";
 		};
+		0E79FE0D2FBD0001009A6E8E /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FE092FBD0001009A6E8E /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		0E79FE0E2FBD0001009A6E8E /* Subscription */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FE082FBD0001009A6E8E /* SubscriptionView.swift */,
+			);
+			path = Subscription;
+			sourceTree = "<group>";
+		};
+		0E79FE0F2FBD0001009A6E8E /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FE0A2FBD0001009A6E8E /* OnboardingView.swift */,
+				0E79FE0B2FBD0001009A6E8E /* PrivacyScreenView.swift */,
+				0E79FE0C2FBD0001009A6E8E /* MoodIntroView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
 		0E79FB3C2FBAD8A0009A6E8E /* Timeline */ = {
 			isa = PBXGroup;
 			children = (
@@ -223,6 +283,9 @@
 				0E79FC002FBB0001009A6E8E /* JournalEntry.swift */,
 				0E79FD002FBC0001009A6E8E /* AIContracts.swift */,
 				0E79FD012FBC0001009A6E8E /* WeeklyRecap.swift */,
+				0E79FE002FBD0001009A6E8E /* SubscriptionPlan.swift */,
+				0E79FE012FBD0001009A6E8E /* AuthModels.swift */,
+				0E79FE022FBD0001009A6E8E /* SyncModels.swift */,
 				0E79FB2B2FBAD8A0009A6E8E /* MoodType.swift */,
 				0E79FB2C2FBAD8A0009A6E8E /* NarrativeStyle.swift */,
 				0E79FC012FBB0001009A6E8E /* SyncStatus.swift */,
@@ -324,31 +387,44 @@
 				0E79FC172FBB0001009A6E8E /* MemoryCreationView.swift in Sources */,
 				0E79FD222FBC0001009A6E8E /* AIService.swift in Sources */,
 				0E79FC112FBB0001009A6E8E /* SyncStatus.swift in Sources */,
+				0E79FE242FBD0001009A6E8E /* SubscriptionManager.swift in Sources */,
 				0E79FB382FBAD8A0009A6E8E /* Typography.swift in Sources */,
 				0E79FD242FBC0001009A6E8E /* NarrativeGenerationService.swift in Sources */,
 				0E79FB312FBAD8A0009A6E8E /* AppRouter.swift in Sources */,
+				0E79FE222FBD0001009A6E8E /* SyncModels.swift in Sources */,
 				0E79FC102FBB0001009A6E8E /* JournalEntry.swift in Sources */,
 				0E79FD212FBC0001009A6E8E /* WeeklyRecap.swift in Sources */,
 				0E79FC152FBB0001009A6E8E /* ImagePipelineService.swift in Sources */,
 				0E79FB342FBAD8A0009A6E8E /* TimelineCard.swift in Sources */,
 				0E79FD232FBC0001009A6E8E /* AIUsageTracker.swift in Sources */,
+				0E79FE212FBD0001009A6E8E /* AuthModels.swift in Sources */,
 				0E79FB332FBAD8A0009A6E8E /* TimelineViewModel.swift in Sources */,
 				0E79FD282FBC0001009A6E8E /* RecapView.swift in Sources */,
+				0E79FE292FBD0001009A6E8E /* SettingsView.swift in Sources */,
 				0E79FB1B2FBAD5A4009A6E8E /* ContentView.swift in Sources */,
 				0E79FD292FBC0001009A6E8E /* RecapViewModel.swift in Sources */,
+				0E79FE272FBD0001009A6E8E /* AnalyticsService.swift in Sources */,
 				0E79FC142FBB0001009A6E8E /* JournalEntryRepository.swift in Sources */,
 				0E79FC132FBB0001009A6E8E /* JournalEntryObject.swift in Sources */,
 				0E79FD262FBC0001009A6E8E /* OnThisDayService.swift in Sources */,
 				0E79FB372FBAD8A0009A6E8E /* Colors.swift in Sources */,
+				0E79FE282FBD0001009A6E8E /* SubscriptionView.swift in Sources */,
 				0E79FB392FBAD8A0009A6E8E /* Spacing.swift in Sources */,
 				0E79FB362FBAD8A0009A6E8E /* NarrativeStyle.swift in Sources */,
 				0E79FC162FBB0001009A6E8E /* VoiceService.swift in Sources */,
+				0E79FE2A2FBD0001009A6E8E /* OnboardingView.swift in Sources */,
 				0E79FD2A2FBC0001009A6E8E /* OnThisDayView.swift in Sources */,
 				0E79FD252FBC0001009A6E8E /* RecapService.swift in Sources */,
+				0E79FE262FBD0001009A6E8E /* SyncService.swift in Sources */,
 				0E79FC182FBB0001009A6E8E /* MemoryCreationViewModel.swift in Sources */,
 				0E79FD272FBC0001009A6E8E /* BackgroundTaskService.swift in Sources */,
+				0E79FE252FBD0001009A6E8E /* AuthService.swift in Sources */,
 				0E79FB302FBAD8A0009A6E8E /* MemoryInkApp.swift in Sources */,
 				0E79FD2B2FBC0001009A6E8E /* OnThisDayViewModel.swift in Sources */,
+				0E79FE202FBD0001009A6E8E /* SubscriptionPlan.swift in Sources */,
+				0E79FE2B2FBD0001009A6E8E /* PrivacyScreenView.swift in Sources */,
+				0E79FE2C2FBD0001009A6E8E /* MoodIntroView.swift in Sources */,
+				0E79FE232FBD0001009A6E8E /* RevenueCatService.swift in Sources */,
 				0E79FC192FBB0001009A6E8E /* MoodPickerView.swift in Sources */,
 				0E79FB322FBAD8A0009A6E8E /* TimelineView.swift in Sources */,
 			);

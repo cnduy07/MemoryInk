@@ -5,6 +5,8 @@ struct TimelineView: View {
     @EnvironmentObject private var repository: JournalEntryRepository
     @EnvironmentObject private var imagePipeline: ImagePipelineService
     @EnvironmentObject private var narrativeGenerationService: NarrativeGenerationService
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @EnvironmentObject private var analyticsService: AnalyticsService
     @StateObject private var viewModel = TimelineViewModel()
     @Namespace private var cardNamespace
     @State private var appearedCards: Set<UUID> = []
@@ -73,15 +75,20 @@ struct TimelineView: View {
                     }
                 }
                 .navigationBarHidden(true)
+                .navigationDestination(for: AppRoute.self) { route in
+                    destination(for: route)
+                }
             }
             .sheet(isPresented: $isShowingCreation) {
                 MemoryCreationView(
                     repository: repository,
                     imagePipeline: imagePipeline,
-                    narrativeGenerationService: narrativeGenerationService
+                    narrativeGenerationService: narrativeGenerationService,
+                    analyticsService: analyticsService
                 )
             }
             .task {
+                analyticsService.track(.timelineSessionStarted)
                 await narrativeGenerationService.generatePendingNarratives()
             }
         }
@@ -114,10 +121,24 @@ struct TimelineView: View {
 
     private func header(isCompact: Bool) -> some View {
         VStack(alignment: .leading, spacing: isCompact ? 6 : 9) {
-            Text("Private timeline")
-                .font(MemoryInkTypography.eyebrow)
-                .foregroundStyle(MemoryInkColors.tertiaryInk)
-                .textCase(.uppercase)
+            HStack {
+                Text("Private timeline")
+                    .font(MemoryInkTypography.eyebrow)
+                    .foregroundStyle(MemoryInkColors.tertiaryInk)
+                    .textCase(.uppercase)
+
+                Spacer()
+
+                Button {
+                    router.path.append(.settings)
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+            }
 
             Text("MemoryInk")
                 .font(isCompact ? .system(size: 31, weight: .semibold, design: .default) : MemoryInkTypography.title)
@@ -126,8 +147,40 @@ struct TimelineView: View {
             Text("Small moments, held quietly.")
                 .font(MemoryInkTypography.subtitle)
                 .foregroundStyle(MemoryInkColors.secondaryInk)
+
+            if subscriptionManager.isPaywallEligible && !subscriptionManager.hasPremiumEntitlement {
+                Button("MemoryInk+") {
+                    router.path.append(.subscription)
+                }
+                .font(MemoryInkTypography.timestamp.weight(.medium))
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
         }
         .padding(.bottom, isCompact ? 0 : 2)
+    }
+
+    @ViewBuilder
+    private func destination(for route: AppRoute) -> some View {
+        switch route {
+        case .timeline:
+            TimelineView()
+        case .memoryDetail:
+            EmptyView()
+        case .recap:
+            RecapView()
+        case .onThisDay:
+            OnThisDayView()
+        case .settings:
+            SettingsView()
+        case .subscription:
+            if subscriptionManager.isPaywallEligible {
+                SubscriptionView()
+            } else {
+                SubscriptionLockedView()
+            }
+        }
     }
 
     private var emptyState: some View {
@@ -308,5 +361,32 @@ struct TimelineView_Previews: PreviewProvider {
             .environmentObject(repository)
             .environmentObject(ImagePipelineService())
             .environmentObject(narrativeService)
+            .environmentObject(SubscriptionManager())
+            .environmentObject(AuthService())
+            .environmentObject(
+                SyncService(
+                    repository: repository,
+                    subscriptionManager: SubscriptionManager(),
+                    authService: AuthService()
+                )
+            )
+            .environmentObject(AnalyticsService())
+    }
+}
+
+private struct SubscriptionLockedView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("MemoryInk+")
+                .font(MemoryInkTypography.title)
+                .foregroundStyle(MemoryInkColors.ink)
+
+            Text("This will appear after your first memory has had a moment to come alive.")
+                .font(MemoryInkTypography.narrative)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .lineSpacing(7)
+        }
+        .padding(28)
+        .background(MemoryInkColors.parchment.ignoresSafeArea())
     }
 }
