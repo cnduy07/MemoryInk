@@ -5,12 +5,12 @@
 
 ## ⚡ ACTIVE PHASE
 
-**Phase 0 — UI Prototype**
+**Phase 1 — Local MVP**
 
 | Status | Scope |
 |--------|-------|
-| ✅ IN SCOPE | Timeline UI, animations, typography, spacing, transitions, haptics, fake data |
-| ❌ OUT OF SCOPE | Core Data, any API call, any backend, any AI call, real auth |
+| ✅ IN SCOPE | Core Data, local persistence, image pipeline, local file storage, memory creation flow, mood system, voice notes, offline-first UX, timeline from local data |
+| ❌ OUT OF SCOPE | Supabase sync, AI API calls, RevenueCat, Mixpanel, real authentication, cloud sync, subscription logic |
 
 > Agent must not build anything outside active phase scope without explicit approval.
 > To change the active phase, the human must update this section.

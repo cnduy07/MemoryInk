@@ -8,21 +8,31 @@
 ## ⚡ ACTIVE PHASE
 
 ```
-Phase 0 — UI Prototype
+Phase 1 — Local MVP
 ```
 
+
 **In scope NOW:**
-- Timeline UI
-- Animations, typography, spacing, transitions
-- Haptics
-- Fake / mock data only
+- Core Data
+- Local persistence
+- Local file storage
+- Real image pipeline
+- Memory creation flow
+- Mood system
+- Local voice notes
+- Offline-first save behavior
+- Timeline backed by local data
 
 **Out of scope — do not build until phase changes:**
-- Core Data
-- Real image pipeline
-- Any API call (AI, Supabase, RevenueCat, Mixpanel)
+- Supabase sync
+- AI API calls
+- RevenueCat
+- Mixpanel
 - Real authentication
-- Real voice recording
+- Cloud sync
+- Subscription logic
+- Phase 2 AI generation
+- Phase 3 monetization and sync
 
 > To change the active phase, the human must update this section and the corresponding section in the blueprint.
 
