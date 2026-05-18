@@ -5,12 +5,12 @@
 
 ## ⚡ ACTIVE PHASE
 
-**Phase 1 — Local MVP**
+**Phase 2 — AI Integration**
 
 | Status | Scope |
 |--------|-------|
-| ✅ IN SCOPE | Core Data, local persistence, image pipeline, local file storage, memory creation flow, mood system, voice notes, offline-first UX, timeline from local data |
-| ❌ OUT OF SCOPE | Supabase sync, AI API calls, RevenueCat, Mixpanel, real authentication, cloud sync, subscription logic |
+| ✅ IN SCOPE | AIService, Supabase Edge Function AI proxy contract, async narrative generation, retry logic, local AI cache behavior, weekly recap, On This Day, background task stubs, AI usage tracking logic |
+| ❌ OUT OF SCOPE | Supabase data sync, RevenueCat, Mixpanel, real authentication, cloud sync, subscription paywall, Phase 3 monetization |
 
 > Agent must not build anything outside active phase scope without explicit approval.
 > To change the active phase, the human must update this section.

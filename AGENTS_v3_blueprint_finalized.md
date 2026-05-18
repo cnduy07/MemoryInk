@@ -8,31 +8,15 @@
 ## ⚡ ACTIVE PHASE
 
 ```
-Phase 1 — Local MVP
+Phase 2 — AI Integration
 ```
 
 
 **In scope NOW:**
-- Core Data
-- Local persistence
-- Local file storage
-- Real image pipeline
-- Memory creation flow
-- Mood system
-- Local voice notes
-- Offline-first save behavior
-- Timeline backed by local data
+AIService, Supabase Edge Function AI proxy contract, async narrative generation, retry logic, local AI cache behavior, weekly recap, On This Day, background task stubs, AI usage tracking logic
 
 **Out of scope — do not build until phase changes:**
-- Supabase sync
-- AI API calls
-- RevenueCat
-- Mixpanel
-- Real authentication
-- Cloud sync
-- Subscription logic
-- Phase 2 AI generation
-- Phase 3 monetization and sync
+Supabase data sync, RevenueCat, Mixpanel, real authentication, cloud sync, subscription paywall, Phase 3 monetization
 
 > To change the active phase, the human must update this section and the corresponding section in the blueprint.
 
