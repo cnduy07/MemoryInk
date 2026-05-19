@@ -85,6 +85,48 @@ final class JournalEntryRepository: ObservableObject {
         saveAndRefresh()
     }
 
+    func pendingLocalEntries() -> [JournalEntry] {
+        entries.filter { entry in
+            entry.syncStatus == .pending || entry.syncStatus == .failed
+        }
+    }
+
+    func markSyncing(_ ids: [UUID]) {
+        updateSyncStatus(.syncing, ids: ids)
+    }
+
+    func markSyncCompleted(_ ids: [UUID]) {
+        updateSyncStatus(.completed, ids: ids)
+    }
+
+    func markSyncFailed(_ ids: [UUID]) {
+        updateSyncStatus(.failed, ids: ids)
+    }
+
+    func applyRemoteMetadataUpdate(_ record: SyncMetadataRecord) {
+        guard let object = entryObject(id: record.id) else { return }
+
+        if record.deletedAt != nil {
+            object.syncStatusRawValue = SyncStatus.completed.rawValue
+            saveAndRefresh()
+            return
+        }
+
+        let localRecord = SyncMetadataRecord(entry: object.toDomainModel(), userId: record.userId, updatedAt: object.createdAt)
+        let resolved = SyncConflictResolver.resolve(local: localRecord, remote: record)
+        guard resolved == record else { return }
+
+        object.rawNote = normalized(record.rawNote)
+        object.aiNarrative = normalized(record.aiNarrative)
+        object.aiGenerationDate = record.aiGenerationDate
+        object.moodRawValue = MoodType(rawValue: record.mood)?.rawValue ?? object.moodRawValue
+        object.narrativeStyleRawValue = NarrativeStyle(rawValue: record.narrativeStyle)?.rawValue ?? object.narrativeStyleRawValue
+        object.isFavorite = record.isFavorite
+        object.syncStatusRawValue = SyncStatus.completed.rawValue
+
+        saveAndRefresh()
+    }
+
     func entriesSince(_ date: Date) -> [JournalEntry] {
         entries.filter { $0.createdAt >= date }
     }
@@ -119,6 +161,13 @@ final class JournalEntryRepository: ObservableObject {
         } catch {
             context.rollback()
         }
+    }
+
+    private func updateSyncStatus(_ status: SyncStatus, ids: [UUID]) {
+        ids.forEach { id in
+            entryObject(id: id)?.syncStatusRawValue = status.rawValue
+        }
+        saveAndRefresh()
     }
 
     private func normalized(_ value: String?) -> String? {

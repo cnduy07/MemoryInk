@@ -56,6 +56,10 @@ struct SettingsView: View {
                 infoRow("Status", "Not signed in")
             case let .signedIn(session):
                 infoRow("Status", "Signed in as \(session.email ?? session.provider.title)")
+            case .unavailableMissingConfig:
+                infoRow("Status", "Sync unavailable: configuration missing")
+            case .error:
+                infoRow("Status", "Couldn't connect right now")
             }
         }
     }
@@ -63,7 +67,7 @@ struct SettingsView: View {
     private var emailSignIn: some View {
         Group {
             switch authService.state {
-            case .signedOut:
+            case .signedOut, .unavailableMissingConfig, .error:
                 Button("Continue with Email") {
                     isShowingEmailSheet = true
                 }
@@ -94,15 +98,17 @@ struct SettingsView: View {
         case .idle:
             return "Ready"
         case .notConfigured:
-            return "Sync not configured"
+            return "Sync unavailable: configuration missing"
         case .localOnly:
             return "Local only"
+        case .signedOut:
+            return "Sign in to sync"
         case .syncing:
             return "Syncing"
-        case .completed:
-            return "Synced"
-        case let .failed(message):
-            return message
+        case let .completed(date):
+            return "Last synced \(date.formatted(date: .omitted, time: .shortened))"
+        case .failed:
+            return "Couldn't sync right now"
         }
     }
 
@@ -152,7 +158,7 @@ private struct EmailAuthSheet: View {
                         .font(MemoryInkTypography.title)
                         .foregroundStyle(MemoryInkColors.ink)
 
-                    Text("Use an email and password for the local placeholder today. This will support premium sync later, and V1 will not require email verification.")
+                    Text("Use an email and password to keep your account ready for private memory sync. V1 will not require email verification.")
                         .font(MemoryInkTypography.narrativeCompact)
                         .foregroundStyle(MemoryInkColors.secondaryInk)
                         .lineSpacing(5)
@@ -197,6 +203,8 @@ private struct EmailAuthSheet: View {
                         let success = await authService.signInWithEmail(email, password: password)
                         if success {
                             dismiss()
+                        } else if case .error = authService.state {
+                            message = "Couldn't connect right now. Try again."
                         } else if !authService.isValidEmail(email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) {
                             message = "Enter a valid email address."
                         } else {

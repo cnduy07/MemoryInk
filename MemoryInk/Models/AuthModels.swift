@@ -28,4 +28,6 @@ struct AccountSession: Equatable {
 enum AuthState: Equatable {
     case signedOut
     case signedIn(AccountSession)
+    case unavailableMissingConfig
+    case error(String)
 }

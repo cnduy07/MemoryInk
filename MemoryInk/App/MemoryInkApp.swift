@@ -81,6 +81,7 @@ struct MemoryInkApp: App {
                 .environmentObject(onThisDayService)
                 .environmentObject(analyticsService)
                 .task {
+                    await authService.restoreSession()
                     await subscriptionManager.refreshEntitlements()
                 }
         }

@@ -16,7 +16,30 @@ struct SyncMetadataRecord: Codable, Identifiable, Equatable {
     let localPhotoExists: Bool
     let localVoiceExists: Bool
 
-    init(entry: JournalEntry, userId: String, updatedAt: Date = Date(), deletedAt: Date? = nil) {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+        case rawNote = "raw_note"
+        case mood
+        case narrativeStyle = "narrative_style"
+        case aiNarrative = "ai_narrative"
+        case aiGenerationDate = "ai_generation_date"
+        case isFavorite = "is_favorite"
+        case syncStatus = "sync_status"
+        case localPhotoExists = "local_photo_exists"
+        case localVoiceExists = "local_voice_exists"
+    }
+
+    init(
+        entry: JournalEntry,
+        userId: String,
+        updatedAt: Date = Date(),
+        deletedAt: Date? = nil,
+        syncStatus: SyncStatus? = nil
+    ) {
         self.id = entry.id
         self.userId = userId
         self.createdAt = entry.createdAt
@@ -28,7 +51,7 @@ struct SyncMetadataRecord: Codable, Identifiable, Equatable {
         self.aiNarrative = entry.aiNarrative
         self.aiGenerationDate = entry.aiGenerationDate
         self.isFavorite = entry.isFavorite
-        self.syncStatus = entry.syncStatus.rawValue
+        self.syncStatus = syncStatus?.rawValue ?? entry.syncStatus.rawValue
         self.localPhotoExists = true
         self.localVoiceExists = entry.voicePath != nil
     }
