@@ -55,6 +55,7 @@ enum SubscriptionPlan: String, CaseIterable, Identifiable {
 
 enum PremiumEntitlement {
     static let id = "premium"
+    static let defaultOfferingId = "default"
     static let monthlyProductId = "memoryink_monthly"
     static let yearlyProductId = "memoryink_yearly"
     static let trialDays = 7

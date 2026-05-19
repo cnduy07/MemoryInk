@@ -55,9 +55,11 @@
 		0E79FE2A2FBD0001009A6E8E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE0A2FBD0001009A6E8E /* OnboardingView.swift */; };
 		0E79FE2B2FBD0001009A6E8E /* PrivacyScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE0B2FBD0001009A6E8E /* PrivacyScreenView.swift */; };
 		0E79FE2C2FBD0001009A6E8E /* MoodIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E79FE0C2FBD0001009A6E8E /* MoodIntroView.swift */; };
+		0E79FF012FBE0001009A6E8E /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 0E79FF002FBE0001009A6E8E /* RevenueCat */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0E76CE082FBCB92800381EC8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0E79FB152FBAD5A4009A6E8E /* MemoryInk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MemoryInk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E79FB1A2FBAD5A4009A6E8E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0E79FB1C2FBAD5A5009A6E8E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0E79FF012FBE0001009A6E8E /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -139,6 +142,7 @@
 		0E79FB172FBAD5A4009A6E8E /* MemoryInk */ = {
 			isa = PBXGroup;
 			children = (
+				0E76CE082FBCB92800381EC8 /* Info.plist */,
 				0E79FB3A2FBAD8A0009A6E8E /* App */,
 				0E79FB3B2FBAD8A0009A6E8E /* Features */,
 				0E79FC0A2FBB0001009A6E8E /* Services */,
@@ -181,6 +185,50 @@
 				0E79FE0F2FBD0001009A6E8E /* Onboarding */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		0E79FB3C2FBAD8A0009A6E8E /* Timeline */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FB282FBAD8A0009A6E8E /* TimelineView.swift */,
+				0E79FB292FBAD8A0009A6E8E /* TimelineViewModel.swift */,
+				0E79FB2A2FBAD8A0009A6E8E /* TimelineCard.swift */,
+			);
+			path = Timeline;
+			sourceTree = "<group>";
+		};
+		0E79FB3D2FBAD8A0009A6E8E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FC002FBB0001009A6E8E /* JournalEntry.swift */,
+				0E79FD002FBC0001009A6E8E /* AIContracts.swift */,
+				0E79FD012FBC0001009A6E8E /* WeeklyRecap.swift */,
+				0E79FE002FBD0001009A6E8E /* SubscriptionPlan.swift */,
+				0E79FE012FBD0001009A6E8E /* AuthModels.swift */,
+				0E79FE022FBD0001009A6E8E /* SyncModels.swift */,
+				0E79FB2B2FBAD8A0009A6E8E /* MoodType.swift */,
+				0E79FB2C2FBAD8A0009A6E8E /* NarrativeStyle.swift */,
+				0E79FC012FBB0001009A6E8E /* SyncStatus.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		0E79FB3E2FBAD8A0009A6E8E /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FB3F2FBAD8A0009A6E8E /* Theme */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		0E79FB3F2FBAD8A0009A6E8E /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				0E79FB2D2FBAD8A0009A6E8E /* Colors.swift */,
+				0E79FB2E2FBAD8A0009A6E8E /* Typography.swift */,
+				0E79FB2F2FBAD8A0009A6E8E /* Spacing.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 		0E79FC0A2FBB0001009A6E8E /* Services */ = {
@@ -267,50 +315,6 @@
 			path = Onboarding;
 			sourceTree = "<group>";
 		};
-		0E79FB3C2FBAD8A0009A6E8E /* Timeline */ = {
-			isa = PBXGroup;
-			children = (
-				0E79FB282FBAD8A0009A6E8E /* TimelineView.swift */,
-				0E79FB292FBAD8A0009A6E8E /* TimelineViewModel.swift */,
-				0E79FB2A2FBAD8A0009A6E8E /* TimelineCard.swift */,
-			);
-			path = Timeline;
-			sourceTree = "<group>";
-		};
-		0E79FB3D2FBAD8A0009A6E8E /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				0E79FC002FBB0001009A6E8E /* JournalEntry.swift */,
-				0E79FD002FBC0001009A6E8E /* AIContracts.swift */,
-				0E79FD012FBC0001009A6E8E /* WeeklyRecap.swift */,
-				0E79FE002FBD0001009A6E8E /* SubscriptionPlan.swift */,
-				0E79FE012FBD0001009A6E8E /* AuthModels.swift */,
-				0E79FE022FBD0001009A6E8E /* SyncModels.swift */,
-				0E79FB2B2FBAD8A0009A6E8E /* MoodType.swift */,
-				0E79FB2C2FBAD8A0009A6E8E /* NarrativeStyle.swift */,
-				0E79FC012FBB0001009A6E8E /* SyncStatus.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		0E79FB3E2FBAD8A0009A6E8E /* Common */ = {
-			isa = PBXGroup;
-			children = (
-				0E79FB3F2FBAD8A0009A6E8E /* Theme */,
-			);
-			path = Common;
-			sourceTree = "<group>";
-		};
-		0E79FB3F2FBAD8A0009A6E8E /* Theme */ = {
-			isa = PBXGroup;
-			children = (
-				0E79FB2D2FBAD8A0009A6E8E /* Colors.swift */,
-				0E79FB2E2FBAD8A0009A6E8E /* Typography.swift */,
-				0E79FB2F2FBAD8A0009A6E8E /* Spacing.swift */,
-			);
-			path = Theme;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -327,6 +331,9 @@
 			dependencies = (
 			);
 			name = MemoryInk;
+			packageProductDependencies = (
+				0E79FF002FBE0001009A6E8E /* RevenueCat */,
+			);
 			productName = MemoryInk;
 			productReference = 0E79FB152FBAD5A4009A6E8E /* MemoryInk.app */;
 			productType = "com.apple.product-type.application";
@@ -355,6 +362,9 @@
 				Base,
 			);
 			mainGroup = 0E79FB0C2FBAD5A4009A6E8E;
+			packageReferences = (
+				0E79FF022FBE0001009A6E8E /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 			productRefGroup = 0E79FB162FBAD5A4009A6E8E /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -557,17 +567,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"MemoryInk/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MemoryInk/Info.plist;
+				INFOPLIST_KEY_RevenueCatAPIKey = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -587,17 +601,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"MemoryInk/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MemoryInk/Info.plist;
+				INFOPLIST_KEY_RevenueCatAPIKey = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -634,6 +652,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0E79FF022FBE0001009A6E8E /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.72.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0E79FF002FBE0001009A6E8E /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0E79FF022FBE0001009A6E8E /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0E79FB0D2FBAD5A4009A6E8E /* Project object */;
 }

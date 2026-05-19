@@ -80,6 +80,9 @@ struct MemoryInkApp: App {
                 .environmentObject(recapService)
                 .environmentObject(onThisDayService)
                 .environmentObject(analyticsService)
+                .task {
+                    await subscriptionManager.refreshEntitlements()
+                }
         }
     }
 }

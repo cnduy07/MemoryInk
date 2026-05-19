@@ -7,6 +7,7 @@ enum AppRoute: Hashable {
     case onThisDay
     case settings
     case subscription
+    case subscriptionPreview
 }
 
 final class AppRouter: ObservableObject {

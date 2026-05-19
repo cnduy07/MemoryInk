@@ -15,7 +15,7 @@ struct SettingsView: View {
                     infoRow("AI narratives/day", "\(subscriptionManager.dailyNarrativeLimit)")
 
                     Button("Manage MemoryInk+") {
-                        router.path.append(.subscription)
+                        router.path.append(.subscriptionPreview)
                     }
                     .font(MemoryInkTypography.narrativeCompact)
                     .foregroundStyle(MemoryInkColors.ink)

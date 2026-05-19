@@ -26,7 +26,8 @@ struct MemoryCreationView: View {
             GeometryReader { proxy in
                 let isCompact = proxy.size.height <= 670 || proxy.size.width <= 340
                 let horizontalPadding: CGFloat = isCompact ? 16 : 20
-                let contentWidth = min(proxy.size.width - (horizontalPadding * 2), 430)
+                let availableWidth = max(proxy.size.width - (horizontalPadding * 2), 0)
+                let contentWidth = max(min(availableWidth, 430), 0)
 
                 ZStack {
                     background
@@ -64,12 +65,12 @@ struct MemoryCreationView: View {
                     .foregroundStyle(viewModel.canSave ? MemoryInkColors.ink : MemoryInkColors.tertiaryInk)
                 }
             }
-            .onChange(of: viewModel.selectedPhotoItem) {
+            .onChange(of: viewModel.selectedPhotoItem) { _ in
                 Task {
                     await viewModel.loadSelectedPhoto()
                 }
             }
-            .onChange(of: viewModel.saveState) {
+            .onChange(of: viewModel.saveState) { _ in
                 if viewModel.saveState == .saved {
                     dismiss()
                 }
@@ -107,7 +108,10 @@ struct MemoryCreationView: View {
                         Image(uiImage: selectedImage)
                             .resizable()
                             .scaledToFill()
-                            .frame(width: proxy.size.width, height: proxy.size.height)
+                            .frame(
+                                width: max(proxy.size.width, 0),
+                                height: max(proxy.size.height, 0)
+                            )
                             .clipped()
                     } else {
                         VStack(spacing: 10) {

@@ -47,8 +47,18 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func refreshEntitlements() async {
-        let entitlements = await revenueCatService.currentEntitlements()
-        apply(entitlements: entitlements)
+        guard revenueCatService.isConfigured else { return }
+
+        do {
+            let customerState = try await revenueCatService.currentCustomerState()
+            apply(customerState)
+        } catch {
+            return
+        }
+    }
+
+    func loadDefaultOffering() async {
+        await revenueCatService.loadDefaultOffering()
     }
 
     func markFirstEmotionalMomentSeen() {
@@ -59,28 +69,35 @@ final class SubscriptionManager: ObservableObject {
     func purchase(_ plan: SubscriptionPlan) async {
         guard let productId = plan.productId else { return }
 
+        log("Purchase button tapped: \(plan.title) (\(productId))")
+
         do {
-            let entitlements = try await revenueCatService.purchase(productId: productId)
-            apply(entitlements: entitlements)
+            let customerState = try await revenueCatService.purchase(productId: productId)
+            apply(customerState)
+            log("Purchase success: \(plan.title), premiumActive=\(customerState.hasPremiumEntitlement)")
         } catch {
-            apply(entitlements: [])
+            log("Purchase failure: \(plan.title), error=\(error.localizedDescription)")
+            return
         }
     }
 
     func restorePurchases() async {
-        let entitlements = await revenueCatService.restorePurchases()
-        apply(entitlements: entitlements)
+        do {
+            let customerState = try await revenueCatService.restorePurchases()
+            apply(customerState)
+        } catch {
+            return
+        }
     }
 
-    private func apply(entitlements: Set<String>) {
-        hasPremiumEntitlement = entitlements.contains(PremiumEntitlement.id)
-
-        if hasPremiumEntitlement {
-            plan = .monthly
-        } else {
-            plan = .free
-        }
+    private func apply(_ customerState: RevenueCatCustomerState) {
+        hasPremiumEntitlement = customerState.hasPremiumEntitlement
+        plan = customerState.preferredPlan
 
         defaults.set(plan.rawValue, forKey: Key.plan)
+    }
+
+    private func log(_ message: String) {
+        print("[MemoryInk][RevenueCat] \(message)")
     }
 }

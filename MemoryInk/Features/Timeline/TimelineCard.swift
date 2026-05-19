@@ -80,7 +80,10 @@ struct TimelineCard: View {
     private var imageArea: some View {
         GeometryReader { proxy in
             placeholderImage
-                .frame(width: proxy.size.width, height: proxy.size.height)
+                .frame(
+                    width: max(proxy.size.width, 0),
+                    height: max(proxy.size.height, 0)
+                )
                 .clipped()
         }
         .aspectRatio(4.0 / 5.0, contentMode: .fit)

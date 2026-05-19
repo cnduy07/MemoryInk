@@ -180,6 +180,8 @@ struct TimelineView: View {
             } else {
                 SubscriptionLockedView()
             }
+        case .subscriptionPreview:
+            SubscriptionView()
         }
     }
 
@@ -316,11 +318,12 @@ struct TimelineView: View {
     private func layoutMetrics(for size: CGSize) -> TimelineLayoutMetrics {
         let isCompact = size.height <= 670 || size.width <= 340
         let horizontalPadding: CGFloat = isCompact ? 14 : 20
-        let availableWidth = size.width - (horizontalPadding * 2)
-        let compactWidth = min(availableWidth, 304)
-        let regularWidth = min(availableWidth, 430)
+        let availableWidth = max(size.width - (horizontalPadding * 2), 0)
+        let compactWidth = max(min(availableWidth, 304), 0)
+        let regularWidth = max(min(availableWidth, 430), 0)
         let overlayPadding: CGFloat = isCompact ? 14 : 20
-        let detailWidth = min(size.width - (overlayPadding * 2), isCompact ? 304 : 430)
+        let availableDetailWidth = max(size.width - (overlayPadding * 2), 0)
+        let detailWidth = max(min(availableDetailWidth, isCompact ? 304 : 430), 0)
 
         return TimelineLayoutMetrics(
             isCompact: isCompact,
