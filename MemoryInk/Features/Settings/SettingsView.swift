@@ -200,15 +200,20 @@ private struct EmailAuthSheet: View {
 
                 Button {
                     Task {
-                        let success = await authService.signInWithEmail(email, password: password)
-                        if success {
-                            dismiss()
-                        } else if case .error = authService.state {
-                            message = "Couldn't connect right now. Try again."
-                        } else if !authService.isValidEmail(email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) {
+                        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                        if !authService.isValidEmail(normalizedEmail) {
                             message = "Enter a valid email address."
+                        } else if !authService.isValidPassword(password) {
+                            message = "Password must be at least 6 characters."
                         } else {
-                            message = "Enter a password."
+                            let success = await authService.signInWithEmail(email, password: password)
+                            if success {
+                                dismiss()
+                            } else if case let .error(errorMessage) = authService.state {
+                                message = errorMessage
+                            } else {
+                                message = "Couldn't sign in right now. Try again."
+                            }
                         }
                     }
                 } label: {

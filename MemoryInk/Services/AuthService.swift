@@ -122,7 +122,7 @@ final class AuthService: ObservableObject {
     func signInWithEmail(_ email: String, password: String) async -> Bool {
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let normalizedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard isValidEmail(normalizedEmail), !normalizedPassword.isEmpty else { return false }
+        guard isValidEmail(normalizedEmail), isValidPassword(normalizedPassword) else { return false }
 
         guard configuration.isConfigured else {
             signInWithLocalPlaceholder(email: normalizedEmail)
@@ -141,7 +141,7 @@ final class AuthService: ObservableObject {
             )
             return true
         } catch {
-            state = .error("Couldn't sign in right now. Try again.")
+            state = .error(userFacingMessage(for: error))
             return false
         }
     }
@@ -156,6 +156,10 @@ final class AuthService: ObservableObject {
         guard parts.count == 2 else { return false }
         let domainParts = parts[1].split(separator: ".")
         return !parts[0].isEmpty && domainParts.count >= 2 && domainParts.allSatisfy { !$0.isEmpty }
+    }
+
+    func isValidPassword(_ password: String) -> Bool {
+        password.trimmingCharacters(in: .whitespacesAndNewlines).count >= 6
     }
 
     private func signInWithLocalPlaceholder(email: String) {
@@ -225,11 +229,24 @@ final class AuthService: ObservableObject {
 
     private func decoded<T: Decodable>(_ type: T.Type, from request: URLRequest) async throws -> T {
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw AuthServiceError.requestFailed
         }
 
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            let authError = try? JSONDecoder().decode(SupabaseAuthErrorResponse.self, from: data)
+            throw AuthServiceError.authRejected(authError?.userFacingMessage ?? "Couldn't sign in right now. Try again.")
+        }
+
         return try JSONDecoder().decode(type, from: data)
+    }
+
+    private func userFacingMessage(for error: Error) -> String {
+        if case let AuthServiceError.authRejected(message) = error {
+            return message
+        }
+
+        return "Couldn't sign in right now. Try again."
     }
 
     private func persist(session: SupabaseAuthSession, provider: AuthProvider) {
@@ -258,6 +275,7 @@ final class AuthService: ObservableObject {
 private enum AuthServiceError: Error {
     case missingConfiguration
     case requestFailed
+    case authRejected(String)
 }
 
 private struct AuthCredentials: Encodable {
@@ -290,4 +308,39 @@ private struct SupabaseAuthSession: Decodable {
 private struct SupabaseAuthUser: Decodable {
     let id: String
     let email: String?
+}
+
+private struct SupabaseAuthErrorResponse: Decodable {
+    let message: String?
+    let msg: String?
+    let error: String?
+    let errorDescription: String?
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case msg
+        case error
+        case errorDescription = "error_description"
+    }
+
+    var userFacingMessage: String {
+        let rawMessage = [message, msg, errorDescription, error]
+            .compactMap { $0 }
+            .joined(separator: " ")
+            .lowercased()
+
+        if rawMessage.contains("rate") || rawMessage.contains("too many") {
+            return "Please wait a moment and try again."
+        }
+
+        if rawMessage.contains("invalid")
+            || rawMessage.contains("credential")
+            || rawMessage.contains("password")
+            || rawMessage.contains("email")
+            || rawMessage.contains("registered") {
+            return "That email or password didn't work."
+        }
+
+        return "Couldn't sign in right now. Try again."
+    }
 }

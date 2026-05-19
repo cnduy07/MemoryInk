@@ -4,5 +4,9 @@
 <dict>
 	<key>RevenueCatAPIKey</key>
 	<string>appl_CMPeBwrSCyogjXsjYqNghIKvxDR</string>
+	<key>SupabaseAnonKey</key>
+	<string>sb_publishable_udVR2IgJ7kh1jCvc6buzzA_HS2SH8_9</string>
+	<key>SupabaseURL</key>
+	<string>https://amoucxmpokwworpncpby.supabase.co</string>
 </dict>
 </plist>
