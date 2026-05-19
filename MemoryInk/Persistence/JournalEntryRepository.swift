@@ -73,7 +73,7 @@ final class JournalEntryRepository: ObservableObject {
 
         object.aiNarrative = normalized(narrative)
         object.aiGenerationDate = generatedAt
-        object.syncStatusRawValue = SyncStatus.completed.rawValue
+        object.syncStatusRawValue = SyncStatus.pending.rawValue
 
         saveAndRefresh()
     }

@@ -91,11 +91,13 @@ final class SyncService: ObservableObject {
     func syncMetadataIfAllowed() async {
         guard canAttemptMetadataSync else {
             state = .localOnly
+            log("Sync unavailable: local-only plan")
             return
         }
 
         guard isConfigured else {
             state = .notConfigured
+            log("Sync unavailable: configuration missing")
             return
         }
 
@@ -104,6 +106,7 @@ final class SyncService: ObservableObject {
             let accessToken = authService.currentAccessToken
         else {
             state = .signedOut
+            log("Sync unavailable: signed out")
             return
         }
 
@@ -111,6 +114,7 @@ final class SyncService: ObservableObject {
         let pendingEntries = repository.pendingLocalEntries()
         let pendingIds = pendingEntries.map(\.id)
         repository.markSyncing(pendingIds)
+        log("Sync started: pending_records=\(pendingEntries.count)")
 
         do {
             if !pendingEntries.isEmpty {
@@ -124,9 +128,11 @@ final class SyncService: ObservableObject {
             }
 
             state = .completed(Date())
+            log("Sync succeeded: pending_records=\(pendingEntries.count), remote_records=\(remoteRecords.count)")
         } catch {
             repository.markSyncFailed(pendingIds)
             state = .failed("Couldn't sync right now. Try again.")
+            log("Sync failed: pending_records=\(pendingEntries.count)")
         }
     }
 
@@ -150,7 +156,7 @@ final class SyncService: ObservableObject {
 
     private func upload(entries: [JournalEntry], userId: String, accessToken: String) async throws {
         let records = entries.map { entry in
-            SyncMetadataRecord(entry: entry, userId: userId, syncStatus: .completed)
+            metadataOnlyRecord(for: entry, userId: userId)
         }
 
         var request = try restRequest(
@@ -162,6 +168,11 @@ final class SyncService: ObservableObject {
         request.httpBody = try encoder.encode(records)
 
         _ = try await data(for: request, accepting: 200..<300)
+    }
+
+    private func metadataOnlyRecord(for entry: JournalEntry, userId: String) -> SyncMetadataRecord {
+        // Privacy boundary: never include local media paths, image blobs, EXIF, GPS, or voice files.
+        SyncMetadataRecord(entry: entry, userId: userId, syncStatus: .completed)
     }
 
     private func fetchRemoteMetadata(accessToken: String) async throws -> [SyncMetadataRecord] {
@@ -224,6 +235,10 @@ final class SyncService: ObservableObject {
         }
 
         return data
+    }
+
+    private func log(_ message: String) {
+        print("[MemoryInk][Sync] \(message)")
     }
 }
 

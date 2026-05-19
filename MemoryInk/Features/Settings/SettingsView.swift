@@ -29,13 +29,14 @@ struct SettingsView: View {
 
                 section("Sync") {
                     infoRow("State", syncDescription)
-                    Button("Sync Metadata") {
+                    Button(syncButtonTitle) {
                         Task {
                             await syncService.syncMetadataIfAllowed()
                         }
                     }
                     .font(MemoryInkTypography.narrativeCompact)
-                    .foregroundStyle(MemoryInkColors.ink)
+                    .foregroundStyle(canStartSync ? MemoryInkColors.ink : MemoryInkColors.tertiaryInk)
+                    .disabled(!canStartSync)
                 }
             }
             .padding(22)
@@ -109,6 +110,32 @@ struct SettingsView: View {
             return "Last synced \(date.formatted(date: .omitted, time: .shortened))"
         case .failed:
             return "Couldn't sync right now"
+        }
+    }
+
+    private var canStartSync: Bool {
+        guard case .signedIn = authService.state else { return false }
+
+        switch syncService.state {
+        case .notConfigured, .syncing:
+            return false
+        case .idle, .localOnly, .signedOut, .completed, .failed:
+            return true
+        }
+    }
+
+    private var syncButtonTitle: String {
+        guard case .signedIn = authService.state else {
+            return "Sign in to Sync"
+        }
+
+        switch syncService.state {
+        case .notConfigured:
+            return "Sync Unavailable"
+        case .syncing:
+            return "Syncing"
+        case .idle, .localOnly, .signedOut, .completed, .failed:
+            return "Sync Metadata"
         }
     }
 
