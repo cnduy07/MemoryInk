@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>MemoryInkAIAPIKey</key>
+	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtb3VjeG1wb2t3d29ycG5jcGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDM5MDQsImV4cCI6MjA5NDc3OTkwNH0.XemZ2Jf2u7u5RmBRTyqgB8CAwdw_r1dLHsdItOUjKqg</string>
+	<key>MemoryInkAIBaseURL</key>
+	<string>https://amoucxmpokwworpncpby.supabase.co/functions/v1</string>
 	<key>RevenueCatAPIKey</key>
 	<string>appl_CMPeBwrSCyogjXsjYqNghIKvxDR</string>
 	<key>SupabaseAnonKey</key>

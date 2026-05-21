@@ -16,6 +16,10 @@ struct MemoryInkApp: App {
     @StateObject private var narrativeGenerationService: NarrativeGenerationService
     @StateObject private var recapService: RecapService
     @StateObject private var onThisDayService: OnThisDayService
+    @StateObject private var yearlyReviewService: YearlyReviewService
+    @StateObject private var notificationService = NotificationService()
+    @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("onboarding_completed") private var onboardingCompleted = false
 
     init() {
         let coreDataStack = CoreDataStack()
@@ -65,25 +69,50 @@ struct MemoryInkApp: App {
         _onThisDayService = StateObject(
             wrappedValue: OnThisDayService(repository: repository)
         )
+        _yearlyReviewService = StateObject(
+            wrappedValue: YearlyReviewService(
+                aiService: aiService,
+                repository: repository,
+                subscriptionManager: subscriptionManager
+            )
+        )
     }
 
     var body: some Scene {
         WindowGroup {
-            TimelineView()
-                .environmentObject(router)
-                .environmentObject(repository)
-                .environmentObject(imagePipeline)
-                .environmentObject(subscriptionManager)
-                .environmentObject(authService)
-                .environmentObject(syncService)
-                .environmentObject(narrativeGenerationService)
-                .environmentObject(recapService)
-                .environmentObject(onThisDayService)
-                .environmentObject(analyticsService)
-                .task {
-                    await authService.restoreSession()
-                    await subscriptionManager.refreshEntitlements()
+            Group {
+                if onboardingCompleted {
+                    TimelineView()
+                } else {
+                    OnboardingView {
+                        onboardingCompleted = true
+                    }
                 }
+            }
+            .environmentObject(router)
+            .environmentObject(repository)
+            .environmentObject(imagePipeline)
+            .environmentObject(subscriptionManager)
+            .environmentObject(authService)
+            .environmentObject(syncService)
+            .environmentObject(narrativeGenerationService)
+            .environmentObject(recapService)
+            .environmentObject(onThisDayService)
+            .environmentObject(yearlyReviewService)
+            .environmentObject(notificationService)
+            .environmentObject(analyticsService)
+            .task {
+                await authService.restoreSession()
+                await subscriptionManager.refreshEntitlements()
+                await syncService.syncMetadataIfAllowed()
+                onThisDayService.refresh()
+                await notificationService.scheduleOnThisDayIfNeeded(entryCount: onThisDayService.entries.count)
+            }
+            .onChange(of: scenePhase) { phase in
+                if phase == .active {
+                    Task { await syncService.syncMetadataIfAllowed() }
+                }
+            }
         }
     }
 }

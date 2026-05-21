@@ -11,6 +11,7 @@ struct TimelineMemory: Identifiable, Hashable {
     let lightLeak: Color
     let accent: Color
     let narrativeStyle: NarrativeStyle
+    let isFavorite: Bool
 }
 
 extension TimelineMemory {
@@ -28,17 +29,35 @@ extension TimelineMemory {
         ],
         lightLeak: Color(red: 0.96, green: 0.70, blue: 0.44),
         accent: Color(red: 0.36, green: 0.42, blue: 0.34),
-        narrativeStyle: .warm
+        narrativeStyle: .warm,
+        isFavorite: true
     )
 }
 
 @MainActor
 final class TimelineViewModel: ObservableObject {
+    @Published var showingFavoritesOnly = false
+    @Published var searchQuery: String = ""
+    @Published var isSearching: Bool = false
+    @Published var activeMoodFilter: MoodType?
+    @AppStorage("timeline_layout") var isGridLayout = false
+
     func memories(
         from entries: [JournalEntry],
         generationStates: [UUID: NarrativeDisplayState] = [:]
     ) -> [TimelineMemory] {
-        entries.map { entry in
+        let baseEntries = showingFavoritesOnly ? entries.filter(\.isFavorite) : entries
+        let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let searchedEntries = trimmedQuery.isEmpty ? baseEntries : baseEntries.filter { entry in
+            let lower = trimmedQuery.lowercased()
+            return (entry.rawNote?.lowercased().contains(lower) == true) ||
+                (entry.aiNarrative?.lowercased().contains(lower) == true)
+        }
+        let visibleEntries = activeMoodFilter == nil ? searchedEntries : searchedEntries.filter {
+            $0.mood == activeMoodFilter
+        }
+
+        return visibleEntries.map { entry in
             let displayState = narrativeState(for: entry, generationStates: generationStates)
 
             return TimelineMemory(
@@ -51,7 +70,8 @@ final class TimelineViewModel: ObservableObject {
                 palette: palette(for: entry.mood),
                 lightLeak: lightLeak(for: entry.mood),
                 accent: accent(for: entry.mood),
-                narrativeStyle: entry.narrativeStyle
+                narrativeStyle: entry.narrativeStyle,
+                isFavorite: entry.isFavorite
             )
         }
     }
@@ -66,10 +86,6 @@ final class TimelineViewModel: ObservableObject {
 
         if let state = generationStates[entry.id] {
             return state
-        }
-
-        if entry.syncStatus == .failed {
-            return .failed
         }
 
         return .pending

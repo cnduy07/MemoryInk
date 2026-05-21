@@ -21,6 +21,7 @@ struct AIServiceConfiguration {
 
 enum AIServiceError: Error, Equatable {
     case notConfigured
+    case unauthorized
     case rateLimitReached
     case networkUnavailable
     case timeout
@@ -32,22 +33,19 @@ enum AIServiceError: Error, Equatable {
         switch self {
         case .notConfigured, .networkUnavailable:
             return "Your memory is saved."
+        case .unauthorized:
+            return "Narrative will appear shortly."
         case .timeout:
             return "Narrative generation is taking longer than expected."
         case .rateLimitReached:
-            return "You've reached today's AI limit."
+            return "AI is taking a short break. Try again later."
         case .validationFailed, .serviceUnavailable, .malformedResponse:
             return "Couldn't generate a narrative right now."
         }
     }
 
     var shouldRetrySilently: Bool {
-        switch self {
-        case .networkUnavailable, .serviceUnavailable:
-            return true
-        case .notConfigured, .timeout, .rateLimitReached, .validationFailed, .malformedResponse:
-            return false
-        }
+        false
     }
 }
 
@@ -69,7 +67,19 @@ final class AIService {
         self.encoder = encoder
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            if let date = ISO8601DateFormatter.memoryInkWithFractionalSeconds.date(from: value)
+                ?? ISO8601DateFormatter.memoryInk.date(from: value) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format."
+            )
+        }
         self.decoder = decoder
     }
 
@@ -80,7 +90,7 @@ final class AIService {
     func generateNarrative(_ request: NarrativeGenerationRequest) async throws -> NarrativeGenerationData {
         let response: NarrativeGenerationResponse = try await post(
             request,
-            path: "/v1/narratives/generate"
+            endpoint: .narrative
         )
 
         guard response.success, let data = response.data else {
@@ -93,7 +103,7 @@ final class AIService {
     func generateRecap(_ request: RecapGenerationRequest) async throws -> RecapGenerationData {
         let response: RecapGenerationResponse = try await post(
             request,
-            path: "/v1/recaps/generate"
+            endpoint: .recap
         )
 
         guard response.success, let data = response.data else {
@@ -105,13 +115,13 @@ final class AIService {
 
     private func post<Request: Encodable, Response: Decodable>(
         _ body: Request,
-        path: String
+        endpoint: AIEndpoint
     ) async throws -> Response {
         guard let baseURL = configuration.baseURL else {
             throw AIServiceError.notConfigured
         }
 
-        let url = baseURL.appendingPathComponent(path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+        let url = endpoint.url(relativeTo: baseURL)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
@@ -160,14 +170,16 @@ final class AIService {
             switch httpResponse.statusCode {
             case 200..<300:
                 return try decoder.decode(Response.self, from: data)
+            case 401, 403:
+                throw mappedPayloadError(from: data) ?? AIServiceError.unauthorized
             case 408, 504:
                 throw AIServiceError.timeout
             case 429:
-                throw AIServiceError.rateLimitReached
+                throw mappedPayloadError(from: data) ?? AIServiceError.rateLimitReached
             case 400, 422:
-                throw AIServiceError.validationFailed
+                throw mappedPayloadError(from: data) ?? AIServiceError.validationFailed
             default:
-                throw AIServiceError.serviceUnavailable
+                throw mappedPayloadError(from: data) ?? AIServiceError.serviceUnavailable
             }
         } catch let error as AIServiceError {
             throw error
@@ -187,18 +199,78 @@ final class AIService {
 
     private func mapError(_ payload: AIServiceErrorPayload?) -> AIServiceError {
         switch payload?.code {
+        case .invalidRequest:
+            return .validationFailed
+        case .unauthorized:
+            return .unauthorized
         case .rateLimitReached:
             return .rateLimitReached
-        case .networkUnavailable:
-            return .networkUnavailable
-        case .aiTimeout:
-            return .timeout
-        case .validationFailed:
-            return .validationFailed
-        case .serviceUnavailable:
+        case .aiProviderError, .internalError:
             return .serviceUnavailable
         case .none:
             return .malformedResponse
         }
     }
+
+    private func mappedPayloadError(from data: Data) -> AIServiceError? {
+        guard let payload = try? decoder.decode(AIServiceErrorResponse.self, from: data) else {
+            return nil
+        }
+
+        return mapError(payload.error)
+    }
+}
+
+private enum AIEndpoint {
+    case narrative
+    case recap
+
+    var directPath: String {
+        switch self {
+        case .narrative:
+            return "v1/narratives/generate"
+        case .recap:
+            return "v1/recaps/generate"
+        }
+    }
+
+    var supabaseFunctionName: String {
+        switch self {
+        case .narrative:
+            return "narratives-generate"
+        case .recap:
+            return "recaps-generate"
+        }
+    }
+
+    func url(relativeTo baseURL: URL) -> URL {
+        let trimmedBase = baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let path = usesSupabaseFunctionSlugs(baseURL) ? supabaseFunctionName : directPath
+        return URL(string: "\(trimmedBase)/\(path)") ?? baseURL.appendingPathComponent(path)
+    }
+
+    private func usesSupabaseFunctionSlugs(_ baseURL: URL) -> Bool {
+        let host = baseURL.host?.lowercased() ?? ""
+        let path = baseURL.path.lowercased()
+        return host.contains("functions.supabase.co") || path.contains("/functions/v1")
+    }
+}
+
+private struct AIServiceErrorResponse: Decodable {
+    let success: Bool
+    let error: AIServiceErrorPayload?
+}
+
+private extension ISO8601DateFormatter {
+    static let memoryInk: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static let memoryInkWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 }

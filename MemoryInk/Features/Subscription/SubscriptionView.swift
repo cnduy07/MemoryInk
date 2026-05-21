@@ -3,6 +3,7 @@ import SwiftUI
 struct SubscriptionView: View {
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @EnvironmentObject private var analyticsService: AnalyticsService
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -31,6 +32,15 @@ struct SubscriptionView: View {
         )
         .navigationTitle("MemoryInk+")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Close") {
+                    dismiss()
+                }
+                .font(MemoryInkTypography.timestamp.weight(.medium))
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+            }
+        }
         .onAppear {
             analyticsService.track(.paywallShown)
         }

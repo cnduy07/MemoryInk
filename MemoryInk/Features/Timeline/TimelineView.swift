@@ -6,12 +6,23 @@ struct TimelineView: View {
     @EnvironmentObject private var imagePipeline: ImagePipelineService
     @EnvironmentObject private var narrativeGenerationService: NarrativeGenerationService
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @EnvironmentObject private var syncService: SyncService
     @EnvironmentObject private var analyticsService: AnalyticsService
+    @AppStorage("paywall_auto_shown") private var paywallAutoShown: Bool = false
     @StateObject private var viewModel = TimelineViewModel()
     @Namespace private var cardNamespace
     @State private var appearedCards: Set<UUID> = []
     @State private var selectedMemory: TimelineMemory?
     @State private var isShowingCreation = false
+    @State private var showingPaywall: Bool = false
+    @State private var milestoneToast: String?
+    @FocusState private var isSearchFocused: Bool
+
+    private let milestoneService = MilestoneService()
+    private let gridColumns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
 
     var body: some View {
         NavigationStack(path: $router.path) {
@@ -26,7 +37,7 @@ struct TimelineView: View {
                     background
                         .ignoresSafeArea()
 
-                    if memories.isEmpty {
+                    if repository.entries.isEmpty {
                         emptyState
                     } else {
                         ScrollView(showsIndicators: false) {
@@ -34,23 +45,60 @@ struct TimelineView: View {
                                 header(isCompact: metrics.isCompact)
                                     .frame(maxWidth: metrics.cardMaxWidth, alignment: .leading)
 
-                                ForEach(memories) { memory in
-                                    TimelineCard(
-                                        memory: memory,
-                                        namespace: cardNamespace,
-                                        isCompact: metrics.isCompact,
-                                        retryAction: retryAction(for: memory)
-                                    ) {
-                                        withAnimation(.easeInOut(duration: 0.25)) {
-                                            selectedMemory = memory
+                                if memories.isEmpty && viewModel.isSearching && !viewModel.searchQuery.isEmpty {
+                                    EmptyStateView(message: "No memories match \"\(viewModel.searchQuery)\".")
+                                        .frame(width: metrics.cardMaxWidth)
+                                        .padding(.top, 18)
+                                } else if memories.isEmpty, let mood = viewModel.activeMoodFilter {
+                                    EmptyStateView(message: "No \(mood.title.lowercased()) memories yet.")
+                                        .frame(width: metrics.cardMaxWidth)
+                                        .padding(.top, 18)
+                                } else if memories.isEmpty && viewModel.showingFavoritesOnly {
+                                    EmptyStateView(message: "Your favorited memories will appear here.")
+                                        .frame(width: metrics.cardMaxWidth)
+                                        .padding(.top, 18)
+                                } else if viewModel.isGridLayout {
+                                    LazyVGrid(columns: gridColumns, spacing: 12) {
+                                        ForEach(memories) { memory in
+                                            TimelineCard(
+                                                memory: memory,
+                                                namespace: cardNamespace,
+                                                isCompact: metrics.isCompact,
+                                                isGridCompact: true,
+                                                retryAction: retryAction(for: memory)
+                                            ) {
+                                                withAnimation(.easeInOut(duration: 0.25)) {
+                                                    selectedMemory = memory
+                                                }
+                                            }
+                                            .opacity(appearedCards.contains(memory.id) ? 1 : 0)
+                                            .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
+                                            .blur(radius: appearedCards.contains(memory.id) ? 0 : 4)
+                                            .onAppear {
+                                                animateCardIn(memory.id)
+                                            }
                                         }
                                     }
                                     .frame(width: metrics.cardMaxWidth)
-                                    .opacity(appearedCards.contains(memory.id) ? 1 : 0)
-                                    .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
-                                    .blur(radius: appearedCards.contains(memory.id) ? 0 : 4)
-                                    .onAppear {
-                                        animateCardIn(memory.id)
+                                } else {
+                                    ForEach(memories) { memory in
+                                        TimelineCard(
+                                            memory: memory,
+                                            namespace: cardNamespace,
+                                            isCompact: metrics.isCompact,
+                                            retryAction: retryAction(for: memory)
+                                        ) {
+                                            withAnimation(.easeInOut(duration: 0.25)) {
+                                                selectedMemory = memory
+                                            }
+                                        }
+                                        .frame(width: metrics.cardMaxWidth)
+                                        .opacity(appearedCards.contains(memory.id) ? 1 : 0)
+                                        .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
+                                        .blur(radius: appearedCards.contains(memory.id) ? 0 : 4)
+                                        .onAppear {
+                                            animateCardIn(memory.id)
+                                        }
                                     }
                                 }
                             }
@@ -59,6 +107,11 @@ struct TimelineView: View {
                             .padding(.bottom, 52)
                             .frame(maxWidth: .infinity)
                         }
+                        .simultaneousGesture(
+                            TapGesture().onEnded {
+                                dismissEmptySearchIfNeeded()
+                            }
+                        )
                         .blur(radius: selectedMemory == nil ? 0 : 3.5)
                         .scaleEffect(selectedMemory == nil ? 1 : 0.992)
                         .allowsHitTesting(selectedMemory == nil)
@@ -72,6 +125,17 @@ struct TimelineView: View {
                     if let selectedMemory {
                         let currentMemory = memories.first { $0.id == selectedMemory.id } ?? selectedMemory
                         detailOverlay(for: currentMemory, metrics: metrics, viewport: proxy.size)
+                    }
+
+                    if let milestoneToast {
+                        VStack {
+                            Spacer()
+
+                            ToastView(message: milestoneToast, isError: false)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 88)
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     }
                 }
                 .navigationBarHidden(true)
@@ -89,8 +153,26 @@ struct TimelineView: View {
             }
             .task {
                 analyticsService.track(.timelineSessionStarted)
-                await narrativeGenerationService.generatePendingNarratives()
             }
+            .onChange(of: repository.entries.count) { entryCount in
+                showMilestoneIfNeeded(entryCount: entryCount)
+            }
+            .onChange(of: repository.entries.count) { _ in
+                Task { await syncService.syncMetadataIfAllowed() }
+            }
+        }
+        .onChange(of: subscriptionManager.isPaywallEligible) { eligible in
+            if eligible && !subscriptionManager.hasPremiumEntitlement && !paywallAutoShown {
+                paywallAutoShown = true
+                showingPaywall = true
+            }
+        }
+        .sheet(isPresented: $showingPaywall) {
+            NavigationStack {
+                SubscriptionView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -121,23 +203,99 @@ struct TimelineView: View {
 
     private func header(isCompact: Bool) -> some View {
         VStack(alignment: .leading, spacing: isCompact ? 6 : 9) {
-            HStack {
-                Text("Private timeline")
-                    .font(MemoryInkTypography.eyebrow)
-                    .foregroundStyle(MemoryInkColors.tertiaryInk)
-                    .textCase(.uppercase)
+            if viewModel.isSearching {
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
 
-                Spacer()
+                    TextField("Search memories…", text: $viewModel.searchQuery)
+                        .font(MemoryInkTypography.narrativeCompact)
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .focused($isSearchFocused)
 
-                Button {
-                    router.path.append(.settings)
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                    if !viewModel.searchQuery.isEmpty {
+                        Button {
+                            viewModel.searchQuery = ""
+                        } label: {
+                            Image(systemName: "x.circle.fill")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Settings")
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(MemoryInkColors.paper.opacity(0.82))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(MemoryInkColors.hairline.opacity(0.24), lineWidth: 0.7)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onAppear {
+                    isSearchFocused = true
+                }
+                .onSubmit {
+                    if viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        viewModel.isSearching = false
+                    }
+                }
+            } else {
+                HStack {
+                    Text("Private timeline")
+                        .font(MemoryInkTypography.eyebrow)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+                        .textCase(.uppercase)
+
+                    Spacer()
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.24)) {
+                            viewModel.isGridLayout.toggle()
+                        }
+                    } label: {
+                        Image(systemName: viewModel.isGridLayout ? "rectangle.stack" : "square.grid.2x2")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(viewModel.isGridLayout ? "Show list layout" : "Show grid layout")
+
+                    Button {
+                        router.path.append(.calendar)
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Calendar")
+
+                    Button {
+                        router.path.append(.settings)
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Settings")
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.24)) {
+                            viewModel.isSearching = true
+                        }
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Search memories")
+                }
             }
 
             Text("MemoryInk")
@@ -147,6 +305,46 @@ struct TimelineView: View {
             Text("Small moments, held quietly.")
                 .font(MemoryInkTypography.subtitle)
                 .foregroundStyle(MemoryInkColors.secondaryInk)
+
+            if repository.entries.count >= 1 {
+                HStack(spacing: 10) {
+                    timelinePill("Weekly Recap") {
+                        router.path.append(.recap)
+                    }
+
+                    timelinePill("On This Day") {
+                        router.path.append(.onThisDay)
+                    }
+
+                    timelinePill("Favorites", isSelected: viewModel.showingFavoritesOnly) {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            viewModel.showingFavoritesOnly.toggle()
+                        }
+                    }
+
+                    if repository.entries.count >= 5 {
+                        timelinePill("Surprise me ✦") {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if let memory = repository.randomEntry() {
+                                router.path.append(.memoryDetail(id: memory.id))
+                            }
+                        }
+                    }
+
+                    if repository.entriesSince(oneYearAgo).count >= 10 {
+                        timelinePill("Year in Memories") {
+                            router.path.append(.yearlyReview)
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding(.top, 4)
+            }
+
+            if repository.entries.count >= 3 {
+                moodFilterStrip
+            }
 
             if subscriptionManager.isPaywallEligible && !subscriptionManager.hasPremiumEntitlement {
                 Button("MemoryInk+") {
@@ -161,17 +359,99 @@ struct TimelineView: View {
         .padding(.bottom, isCompact ? 0 : 2)
     }
 
+    private var moodFilterStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                moodFilterPill(title: "All", mood: nil, isSelected: viewModel.activeMoodFilter == nil)
+
+                ForEach(MoodType.allCases) { mood in
+                    moodFilterPill(
+                        title: mood.title,
+                        mood: mood,
+                        isSelected: viewModel.activeMoodFilter == mood
+                    )
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .padding(.top, 2)
+    }
+
+    private func moodFilterPill(title: String, mood: MoodType?, isSelected: Bool) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                viewModel.activeMoodFilter = mood
+            }
+        } label: {
+            HStack(spacing: 6) {
+                if let mood {
+                    Circle()
+                        .fill(mood.tint)
+                        .frame(width: 6, height: 6)
+                }
+
+                Text(title)
+                    .font(MemoryInkTypography.timestamp.weight(.medium))
+            }
+            .foregroundStyle(MemoryInkColors.secondaryInk)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                isSelected
+                    ? (mood?.tint ?? MemoryInkColors.sunlit).opacity(0.22)
+                    : MemoryInkColors.paper.opacity(0.72)
+            )
+            .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(
+                        isSelected
+                            ? (mood?.tint ?? MemoryInkColors.sunlit).opacity(0.55)
+                            : MemoryInkColors.hairline.opacity(0.24),
+                        lineWidth: 0.7
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func timelinePill(
+        _ title: String,
+        isSelected: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(title, action: action)
+            .font(MemoryInkTypography.timestamp.weight(.medium))
+            .foregroundStyle(MemoryInkColors.secondaryInk)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(isSelected ? MemoryInkColors.sunlit.opacity(0.22) : MemoryInkColors.paper.opacity(0.72))
+            .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(
+                        isSelected ? MemoryInkColors.sunlit.opacity(0.38) : MemoryInkColors.hairline.opacity(0.24),
+                        lineWidth: 0.7
+                    )
+            }
+            .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private func destination(for route: AppRoute) -> some View {
         switch route {
         case .timeline:
             TimelineView()
-        case .memoryDetail:
-            EmptyView()
+        case .memoryDetail(let id):
+            MemoryDetailView(entryId: id)
         case .recap:
             RecapView()
         case .onThisDay:
             OnThisDayView()
+        case .yearlyReview:
+            YearlyReviewView()
+        case .calendar:
+            CalendarView()
         case .settings:
             SettingsView()
         case .subscription:
@@ -284,6 +564,24 @@ struct TimelineView: View {
                     closeDetail()
                 }
                 .frame(width: metrics.detailMaxWidth)
+
+                Button {
+                    closeDetail()
+                    router.path.append(.memoryDetail(id: memory.id))
+                } label: {
+                    Text("View detail")
+                        .font(MemoryInkTypography.timestamp.weight(.medium))
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(MemoryInkColors.paper.opacity(0.72))
+                        .clipShape(Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                        }
+                }
+                .buttonStyle(.plain)
             }
             .frame(width: metrics.detailMaxWidth)
             .padding(.horizontal, metrics.overlayPadding)
@@ -307,6 +605,18 @@ struct TimelineView: View {
         }
     }
 
+    private func dismissEmptySearchIfNeeded() {
+        guard viewModel.isSearching,
+              viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.24)) {
+            viewModel.isSearching = false
+            isSearchFocused = false
+        }
+    }
+
     private func retryAction(for memory: TimelineMemory) -> (() -> Void)? {
         guard memory.narrativeState.canRetry else { return nil }
 
@@ -315,15 +625,43 @@ struct TimelineView: View {
         }
     }
 
+    private var oneYearAgo: Date {
+        Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date()
+    }
+
+    private func showMilestoneIfNeeded(entryCount: Int) {
+        guard let message = milestoneService.checkMilestone(entryCount: entryCount) else {
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.24)) {
+            milestoneToast = message
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+
+            await MainActor.run {
+                guard milestoneToast == message else { return }
+
+                withAnimation(.easeInOut(duration: 0.24)) {
+                    milestoneToast = nil
+                }
+            }
+        }
+    }
+
     private func layoutMetrics(for size: CGSize) -> TimelineLayoutMetrics {
-        let isCompact = size.height <= 670 || size.width <= 340
+        let viewportWidth = finiteDimension(size.width)
+        let viewportHeight = finiteDimension(size.height)
+        let isCompact = viewportHeight <= 670 || viewportWidth <= 340
         let horizontalPadding: CGFloat = isCompact ? 14 : 20
-        let availableWidth = max(size.width - (horizontalPadding * 2), 0)
-        let compactWidth = max(min(availableWidth, 304), 0)
-        let regularWidth = max(min(availableWidth, 430), 0)
+        let availableWidth = finiteDimension(viewportWidth - (horizontalPadding * 2))
+        let compactWidth = finiteDimension(min(availableWidth, 304))
+        let regularWidth = finiteDimension(min(availableWidth, 430))
         let overlayPadding: CGFloat = isCompact ? 14 : 20
-        let availableDetailWidth = max(size.width - (overlayPadding * 2), 0)
-        let detailWidth = max(min(availableDetailWidth, isCompact ? 304 : 430), 0)
+        let availableDetailWidth = finiteDimension(viewportWidth - (overlayPadding * 2))
+        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : 430))
 
         return TimelineLayoutMetrics(
             isCompact: isCompact,
@@ -334,6 +672,14 @@ struct TimelineView: View {
             detailMaxWidth: detailWidth,
             overlayPadding: overlayPadding
         )
+    }
+
+    private func finiteDimension(_ value: CGFloat, fallback: CGFloat = 0) -> CGFloat {
+        guard value.isFinite else {
+            return fallback
+        }
+
+        return max(value, 0)
     }
 }
 

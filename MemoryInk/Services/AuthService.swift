@@ -1,5 +1,7 @@
 import Combine
+import AuthenticationServices
 import Foundation
+import UIKit
 
 struct SupabaseAuthConfiguration {
     let baseURL: URL?
@@ -27,8 +29,9 @@ struct SupabaseAuthConfiguration {
 }
 
 @MainActor
-final class AuthService: ObservableObject {
+final class AuthService: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     @Published private(set) var state: AuthState
+    var presentationAnchor: ASPresentationAnchor?
 
     private enum Key {
         static let provider = "auth_provider"
@@ -44,6 +47,7 @@ final class AuthService: ObservableObject {
     private let session: URLSession
     private var accessToken: String?
     private var refreshToken: String?
+    private var appleContinuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>?
 
     init(
         configuration: SupabaseAuthConfiguration = .current,
@@ -73,6 +77,8 @@ final class AuthService: ObservableObject {
         } else {
             self.state = .unavailableMissingConfig
         }
+
+        super.init()
     }
 
     var isConfigured: Bool {
@@ -93,13 +99,16 @@ final class AuthService: ObservableObject {
             return
         }
 
+        let storedProvider = defaults.string(forKey: Key.provider)
+            .flatMap(AuthProvider.init(rawValue:)) ?? .email
+
         do {
             let session = try await refreshSupabaseSession(refreshToken: refreshToken)
-            persist(session: session, provider: .email)
+            persist(session: session, provider: storedProvider)
             state = .signedIn(
                 AccountSession(
                     userId: session.user.id,
-                    provider: .email,
+                    provider: storedProvider,
                     email: session.user.email
                 )
             )
@@ -109,28 +118,59 @@ final class AuthService: ObservableObject {
         }
     }
 
-    func signInWithApple() async {
-        // Boundary only: real Sign in with Apple requires Apple Developer account configuration.
-        state = configuration.isConfigured ? .signedOut : .unavailableMissingConfig
+    func signInWithApple() async -> AuthResult {
+        do {
+            let credential = try await requestAppleCredential()
+            guard let identityToken = credential.identityToken,
+                  let idToken = String(data: identityToken, encoding: .utf8)
+            else {
+                throw AuthServiceError.requestFailed
+            }
+
+            guard configuration.isConfigured else {
+                signInWithLocalApplePlaceholder(credential: credential)
+                return .success
+            }
+
+            let session = try await exchangeAppleToken(idToken: idToken)
+            persist(session: session, provider: .apple)
+            state = .signedIn(
+                AccountSession(
+                    userId: session.user.id,
+                    provider: .apple,
+                    email: session.user.email
+                )
+            )
+            return .success
+        } catch {
+            let message = "Couldn't sign in with Apple. Try again."
+            state = .error(message)
+            return .failure(message)
+        }
     }
 
-    func signInWithGoogle() async {
-        // Boundary only: real Google Sign-In requires approved SDK/client ID setup.
-        state = configuration.isConfigured ? .signedOut : .unavailableMissingConfig
-    }
-
-    func signInWithEmail(_ email: String, password: String) async -> Bool {
+    func signInWithEmail(_ email: String, password: String) async -> AuthResult {
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let normalizedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard isValidEmail(normalizedEmail), isValidPassword(normalizedPassword) else { return false }
+        guard isValidEmail(normalizedEmail) else {
+            let message = "Enter a valid email address."
+            state = .error(message)
+            return .failure(message)
+        }
+
+        guard isValidPassword(normalizedPassword) else {
+            let message = "Password must be at least 6 characters."
+            state = .error(message)
+            return .failure(message)
+        }
 
         guard configuration.isConfigured else {
             signInWithLocalPlaceholder(email: normalizedEmail)
-            return true
+            return .success
         }
 
         do {
-            let session = try await signInWithSupabase(email: normalizedEmail, password: normalizedPassword)
+            let session = try await passwordGrant(email: normalizedEmail, password: normalizedPassword)
             persist(session: session, provider: .email)
             state = .signedIn(
                 AccountSession(
@@ -139,10 +179,49 @@ final class AuthService: ObservableObject {
                     email: session.user.email
                 )
             )
-            return true
+            return .success
         } catch {
-            state = .error(userFacingMessage(for: error))
-            return false
+            let message = userFacingMessage(for: error)
+            state = .error(message)
+            return .failure(message)
+        }
+    }
+
+    func createAccount(email: String, password: String) async -> AuthResult {
+        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isValidEmail(normalizedEmail) else {
+            let message = "Enter a valid email address."
+            state = .error(message)
+            return .failure(message)
+        }
+
+        guard isValidPassword(normalizedPassword) else {
+            let message = "Password must be at least 6 characters."
+            state = .error(message)
+            return .failure(message)
+        }
+
+        guard configuration.isConfigured else {
+            signInWithLocalPlaceholder(email: normalizedEmail)
+            return .success
+        }
+
+        do {
+            let session = try await signUp(email: normalizedEmail, password: normalizedPassword)
+            persist(session: session, provider: .email)
+            state = .signedIn(
+                AccountSession(
+                    userId: session.user.id,
+                    provider: .email,
+                    email: session.user.email
+                )
+            )
+            return .success
+        } catch {
+            let message = userFacingMessage(for: error)
+            state = .error(message)
+            return .failure(message)
         }
     }
 
@@ -182,12 +261,44 @@ final class AuthService: ObservableObject {
         )
     }
 
-    private func signInWithSupabase(email: String, password: String) async throws -> SupabaseAuthSession {
-        do {
-            return try await passwordGrant(email: email, password: password)
-        } catch {
-            return try await signUp(email: email, password: password)
+    private func signInWithLocalApplePlaceholder(credential: ASAuthorizationAppleIDCredential) {
+        let userId = "local-apple:\(credential.user)"
+        defaults.set(AuthProvider.apple.rawValue, forKey: Key.provider)
+        defaults.set(credential.email, forKey: Key.email)
+        defaults.set(userId, forKey: Key.userId)
+        defaults.removeObject(forKey: Key.accessToken)
+        defaults.removeObject(forKey: Key.refreshToken)
+        defaults.removeObject(forKey: Key.expiresAt)
+        accessToken = nil
+        refreshToken = nil
+
+        state = .signedIn(
+            AccountSession(
+                userId: userId,
+                provider: .apple,
+                email: credential.email
+            )
+        )
+    }
+
+    private func requestAppleCredential() async throws -> ASAuthorizationAppleIDCredential {
+        try await withCheckedThrowingContinuation { continuation in
+            appleContinuation = continuation
+
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.email, .fullName]
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
         }
+    }
+
+    private func exchangeAppleToken(idToken: String) async throws -> SupabaseAuthSession {
+        var request = try request(path: "auth/v1/token", query: "grant_type=id_token", method: "POST")
+        request.httpBody = try JSONEncoder().encode(OAuthTokenRequest(provider: "apple", idToken: idToken))
+        return try await decoded(SupabaseAuthSession.self, from: request)
     }
 
     private func passwordGrant(email: String, password: String) async throws -> SupabaseAuthSession {
@@ -270,6 +381,43 @@ final class AuthService: ObservableObject {
         accessToken = nil
         refreshToken = nil
     }
+
+    nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        MainActor.assumeIsolated {
+            presentationAnchor
+                ?? UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .flatMap(\.windows)
+                    .first { $0.isKeyWindow }
+                ?? ASPresentationAnchor()
+        }
+    }
+
+    nonisolated func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithAuthorization authorization: ASAuthorization
+    ) {
+        Task { @MainActor in
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                appleContinuation?.resume(throwing: AuthServiceError.requestFailed)
+                appleContinuation = nil
+                return
+            }
+
+            appleContinuation?.resume(returning: credential)
+            appleContinuation = nil
+        }
+    }
+
+    nonisolated func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithError error: Error
+    ) {
+        Task { @MainActor in
+            appleContinuation?.resume(throwing: error)
+            appleContinuation = nil
+        }
+    }
 }
 
 private enum AuthServiceError: Error {
@@ -288,6 +436,16 @@ private struct RefreshRequest: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case refreshToken = "refresh_token"
+    }
+}
+
+private struct OAuthTokenRequest: Encodable {
+    let provider: String
+    let idToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case provider
+        case idToken = "id_token"
     }
 }
 

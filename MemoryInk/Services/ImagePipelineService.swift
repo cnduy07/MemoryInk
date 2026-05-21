@@ -72,14 +72,35 @@ final class ImagePipelineService: ObservableObject {
 
     private func resized(_ image: UIImage, maxPixelDimension: CGFloat) -> UIImage {
         let size = image.size
+
+        guard size.width.isFinite,
+              size.height.isFinite,
+              size.width > 0,
+              size.height > 0,
+              maxPixelDimension.isFinite,
+              maxPixelDimension > 0 else {
+            return image
+        }
+
         let longestSide = max(size.width, size.height)
 
-        guard longestSide > maxPixelDimension else {
+        guard longestSide.isFinite, longestSide > maxPixelDimension else {
             return image
         }
 
         let scale = maxPixelDimension / longestSide
+        guard scale.isFinite, scale > 0 else {
+            return image
+        }
+
         let targetSize = CGSize(width: size.width * scale, height: size.height * scale)
+        guard targetSize.width.isFinite,
+              targetSize.height.isFinite,
+              targetSize.width > 0,
+              targetSize.height > 0 else {
+            return image
+        }
+
         let renderer = UIGraphicsImageRenderer(size: targetSize)
 
         return renderer.image { _ in

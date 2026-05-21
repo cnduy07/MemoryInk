@@ -5,6 +5,8 @@ enum AppRoute: Hashable {
     case memoryDetail(id: UUID)
     case recap
     case onThisDay
+    case yearlyReview
+    case calendar
     case settings
     case subscription
     case subscriptionPreview

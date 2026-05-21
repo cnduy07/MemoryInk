@@ -3,6 +3,7 @@ import Foundation
 enum NarrativeDisplayState: Hashable {
     case generated
     case pending
+    case generating
     case timeout
     case rateLimited
     case failed
@@ -11,12 +12,12 @@ enum NarrativeDisplayState: Hashable {
         switch self {
         case .generated:
             return nil
-        case .pending:
+        case .pending, .generating:
             return "Narrative will appear shortly."
         case .timeout:
             return "Narrative generation is taking longer than expected."
         case .rateLimited:
-            return "You've reached today's AI limit."
+            return "AI is taking a short break. Try again later."
         case .failed:
             return "Couldn't generate a narrative right now."
         }
@@ -24,9 +25,9 @@ enum NarrativeDisplayState: Hashable {
 
     var canRetry: Bool {
         switch self {
-        case .timeout, .failed:
+        case .timeout, .rateLimited, .failed:
             return true
-        case .generated, .pending, .rateLimited:
+        case .generated, .pending, .generating:
             return false
         }
     }
@@ -41,35 +42,44 @@ final class NarrativeGenerationService: ObservableObject {
     private let usageTracker: AIUsageTracker
     private let subscriptionManager: SubscriptionManager?
     private let analyticsService: AnalyticsService?
+    private let defaults: UserDefaults
+    private var inFlightEntryIds: Set<UUID> = []
 
     init(
         aiService: AIService,
         repository: JournalEntryRepository,
         usageTracker: AIUsageTracker,
         subscriptionManager: SubscriptionManager? = nil,
-        analyticsService: AnalyticsService? = nil
+        analyticsService: AnalyticsService? = nil,
+        defaults: UserDefaults = .standard
     ) {
         self.aiService = aiService
         self.repository = repository
         self.usageTracker = usageTracker
         self.subscriptionManager = subscriptionManager
         self.analyticsService = analyticsService
+        self.defaults = defaults
+        self.states = Dictionary(
+            uniqueKeysWithValues: repository.entries.compactMap { entry in
+                guard let state = Self.storedState(for: entry.id, defaults: defaults) else {
+                    return nil
+                }
+
+                return (entry.id, state)
+            }
+        )
     }
 
     func generatePendingNarratives() async {
-        let pendingEntries = repository.entries.filter { entry in
-            entry.aiNarrative?.isEmpty != false && entry.syncStatus != .failed
-        }
-
-        for entry in pendingEntries {
-            await generateNarrativeIfNeeded(for: entry)
-        }
+        // Narrative generation is intentionally save-triggered only. Timeline/detail views
+        // must not turn pending placeholders into repeated backend calls.
     }
 
     func retry(entryId: UUID) {
         guard let entry = repository.entry(id: entryId) else { return }
 
         Task {
+            clearStoredState(for: entry.id)
             await generateNarrativeIfNeeded(for: entry, allowsRetryAfterFailure: true)
         }
     }
@@ -80,11 +90,20 @@ final class NarrativeGenerationService: ObservableObject {
     ) async {
         guard entry.aiNarrative?.isEmpty != false else {
             states[entry.id] = .generated
+            clearStoredState(for: entry.id)
+            log("AI skipped because already generated")
             return
         }
 
-        if entry.syncStatus == .failed && !allowsRetryAfterFailure {
-            states[entry.id] = .failed
+        if let state = states[entry.id],
+           state.isFailureState,
+           !allowsRetryAfterFailure {
+            log("AI skipped because already failed")
+            return
+        }
+
+        guard !inFlightEntryIds.contains(entry.id) else {
+            log("AI skipped because request already in flight")
             return
         }
 
@@ -96,46 +115,62 @@ final class NarrativeGenerationService: ObservableObject {
         if let subscriptionManager,
            !usageTracker.canGenerateNarrative(limit: subscriptionManager.dailyNarrativeLimit) {
             states[entry.id] = .rateLimited
+            storeState(.rateLimited, for: entry.id)
+            log("AI request failed with code: RATE_LIMIT_REACHED")
             return
         }
 
-        states[entry.id] = .pending
-        repository.updateSyncStatus(.syncing, for: entry.id)
+        inFlightEntryIds.insert(entry.id)
+        defer {
+            inFlightEntryIds.remove(entry.id)
+        }
+
+        states[entry.id] = .generating
+        clearStoredState(for: entry.id)
+        log("AI request started")
 
         do {
-            usageTracker.recordNarrativeRequest()
             let data = try await aiService.generateNarrative(request(for: entry))
+            usageTracker.recordNarrativeRequest()
             repository.updateNarrative(
                 data.narrative,
                 generatedAt: data.generatedAt,
                 for: entry.id
             )
             states[entry.id] = .generated
+            clearStoredState(for: entry.id)
             subscriptionManager?.markFirstEmotionalMomentSeen()
             analyticsService?.track(.firstNarrativeGenerated)
+            log("AI request succeeded")
         } catch let error as AIServiceError {
             handle(error, for: entry.id)
         } catch {
             states[entry.id] = .failed
-            repository.updateSyncStatus(.failed, for: entry.id)
+            storeState(.failed, for: entry.id)
+            log("AI request failed with code: UNKNOWN_ERROR")
         }
     }
 
     private func handle(_ error: AIServiceError, for entryId: UUID) {
         switch error {
-        case .notConfigured, .networkUnavailable:
+        case .notConfigured:
             states[entryId] = .pending
-            repository.updateSyncStatus(.pending, for: entryId)
+            clearStoredState(for: entryId)
+        case .unauthorized, .networkUnavailable:
+            states[entryId] = .failed
+            storeState(.failed, for: entryId)
         case .timeout:
             states[entryId] = .timeout
-            repository.updateSyncStatus(.failed, for: entryId)
+            storeState(.timeout, for: entryId)
         case .rateLimitReached:
             states[entryId] = .rateLimited
-            repository.updateSyncStatus(.failed, for: entryId)
+            storeState(.rateLimited, for: entryId)
         case .validationFailed, .serviceUnavailable, .malformedResponse:
             states[entryId] = .failed
-            repository.updateSyncStatus(.failed, for: entryId)
+            storeState(.failed, for: entryId)
         }
+
+        log("AI request failed with code: \(error.logCode)")
     }
 
     private func request(for entry: JournalEntry) -> NarrativeGenerationRequest {
@@ -163,5 +198,99 @@ final class NarrativeGenerationService: ObservableObject {
         }
 
         return Array(NSOrderedSet(array: labels)) as? [String] ?? labels
+    }
+
+    private func log(_ message: String) {
+        print("[MemoryInk][AI] \(message)")
+    }
+
+    private func storeState(_ state: NarrativeDisplayState, for entryId: UUID) {
+        defaults.set(state.storageValue, forKey: Self.stateKey(for: entryId))
+    }
+
+    private func clearStoredState(for entryId: UUID) {
+        defaults.removeObject(forKey: Self.stateKey(for: entryId))
+    }
+
+    private static func storedState(for entryId: UUID, defaults: UserDefaults) -> NarrativeDisplayState? {
+        guard let value = defaults.string(forKey: stateKey(for: entryId)) else {
+            return nil
+        }
+
+        return NarrativeDisplayState(storageValue: value)
+    }
+
+    private static func stateKey(for entryId: UUID) -> String {
+        "ai_narrative_state_\(entryId.uuidString)"
+    }
+}
+
+private extension NarrativeDisplayState {
+    var storageValue: String {
+        switch self {
+        case .generated:
+            return "generated"
+        case .pending:
+            return "pending"
+        case .generating:
+            return "generating"
+        case .timeout:
+            return "timeout"
+        case .rateLimited:
+            return "rate_limited"
+        case .failed:
+            return "failed"
+        }
+    }
+
+    init?(storageValue: String) {
+        switch storageValue {
+        case "pending":
+            self = .pending
+        case "generating":
+            self = .pending
+        case "timeout":
+            self = .timeout
+        case "rate_limited":
+            self = .rateLimited
+        case "failed":
+            self = .failed
+        case "generated":
+            self = .generated
+        default:
+            return nil
+        }
+    }
+
+    var isFailureState: Bool {
+        switch self {
+        case .timeout, .rateLimited, .failed:
+            return true
+        case .generated, .pending, .generating:
+            return false
+        }
+    }
+}
+
+private extension AIServiceError {
+    var logCode: String {
+        switch self {
+        case .notConfigured:
+            return "NOT_CONFIGURED"
+        case .unauthorized:
+            return "UNAUTHORIZED"
+        case .rateLimitReached:
+            return "RATE_LIMIT_REACHED"
+        case .networkUnavailable:
+            return "NETWORK_UNAVAILABLE"
+        case .timeout:
+            return "AI_TIMEOUT"
+        case .validationFailed:
+            return "VALIDATION_FAILED"
+        case .serviceUnavailable:
+            return "SERVICE_UNAVAILABLE"
+        case .malformedResponse:
+            return "MALFORMED_RESPONSE"
+        }
     }
 }

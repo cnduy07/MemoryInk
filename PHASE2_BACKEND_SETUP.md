@@ -7,10 +7,35 @@ MemoryInk must continue to build and run without backend configuration. When the
 - `MemoryInkAIBaseURL`
 - `MemoryInkAIAPIKey`
 
+## Required Supabase Secrets
+
+- `OPENAI_API_KEY`
+- `AI_MODEL` optional, defaults to `gpt-4o-mini`
+- `MEMORYINK_AI_API_KEY` optional shared client key. If set, iOS `MemoryInkAIAPIKey` must match it.
+
 ## Required Endpoints
 
 - `POST /v1/narratives/generate`
 - `POST /v1/recaps/generate`
+
+## Supabase Edge Function URLs
+
+Supabase Edge Functions are deployed by function slug, not by arbitrary nested `/v1/...` routes. The deployed URLs are:
+
+- `https://<project-ref>.functions.supabase.co/narratives-generate`
+- `https://<project-ref>.functions.supabase.co/recaps-generate`
+
+For local Supabase development:
+
+- `http://127.0.0.1:54321/functions/v1/narratives-generate`
+- `http://127.0.0.1:54321/functions/v1/recaps-generate`
+
+Set `MemoryInkAIBaseURL` to the Edge Functions base URL:
+
+- hosted: `https://<project-ref>.functions.supabase.co`
+- local: `http://127.0.0.1:54321/functions/v1`
+
+The iOS app maps this base URL to the correct function slug. If a future gateway directly exposes the approved contract routes, `MemoryInkAIBaseURL` can instead point to that gateway base and the app will call `/v1/narratives/generate` and `/v1/recaps/generate`.
 
 ## Privacy Boundary
 
@@ -62,7 +87,7 @@ Expected fields:
 Supported error codes:
 
 - `RATE_LIMIT_REACHED`
-- `NETWORK_UNAVAILABLE`
-- `AI_TIMEOUT`
-- `VALIDATION_FAILED`
-- `SERVICE_UNAVAILABLE`
+- `INVALID_REQUEST`
+- `UNAUTHORIZED`
+- `AI_PROVIDER_ERROR`
+- `INTERNAL_ERROR`

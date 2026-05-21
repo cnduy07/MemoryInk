@@ -78,11 +78,58 @@ final class JournalEntryRepository: ObservableObject {
         saveAndRefresh()
     }
 
+    func clearNarrative(id: UUID) {
+        guard let object = entryObject(id: id) else { return }
+
+        object.aiNarrative = nil
+        object.syncStatusRawValue = SyncStatus.pending.rawValue
+        saveAndRefresh()
+    }
+
     func updateSyncStatus(_ status: SyncStatus, for id: UUID) {
         guard let object = entryObject(id: id) else { return }
 
         object.syncStatusRawValue = status.rawValue
         saveAndRefresh()
+    }
+
+    func toggleFavorite(id: UUID) {
+        guard let object = entryObject(id: id) else { return }
+
+        object.isFavorite.toggle()
+        saveAndRefresh()
+    }
+
+    func delete(id: UUID) {
+        guard let object = entryObject(id: id) else { return }
+
+        context.delete(object)
+        saveAndRefresh()
+    }
+
+    func update(id: UUID, mood: MoodType, note: String?) {
+        guard let object = entryObject(id: id) else { return }
+
+        object.moodRawValue = mood.rawValue
+        object.rawNote = normalized(note)
+        object.syncStatusRawValue = SyncStatus.pending.rawValue
+        saveAndRefresh()
+    }
+
+    func search(query: String) -> [JournalEntry] {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return entries
+        }
+
+        let lower = query.lowercased()
+        return entries.filter {
+            ($0.rawNote?.lowercased().contains(lower) == true) ||
+                ($0.aiNarrative?.lowercased().contains(lower) == true)
+        }
+    }
+
+    func randomEntry() -> JournalEntry? {
+        entries.randomElement()
     }
 
     func pendingLocalEntries() -> [JournalEntry] {

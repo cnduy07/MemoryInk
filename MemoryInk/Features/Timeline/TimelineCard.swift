@@ -6,6 +6,7 @@ struct TimelineCard: View {
     let namespace: Namespace.ID?
     let isExpanded: Bool
     let isCompact: Bool
+    let isGridCompact: Bool
     let retryAction: (() -> Void)?
     let onTap: () -> Void
 
@@ -14,6 +15,7 @@ struct TimelineCard: View {
         namespace: Namespace.ID? = nil,
         isExpanded: Bool = false,
         isCompact: Bool = false,
+        isGridCompact: Bool = false,
         retryAction: (() -> Void)? = nil,
         onTap: @escaping () -> Void
     ) {
@@ -21,11 +23,20 @@ struct TimelineCard: View {
         self.namespace = namespace
         self.isExpanded = isExpanded
         self.isCompact = isCompact
+        self.isGridCompact = isGridCompact
         self.retryAction = retryAction
         self.onTap = onTap
     }
 
     var body: some View {
+        if isGridCompact {
+            gridBody
+        } else {
+            listBody
+        }
+    }
+
+    private var listBody: some View {
         VStack(alignment: .leading, spacing: isCompact ? 12 : 16) {
             imageArea
 
@@ -77,16 +88,36 @@ struct TimelineCard: View {
         .accessibilityLabel("\(memory.mood.title) memory from \(memory.timestamp.formatted(date: .abbreviated, time: .shortened))")
     }
 
+    private var gridBody: some View {
+        imageArea
+            .overlay(alignment: .bottomTrailing) {
+                if memory.isFavorite {
+                    favoriteBadge
+                        .padding(10)
+                }
+            }
+            .shadow(color: MemoryInkColors.filmShadow.opacity(0.10), radius: 14, x: 0, y: 8)
+            .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
+            .onTapGesture {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onTap()
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(memory.mood.title) memory from \(memory.timestamp.formatted(date: .abbreviated, time: .shortened))")
+    }
+
     private var imageArea: some View {
         GeometryReader { proxy in
+            let imageSize = finiteSize(proxy.size)
+
             placeholderImage
                 .frame(
-                    width: max(proxy.size.width, 0),
-                    height: max(proxy.size.height, 0)
+                    width: imageSize.width,
+                    height: imageSize.height
                 )
                 .clipped()
         }
-        .aspectRatio(4.0 / 5.0, contentMode: .fit)
+        .aspectRatio(isGridCompact ? 1.0 : 4.0 / 5.0, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .overlay(alignment: .topLeading) {
             moodBadge
@@ -207,6 +238,19 @@ struct TimelineCard: View {
             .clipShape(Capsule())
     }
 
+    private var favoriteBadge: some View {
+        Image(systemName: "heart.fill")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(memory.mood.tint)
+            .frame(width: 20, height: 20)
+            .background(.ultraThinMaterial)
+            .clipShape(Circle())
+            .overlay {
+                Circle()
+                    .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.6)
+            }
+    }
+
     private var timestampRow: some View {
         HStack(spacing: 8) {
             Rectangle()
@@ -246,13 +290,20 @@ struct TimelineCard: View {
 
     private var subtleGrain: some View {
         Canvas { context, size in
+            let safeWidth = finiteDimension(size.width)
+            let safeHeight = finiteDimension(size.height)
+
+            guard safeWidth > 0, safeHeight > 0 else {
+                return
+            }
+
             let spacing: CGFloat = 11
             var x: CGFloat = 4
 
-            while x < size.width {
+            while x < safeWidth {
                 var y: CGFloat = 5
 
-                while y < size.height {
+                while y < safeHeight {
                     let opacity = ((Int(x + y) % 5) == 0) ? 0.030 : 0.016
                     context.fill(
                         Path(ellipseIn: CGRect(x: x, y: y, width: 1, height: 1)),
@@ -265,6 +316,21 @@ struct TimelineCard: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    private func finiteSize(_ size: CGSize) -> CGSize {
+        CGSize(
+            width: finiteDimension(size.width),
+            height: finiteDimension(size.height)
+        )
+    }
+
+    private func finiteDimension(_ value: CGFloat, fallback: CGFloat = 0) -> CGFloat {
+        guard value.isFinite else {
+            return fallback
+        }
+
+        return max(value, 0)
     }
 }
 

@@ -24,10 +24,11 @@ struct MemoryCreationView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
-                let isCompact = proxy.size.height <= 670 || proxy.size.width <= 340
+                let viewportSize = finiteSize(proxy.size)
+                let isCompact = viewportSize.height <= 670 || viewportSize.width <= 340
                 let horizontalPadding: CGFloat = isCompact ? 16 : 20
-                let availableWidth = max(proxy.size.width - (horizontalPadding * 2), 0)
-                let contentWidth = max(min(availableWidth, 430), 0)
+                let availableWidth = finiteDimension(viewportSize.width - (horizontalPadding * 2))
+                let contentWidth = finiteDimension(min(availableWidth, 430))
 
                 ZStack {
                     background
@@ -96,6 +97,8 @@ struct MemoryCreationView: View {
             photoLibrary: .shared()
         ) {
             GeometryReader { proxy in
+                let imageSize = finiteSize(proxy.size)
+
                 ZStack {
                     RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
                         .fill(MemoryInkColors.paper.opacity(0.88))
@@ -109,8 +112,8 @@ struct MemoryCreationView: View {
                             .resizable()
                             .scaledToFill()
                             .frame(
-                                width: max(proxy.size.width, 0),
-                                height: max(proxy.size.height, 0)
+                                width: imageSize.width,
+                                height: imageSize.height
                             )
                             .clipped()
                     } else {
@@ -131,6 +134,21 @@ struct MemoryCreationView: View {
             .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 18, x: 0, y: 10)
         }
         .buttonStyle(.plain)
+    }
+
+    private func finiteSize(_ size: CGSize) -> CGSize {
+        CGSize(
+            width: finiteDimension(size.width),
+            height: finiteDimension(size.height)
+        )
+    }
+
+    private func finiteDimension(_ value: CGFloat, fallback: CGFloat = 0) -> CGFloat {
+        guard value.isFinite else {
+            return fallback
+        }
+
+        return max(value, 0)
     }
 
     private func noteField(isCompact: Bool) -> some View {

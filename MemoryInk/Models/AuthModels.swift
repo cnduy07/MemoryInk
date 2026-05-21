@@ -2,7 +2,6 @@ import Foundation
 
 enum AuthProvider: String, CaseIterable, Identifiable {
     case apple
-    case google
     case email
 
     var id: String { rawValue }
@@ -11,8 +10,6 @@ enum AuthProvider: String, CaseIterable, Identifiable {
         switch self {
         case .apple:
             return "Sign in with Apple"
-        case .google:
-            return "Google"
         case .email:
             return "Email"
         }
@@ -30,4 +27,14 @@ enum AuthState: Equatable {
     case signedIn(AccountSession)
     case unavailableMissingConfig
     case error(String)
+}
+
+enum AuthMode {
+    case signIn
+    case createAccount
+}
+
+enum AuthResult {
+    case success
+    case failure(String)
 }

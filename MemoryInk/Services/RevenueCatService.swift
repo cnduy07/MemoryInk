@@ -67,6 +67,10 @@ struct RevenueCatCustomerState {
     }
 
     var preferredPlan: SubscriptionPlan {
+        guard hasPremiumEntitlement else {
+            return .free
+        }
+
         if activeProductIds.contains(PremiumEntitlement.yearlyProductId) {
             return .yearly
         }

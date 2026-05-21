@@ -143,15 +143,7 @@ final class SyncService: ObservableObject {
     }
 
     private var canAttemptMetadataSync: Bool {
-        if subscriptionManager.canUseMetadataSync {
-            return true
-        }
-
-        #if DEBUG
-        return true
-        #else
-        return !subscriptionManager.isRevenueCatConfigured
-        #endif
+        subscriptionManager.canUseMetadataSync
     }
 
     private func upload(entries: [JournalEntry], userId: String, accessToken: String) async throws {

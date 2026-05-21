@@ -8,15 +8,15 @@
 ## ⚡ ACTIVE PHASE
 
 ```
-Phase 3 — Monetization & Sync
+Phase: All phases complete
 ```
 
 
-**In scope NOW:**
-RevenueCat, subscription state, paywall, 7-day free trial configuration placeholder, premium entitlement check, Supabase metadata-only sync, auth, Mixpanel analytics, onboarding polish, sync conflict handling
+**Rate limit bug:**
+Fixed — narrative usage counters increment only after successful AI generation.
 
-**Out of scope — do not build until phase changes:**
-CloudKit, photo sync, voice sync, realtime collaboration, social features, AI chat, embeddings, vector search, raw media upload
+**Remaining for future phase:**
+Voice journaling, CloudKit
 
 > To change the active phase, the human must update this section and the corresponding section in the blueprint.
 
@@ -209,8 +209,7 @@ Phase 2 must not implement Supabase database sync, RevenueCat purchases, Mixpane
 ### Phase 3 — Monetization & Metadata Sync
 Allowed only when active phase changes to Phase 3:
 - RevenueCat integration
-- Mixpanel analytics
-- Sign-in for premium sync
+- Sign-in for premium sync (email + Sign in with Apple)
 - Supabase metadata-only sync
 
 Do not upload photos, thumbnails, medium previews, voice files, EXIF metadata, or GPS data in any phase.
@@ -330,8 +329,7 @@ Do not change any of the following without explicit approval:
 ### Sign-in
 - Free users do not need to sign in.
 - Premium sync requires an account.
-- Supported account methods: Sign in with Apple, Google Sign-In, or email account.
-- Google/Gmail in the blueprint means Google Sign-In, not Gmail API access.
+- Supported account methods: Sign in with Apple or email account. Google Sign-In is not supported.
 - Email account creation does not require verification in V1.
 - Email input must only pass simple format validation: `____@____.____`.
 
@@ -366,11 +364,11 @@ Performance is a product feature. Optimize scrolling and launch BEFORE adding fe
 
 ---
 
-## ANALYTICS RULES (Phase 3+ only)
+## ANALYTICS RULES
 
-**Track only:** first_entry_created · first_narrative_generated · first_recap_opened · entries_per_week · on_this_day_opened · recap_opened · paywall_shown · trial_started · monthly_converted · yearly_converted
+MemoryInk does not track user behavior. No analytics SDK is used. Do not add Mixpanel, Firebase, or any other analytics library.
 
-**Never track:** memory contents · photo data · voice · private reflections
+**Never track:** memory contents · photo data · voice · private reflections · any user behavior
 
 ---
 

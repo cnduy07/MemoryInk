@@ -96,9 +96,9 @@ struct AIServiceErrorPayload: Codable {
 }
 
 enum AIServiceErrorCode: String, Codable {
+    case invalidRequest = "INVALID_REQUEST"
+    case unauthorized = "UNAUTHORIZED"
     case rateLimitReached = "RATE_LIMIT_REACHED"
-    case networkUnavailable = "NETWORK_UNAVAILABLE"
-    case aiTimeout = "AI_TIMEOUT"
-    case validationFailed = "VALIDATION_FAILED"
-    case serviceUnavailable = "SERVICE_UNAVAILABLE"
+    case aiProviderError = "AI_PROVIDER_ERROR"
+    case internalError = "INTERNAL_ERROR"
 }
