@@ -70,6 +70,7 @@
 		0E80002E2FC1000000000001 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80002C2FC1000000000001 /* CalendarView.swift */; };
 		0E80002F2FC1000000000001 /* CalendarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80002D2FC1000000000001 /* CalendarViewModel.swift */; };
 		0E8000412FC1000000000001 /* CardBrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000402FC1000000000001 /* CardBrowseView.swift */; };
+		0E8000522FC1000000000001 /* MemoryViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000512FC1000000000001 /* MemoryViewerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -137,6 +138,7 @@
 		0E80002C2FC1000000000001 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		0E80002D2FC1000000000001 /* CalendarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewModel.swift; sourceTree = "<group>"; };
 		0E8000402FC1000000000001 /* CardBrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBrowseView.swift; sourceTree = "<group>"; };
+		0E8000512FC1000000000001 /* MemoryViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryViewerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -208,6 +210,7 @@
 				0E80003F2FC1000000000001 /* Browse */,
 				0E79FC0C2FBB0001009A6E8E /* MemoryCreation */,
 				0E8000082FC1000000000001 /* MemoryDetail */,
+				0E8000502FC1000000000001 /* MemoryViewer */,
 				0E79FD0C2FBC0001009A6E8E /* Recap */,
 				0E79FD0D2FBC0001009A6E8E /* OnThisDay */,
 				0E8000262FC1000000000001 /* YearlyReview */,
@@ -322,6 +325,14 @@
 				0E8000032FC1000000000001 /* MemoryDetailView.swift */,
 			);
 			path = MemoryDetail;
+			sourceTree = "<group>";
+		};
+		0E8000502FC1000000000001 /* MemoryViewer */ = {
+			isa = PBXGroup;
+			children = (
+				0E8000512FC1000000000001 /* MemoryViewerView.swift */,
+			);
+			path = MemoryViewer;
 			sourceTree = "<group>";
 		};
 		0E8000092FC1000000000001 /* Components */ = {
@@ -485,6 +496,7 @@
 				0E79FB312FBAD8A0009A6E8E /* AppRouter.swift in Sources */,
 				0E79FE222FBD0001009A6E8E /* SyncModels.swift in Sources */,
 				0E79FC102FBB0001009A6E8E /* JournalEntry.swift in Sources */,
+				0E8000522FC1000000000001 /* MemoryViewerView.swift in Sources */,
 				0E79FD212FBC0001009A6E8E /* WeeklyRecap.swift in Sources */,
 				0E8000292FC1000000000001 /* YearlyReviewService.swift in Sources */,
 				0E80002F2FC1000000000001 /* CalendarViewModel.swift in Sources */,

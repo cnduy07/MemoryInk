@@ -4,68 +4,235 @@ struct RecapView: View {
     @EnvironmentObject private var recapService: RecapService
     @EnvironmentObject private var repository: JournalEntryRepository
     @EnvironmentObject private var analyticsService: AnalyticsService
+    @EnvironmentObject private var router: AppRouter
     @State private var isGenerating = false
+    @State private var barsVisible = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Weekly Reflection")
-                    .font(MemoryInkTypography.eyebrow)
-                    .foregroundStyle(MemoryInkColors.tertiaryInk)
-                    .textCase(.uppercase)
+            VStack(alignment: .leading, spacing: 22) {
+                heroHeader
+                    .padding(.horizontal, 22)
+
+                if !weekEntries.isEmpty {
+                    memoryStrip
+                }
+
+                if !weekEntries.isEmpty {
+                    moodDistributionBars
+                }
 
                 if let recap = recapService.latestRecap {
-                    moodDistribution
                     recapCard(recap)
-                } else if let errorMessage = recapService.errorMessage {
+                } else if isGenerating {
+                    loadingCard
+                        .padding(.horizontal, 22)
+                } else if let error = recapService.errorMessage {
                     EmptyStateView(
-                        message: errorMessage,
+                        message: error,
                         actionLabel: "Try again",
-                        isActionDisabled: isGenerating
+                        isActionDisabled: false
                     ) {
-                        Task {
-                            await generateRecap()
-                        }
+                        Task { await generateRecap() }
                     }
+                    .padding(.horizontal, 22)
                 } else {
                     EmptyStateView(
                         message: "Your weekly recap will appear when there's enough to reflect on."
                     )
+                    .padding(.horizontal, 22)
                 }
 
-                if recapService.latestRecap == nil {
-                    if isGenerating {
-                        LoadingIndicator()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                    } else {
-                        generateButton
-                    }
+                if recapService.latestRecap == nil && !isGenerating {
+                    generateButton
                 }
             }
-            .padding(.horizontal, MemoryInkSpacing.screenHorizontal)
             .padding(.top, 24)
-            .padding(.bottom, 40)
+            .padding(.bottom, 48)
         }
         .background(MemoryInkColors.parchment.ignoresSafeArea())
         .navigationTitle("Weekly Recap")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+                barsVisible = true
+            }
+        }
         .task {
             analyticsService.track(.recapOpened)
         }
     }
 
-    private func recapCard(_ recap: WeeklyRecap) -> some View {
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(MemoryInkColors.amber.opacity(0.55))
-                .frame(width: 2)
+    private var heroHeader: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    dominantMoodTint.opacity(0.65),
+                    dominantMoodTint.opacity(0.18),
+                    MemoryInkColors.parchment
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("✦")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.62))
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("WEEKLY REFLECTION")
+                    .font(MemoryInkTypography.eyebrow)
+                    .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+                Spacer()
+
+                Text(weekRangeLabel)
+                    .font(MemoryInkTypography.title)
+                    .foregroundStyle(MemoryInkColors.ink)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                Spacer()
+
+                HStack {
+                    Text("\(weekEntries.count) memories")
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial, in: Capsule())
+
+                    Spacer()
+
+                    Text(dominantMood.title)
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(dominantMood.tint.opacity(0.30), in: Capsule())
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 22)
+        }
+        .frame(height: 160)
+        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
+                .stroke(MemoryInkColors.hairline.opacity(0.18), lineWidth: 0.7)
+        }
+        .shadow(color: dominantMoodTint.opacity(0.18), radius: 24, x: 0, y: 12)
+    }
+
+    private var memoryStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(Array(memoryStripEntries.enumerated()), id: \.element.id) { index, entry in
+                    memoryTile(for: entry)
+                        .padding(.leading, index == 0 ? 22 : 0)
+                        .padding(.trailing, index == memoryStripEntries.count - 1 ? 22 : 0)
+                }
+            }
+        }
+    }
+
+    private func memoryTile(for entry: JournalEntry) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            if let image = ImagePipelineService.image(forRelativePath: entry.thumbnailPath) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                LinearGradient(
+                    colors: [entry.mood.tint, entry.mood.tint.opacity(0.4)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.45)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+
+            Text(entry.createdAt.formatted(.dateTime.day()))
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(6)
+        }
+        .frame(width: 80, height: 100)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .onTapGesture {
+            router.path.append(.memoryViewer(entryId: entry.id))
+        }
+    }
+
+    private var moodDistributionBars: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("THIS WEEK'S MOOD")
+                .font(MemoryInkTypography.eyebrow)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+            ForEach(Array(moodCounts.enumerated()), id: \.element.mood) { index, item in
+                moodBarRow(mood: item.mood, count: item.count, index: index)
+            }
+        }
+        .padding(.horizontal, 22)
+    }
+
+    private func moodBarRow(mood: MoodType, count: Int, index: Int) -> some View {
+        let fraction = Double(count) / Double(max(weekEntries.count, 1))
+
+        return HStack(spacing: 10) {
+            Text(mood.title)
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .frame(width: 80, alignment: .trailing)
+
+            GeometryReader { proxy in
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(mood.tint)
+                    .frame(
+                        width: max(8, proxy.size.width * fraction) * (barsVisible ? 1.0 : 0.0),
+                        height: 8
+                    )
+                    .animation(
+                        .spring(response: 0.6, dampingFraction: 0.75)
+                            .delay(Double(index) * 0.08),
+                        value: barsVisible
+                    )
+            }
+            .frame(height: 8)
+
+            Text("\(count)")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+        }
+    }
+
+    private func recapCard(_ recap: WeeklyRecap) -> some View {
+        ZStack(alignment: .topLeading) {
+            LinearGradient(
+                colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
+                startPoint: .top,
+                endPoint: .bottomTrailing
+            )
+
+            Text("✦")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.50))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(18)
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(MemoryInkColors.amber)
+                        .frame(width: 3, height: 18)
+
+                    Text("Your Week")
+                        .font(MemoryInkTypography.eyebrow)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+                }
 
                 Text(recap.recap)
                     .font(MemoryInkTypography.narrative)
@@ -76,62 +243,104 @@ struct RecapView: View {
                 Text("Week of \(recap.generatedAt.formatted(.dateTime.month(.wide).day()))")
                     .font(MemoryInkTypography.timestamp)
                     .foregroundStyle(MemoryInkColors.tertiaryInk)
-            }
-            .padding(MemoryInkSpacing.cardPadding)
-        }
-        .background(
-            LinearGradient(
-                colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.7)
-        }
-    }
 
-    private var moodDistribution: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("This week's mood")
-                .font(MemoryInkTypography.timestamp)
-                .foregroundStyle(MemoryInkColors.tertiaryInk)
-                .textCase(.uppercase)
-
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 8), spacing: 4)], alignment: .leading, spacing: 4) {
-                ForEach(currentWeekEntries) { entry in
-                    Circle()
-                        .fill(entry.mood.tint)
-                        .frame(width: 8, height: 8)
+                if recap.cached {
+                    Text("From earlier this week")
+                        .font(MemoryInkTypography.timestamp)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.60))
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(22)
         }
-        .padding(.bottom, 2)
+        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
+                .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.7)
+        }
+        .shadow(color: MemoryInkColors.amber.opacity(0.10), radius: 20, x: 0, y: 10)
+        .padding(.horizontal, 22)
     }
 
-    private var currentWeekEntries: [JournalEntry] {
-        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        return repository.entriesSince(weekAgo)
+    private var loadingCard: some View {
+        RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
+            .fill(MemoryInkColors.paper.opacity(0.60))
+            .frame(height: 160)
+            .overlay {
+                VStack(spacing: 10) {
+                    ProgressView()
+                        .tint(MemoryInkColors.amber)
+
+                    Text("Writing your reflection...")
+                        .font(MemoryInkTypography.narrativeCompact)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+                }
+            }
     }
 
     private var generateButton: some View {
         Button {
-            Task {
-                await generateRecap()
-            }
+            Task { await generateRecap() }
         } label: {
-            Text("Reflect on this week")
-                .font(MemoryInkTypography.narrativeCompact.weight(.medium))
-                .foregroundStyle(MemoryInkColors.ink)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(MemoryInkColors.paper.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .medium))
+
+                Text("Reflect on this week")
+                    .font(MemoryInkTypography.narrativeCompact.weight(.semibold))
+            }
+            .foregroundStyle(MemoryInkColors.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(
+                    colors: [MemoryInkColors.amber.opacity(0.18), MemoryInkColors.amber.opacity(0.08)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(MemoryInkColors.amber.opacity(0.35), lineWidth: 0.8)
+            }
         }
         .buttonStyle(.plain)
+        .padding(.horizontal, 22)
+    }
+
+    private var weekEntries: [JournalEntry] {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return repository.entriesSince(weekAgo)
+    }
+
+    private var dominantMood: MoodType {
+        let counts = Dictionary(grouping: weekEntries, by: \.mood).mapValues(\.count)
+        return counts.max(by: { $0.value < $1.value })?.key ?? .peaceful
+    }
+
+    private var moodCounts: [(mood: MoodType, count: Int)] {
+        let counts = Dictionary(grouping: weekEntries, by: \.mood).mapValues(\.count)
+        return MoodType.allCases
+            .compactMap { mood in
+                let count = counts[mood, default: 0]
+                return count > 0 ? (mood: mood, count: count) : nil
+            }
+            .sorted { $0.count > $1.count }
+    }
+
+    private var weekRangeLabel: String {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let start = weekAgo.formatted(.dateTime.month(.wide).day())
+        let end = Date().formatted(.dateTime.month(.wide).day())
+        return "\(start) – \(end)"
+    }
+
+    private var dominantMoodTint: Color {
+        weekEntries.isEmpty ? MemoryInkColors.secondaryInk : dominantMood.tint
+    }
+
+    private var memoryStripEntries: [JournalEntry] {
+        Array(weekEntries.prefix(7))
     }
 
     private func generateRecap() async {

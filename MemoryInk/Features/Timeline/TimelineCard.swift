@@ -81,13 +81,21 @@ struct TimelineCard: View {
                     .degrees(Double(dragX) / 24.0),
                     anchor: UnitPoint(x: 0.5, y: 1.1)
                 )
-                .gesture(
-                    DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 20, coordinateSpace: .global)
                         .onChanged { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            let horizontal = abs(value.translation.width)
+                            let vertical = abs(value.translation.height)
+                            guard horizontal > vertical * 1.2 else { return }
                             dragX = value.translation.width
                         }
                         .onEnded { value in
+                            let horizontal = abs(value.translation.width)
+                            let vertical = abs(value.translation.height)
+                            guard horizontal > vertical else {
+                                springBack()
+                                return
+                            }
                             let projected = value.translation.width + value.predictedEndTranslation.width * 0.22
                             if projected > swipeThreshold {
                                 commitSwipe(right: true)

@@ -74,9 +74,7 @@ struct TimelineView: View {
                                                     }
                                                 }
                                             ) {
-                                                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
-                                                    selectedMemory = memory
-                                                }
+                                                router.path.append(.memoryViewer(entryId: memory.id))
                                             }
                                             .opacity(appearedCards.contains(memory.id) ? 1 : 0)
                                             .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
@@ -272,7 +270,7 @@ struct TimelineView: View {
                         Button {
                             router.path.append(.browse)
                         } label: {
-                            Image(systemName: "square.stack")
+                            Image(systemName: "photo.stack")
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundStyle(MemoryInkColors.secondaryInk)
                         }
@@ -626,6 +624,8 @@ struct TimelineView: View {
             TimelineView()
         case .memoryDetail(let id):
             MemoryDetailView(entryId: id)
+        case .memoryViewer(let entryId):
+            MemoryViewerView(startingId: entryId)
         case .recap:
             RecapView()
         case .onThisDay:

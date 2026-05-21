@@ -1,516 +1,301 @@
-# Task 3 of 3: Card Browse Mode (Full Tinder Card Stack)
+# Task 3: Weekly Recap — Full Screen Redesign
 
 **Date:** 2026-05-21
-**Phase:** V1.1 Polish
 **Priority:** High
-**Estimated scope:** Large (2 new files + 2 modified)
 
 ---
 
 ## Context
 
-The timeline has swipe-to-favorite on list cards (Task 2), but the main scroll-based timeline is not a true card-flip experience. Users want a dedicated "Browse Mode" — a full-screen view where memories are presented one at a time as a stacked deck, exactly like Tinder. The top card is full-size; the next card peeks from behind with slight scale and offset. Swiping right favorites the memory (card flies off right). Swiping left skips (card flies off left). Both directions show the next card from the deck.
-
-Entry point: a "Browse" pill button in the timeline header (alongside the existing icon strip). Only shown when 5+ entries.
+`RecapView.swift` currently shows a plain eyebrow label, an 8pt mood dot grid, a simple amber-bar narrative card, and a generate button. The user wants it to look "awesome" — immersive, data-rich, and emotional. This task redesigns the view in-place with no new files or packages.
 
 ---
 
-## Objective
-
-Create `CardBrowseView` — a full-screen Tinder-style card stack. Wire it to `AppRouter` and add an entry button to `TimelineView`.
-
----
-
-## Files
+## File
 
 | File | Action |
 |------|--------|
-| `MemoryInk/Features/Browse/CardBrowseView.swift` | **create** |
-| `MemoryInk/App/AppRouter.swift` | modify — add `.browse` route |
-| `MemoryInk/Features/Timeline/TimelineView.swift` | modify — add Browse button, wire navigation destination |
+| `MemoryInk/Features/Recap/RecapView.swift` | **rewrite** |
+
+No other files change.
 
 ---
 
-## Implementation spec
+## Data Available (do NOT add new service calls)
 
-### Step 1 — `AppRouter.swift`
+- `recapService.latestRecap: WeeklyRecap?` — `recap: String`, `generatedAt: Date`, `entryIds: [UUID]`
+- `recapService.errorMessage: String?`
+- `repository.entriesSince(_ date: Date) -> [JournalEntry]` — use this to get the last-7-days entries
+- `JournalEntry` properties: `.mood: MoodType`, `.thumbnailPath: String?`, `.aiNarrative: String?`, `.createdAt: Date`
+- `ImagePipelineService.image(forRelativePath: entry.thumbnailPath)` — static call, returns `UIImage?`
+- `MoodType.CaseIterable` — 6 cases: peaceful, nostalgic, happy, proud, sad, reflective — each has `.tint: Color`, `.title: String`
+- `router.path.append(.memoryViewer(entryId: entry.id))` — navigate to full-screen viewer (Task 2 already done)
+- Colors: `MemoryInkColors.parchment`, `.paper`, `.paperWarm`, `.ink`, `.secondaryInk`, `.tertiaryInk`, `.hairline`, `.amber`, `.sage`
+- Typography: `MemoryInkTypography.eyebrow`, `.narrative`, `.narrativeCompact`, `.badge`, `.timestamp`, `.subtitle`
 
-Add `.browse` to `AppRoute`:
+---
 
-```swift
-case browse
+## New Design Layout
+
+The view is a `ScrollView` (no navigation title — remove `.navigationTitle` and use a custom header). Structure from top to bottom:
+
+### 1 — Hero Header Card
+
+Full-width card with:
+- Gradient background: `LinearGradient(colors: [dominantMood.tint.opacity(0.65), dominantMood.tint.opacity(0.18), MemoryInkColors.parchment], startPoint: .topLeading, endPoint: .bottomTrailing)`
+- Top-left: "WEEKLY REFLECTION" in `MemoryInkTypography.eyebrow`
+- Center: Week range label — format both ends of the 7-day window: `"May 14 – May 21"` using `.dateTime.month(.wide).day()` for start and `.day()` for end
+- Bottom-left: Entry count badge — `"\(weekEntries.count) memories"` in `.badge` font, `.ultraThinMaterial` background, capsule-clipped
+- Bottom-right: Dominant mood badge — `dominantMood.title` in `.badge` font, tinted with `dominantMood.tint.opacity(0.30)` background, `.ultraThinMaterial`, capsule-clipped
+- Card height: `160`
+- Corner radius: `MemoryInkSpacing.cardCornerRadius + 4`
+- Overlay stroke: `MemoryInkColors.hairline.opacity(0.18)`
+- Shadow: `dominantMood.tint.opacity(0.18)`, radius 24, y 12
+- Padding: `.horizontal(22).vertical(22)` inside the card
+
+When no entries this week: use `MemoryInkColors.secondaryInk` as dominantMood fallback (use a computed var that returns `.peaceful` if empty, so `.tint` still works).
+
+### 2 — Memory Strip (horizontal scroll)
+
+Only shown when `weekEntries.count > 0`. A `ScrollView(.horizontal, showsIndicators: false)` containing an `HStack(spacing: 10)` of thumbnail tiles. Show up to 7 entries.
+
+Each tile:
+- Size: `80 × 100` 
+- Content: `ZStack` — photo via `ImagePipelineService.image(forRelativePath: entry.thumbnailPath)` scaled to fill, or `LinearGradient(colors: [entry.mood.tint, entry.mood.tint.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)` if no image
+- Overlay: bottom scrim `LinearGradient(colors: [.clear, .black.opacity(0.45)], startPoint: .center, endPoint: .bottom)`
+- Overlay bottom-left: entry day number `entry.createdAt.formatted(.dateTime.day())` in `.system(size: 11, weight: .bold)`, white, 6pt padding
+- `.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))`
+- `.shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)`
+- `onTapGesture`: `router.path.append(.memoryViewer(entryId: entry.id))`
+- First tile has `.padding(.leading, 22)`, last has `.padding(.trailing, 22)`, others no extra padding
+
+### 3 — Mood Distribution Bar
+
+Only shown when `weekEntries.count > 0`. A `VStack(alignment: .leading, spacing: 10)` with:
+- Section label: `"THIS WEEK'S MOOD"` in `.eyebrow`
+- For each `MoodType.allCases` where count > 0: a horizontal bar row
+
+Each bar row is an `HStack(spacing: 10)`:
+- Mood title: fixed width `Text(mood.title)` in `.timestamp`, `foregroundStyle(.secondaryInk)`, `.frame(width: 80, alignment: .trailing)`
+- Bar: `GeometryReader` → `RoundedRectangle(cornerRadius: 4)` with `mood.tint`, height 8, width = `max(8, proxy.size.width * fraction)` where `fraction = Double(count) / Double(weekEntries.count)`. Animate the bar appearing: use `@State private var barsVisible = false` set to `true` in `.onAppear`, animate with `.animation(.spring(response: 0.6, dampingFraction: 0.75).delay(Double(index) * 0.08), value: barsVisible)`. Width multiplied by `barsVisible ? 1.0 : 0.0`.
+- Count: `Text("\(count)")` in `.timestamp`, `.tertiaryInk`, after the bar
+- `GeometryReader` for the bar should have `.frame(height: 8)`
+
+Wrap the whole bar chart in `.padding(.horizontal, 22)`.
+
+Sort mood rows by count descending. Skip moods with count == 0.
+
+### 4 — AI Recap Card
+
+Shown when `recapService.latestRecap != nil`. A styled card:
+
 ```
-
----
-
-### Step 2 — `CardBrowseView.swift` (new file)
-
-Create `MemoryInk/Features/Browse/CardBrowseView.swift`. Full implementation below.
-
-```swift
-import SwiftUI
-
-struct CardBrowseView: View {
-    @EnvironmentObject private var repository: JournalEntryRepository
-    @EnvironmentObject private var imagePipeline: ImagePipelineService
-    @Environment(\.dismiss) private var dismiss
-
-    // All entries, most-recent first
-    private var entries: [JournalEntry] { repository.entries }
-
-    @State private var currentIndex: Int = 0
-    @State private var dragOffset: CGSize = .zero
-    @State private var isDragging: Bool = false
-    @State private var flyDirection: FlyDirection? = nil
-    @State private var showFavoriteFlash: Bool = false
-    @State private var showShareSheet: Bool = false
-
-    private let swipeThreshold: CGFloat = 100
-    private let rotationFactor: Double = 12.0
-
-    private enum FlyDirection { case left, right }
-
-    var body: some View {
-        ZStack {
-            // Background
-            LinearGradient(
-                colors: [MemoryInkColors.parchment, MemoryInkColors.parchmentDeep],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Top bar
-                topBar
-                    .padding(.horizontal, 22)
-                    .padding(.top, 8)
-
-                Spacer(minLength: 0)
-
-                // Card stack
-                if entries.isEmpty || currentIndex >= entries.count {
-                    endState
-                } else {
-                    cardStack
-                }
-
-                Spacer(minLength: 0)
-
-                // Bottom action buttons
-                if currentIndex < entries.count {
-                    actionRow
-                        .padding(.horizontal, 40)
-                        .padding(.bottom, 32)
-                }
-            }
-
-            // Favorite flash overlay
-            if showFavoriteFlash {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 72, weight: .bold))
-                    .foregroundStyle(MemoryInkColors.amber)
-                    .scaleEffect(showFavoriteFlash ? 1.0 : 0.4)
-                    .opacity(showFavoriteFlash ? 1.0 : 0.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showFavoriteFlash)
-            }
+ZStack(alignment: .topLeading) {
+    // warm gradient background
+    LinearGradient(
+        colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
+        startPoint: .top,
+        endPoint: .bottomTrailing
+    )
+    
+    // decorative corner mark
+    Text("✦")
+        .font(.system(size: 9, weight: .medium))
+        .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.50))
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(18)
+    
+    VStack(alignment: .leading, spacing: 16) {
+        // amber accent bar + label
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(MemoryInkColors.amber)
+                .frame(width: 3, height: 18)
+            Text("Your Week")
+                .font(MemoryInkTypography.eyebrow)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
         }
-        .sheet(isPresented: $showShareSheet) {
-            if currentIndex < entries.count {
-                let entry = entries[currentIndex]
-                let narrative = entry.aiNarrative ?? "\(entry.mood.title) memory"
-                let image = MemoryShareRenderer.render(
-                    narrative: narrative,
-                    mood: entry.mood,
-                    date: entry.createdAt
-                )
-                ShareSheet(items: [image])
-            }
+        
+        // recap text
+        Text(recap.recap)
+            .font(MemoryInkTypography.narrative)
+            .foregroundStyle(MemoryInkColors.ink)
+            .lineSpacing(7)
+            .fixedSize(horizontal: false, vertical: true)
+        
+        // date
+        Text("Week of \(recap.generatedAt.formatted(.dateTime.month(.wide).day()))")
+            .font(MemoryInkTypography.timestamp)
+            .foregroundStyle(MemoryInkColors.tertiaryInk)
+        
+        // cached badge if recap.cached == true
+        if recap.cached {
+            Text("From earlier this week")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.60))
         }
     }
+    .padding(22)
+}
+```
 
-    // MARK: – Top bar
+Card styling: `.clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))`, overlay stroke `MemoryInkColors.hairline.opacity(0.22)` lineWidth 0.7, shadow `MemoryInkColors.amber.opacity(0.10)` radius 20 y 10.
 
-    private var topBar: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(MemoryInkColors.secondaryInk)
-                    .frame(width: 36, height: 36)
-                    .background(MemoryInkColors.paper.opacity(0.80))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
+Padding: `.horizontal(22)`.
 
-            Spacer()
+### 5 — Empty / Loading / Error States
 
-            if !entries.isEmpty {
-                Text("\(min(currentIndex + 1, entries.count)) of \(entries.count)")
-                    .font(MemoryInkTypography.timestamp.weight(.medium))
+When `recapService.latestRecap == nil`:
+- If `isGenerating`:
+  - Show a pulsing placeholder card instead of the recap card:
+    ```
+    RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
+        .fill(MemoryInkColors.paper.opacity(0.60))
+        .frame(height: 160)
+        .overlay {
+            VStack(spacing: 10) {
+                ProgressView()
+                    .tint(MemoryInkColors.amber)
+                Text("Writing your reflection...")
+                    .font(MemoryInkTypography.narrativeCompact)
                     .foregroundStyle(MemoryInkColors.tertiaryInk)
             }
-
-            Spacer()
-
-            // Placeholder to balance layout
-            Color.clear
-                .frame(width: 36, height: 36)
         }
+    ```
+  - Padding `.horizontal(22)`
+
+- If `recapService.errorMessage != nil` (and not generating): use the existing `EmptyStateView(message: errorMessage, actionLabel: "Try again", isActionDisabled: false)` with the retry action
+
+- If neither (no recap, no error, not generating): use `EmptyStateView(message: "Your weekly recap will appear when there's enough to reflect on.")`
+
+### 6 — Generate Button
+
+Shown when `recapService.latestRecap == nil && !isGenerating`. Place at bottom of scroll content:
+
+```swift
+Button {
+    Task { await generateRecap() }
+} label: {
+    HStack(spacing: 8) {
+        Image(systemName: "sparkles")
+            .font(.system(size: 14, weight: .medium))
+        Text("Reflect on this week")
+            .font(MemoryInkTypography.narrativeCompact.weight(.semibold))
     }
-
-    // MARK: – Card stack
-
-    private var cardStack: some View {
-        ZStack {
-            // Background cards (next 2 in stack)
-            ForEach((1...min(2, entries.count - currentIndex - 1)).reversed(), id: \.self) { offset in
-                let index = currentIndex + offset
-                if index < entries.count {
-                    browseCard(entry: entries[index], stackOffset: offset)
-                        .allowsHitTesting(false)
-                }
-            }
-
-            // Top (active) card
-            browseCard(entry: entries[currentIndex], stackOffset: 0)
-                .offset(x: dragOffset.width, y: dragOffset.height * 0.3)
-                .rotationEffect(
-                    .degrees(Double(dragOffset.width) / rotationFactor),
-                    anchor: UnitPoint(x: 0.5, y: 1.1)
-                )
-                .overlay(swipeOverlay)
-                .gesture(swipeGesture)
-                .zIndex(10)
-        }
-        .padding(.horizontal, 22)
-    }
-
-    private func browseCard(entry: JournalEntry, stackOffset: Int) -> some View {
-        let scale = stackOffset == 0 ? 1.0 : (stackOffset == 1 ? 0.93 : 0.87)
-        let yOffset: CGFloat = stackOffset == 0 ? 0 : (stackOffset == 1 ? 14 : 26)
-
-        return BrowseCardFace(entry: entry)
-            .scaleEffect(scale)
-            .offset(y: yOffset)
-            .animation(.spring(response: 0.4, dampingFraction: 0.75), value: currentIndex)
-    }
-
-    // MARK: – Swipe overlay (like/skip label during drag)
-
-    private var swipeOverlay: some View {
-        ZStack {
-            // Right swipe — SAVE
-            HStack {
-                VStack(spacing: 6) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 28, weight: .bold))
-                    Text("SAVE")
-                        .font(.system(size: 13, weight: .heavy))
-                        .kerning(1.5)
-                }
-                .foregroundStyle(MemoryInkColors.sage)
-                .padding(14)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(MemoryInkColors.sage.opacity(0.6), lineWidth: 2)
-                }
-                .opacity(Double(max(0, dragOffset.width - 20)) / 60.0)
-                .rotationEffect(.degrees(-15))
-                .padding(.leading, 28)
-                .padding(.top, 40)
-
-                Spacer()
-            }
-
-            // Left swipe — SKIP
-            HStack {
-                Spacer()
-
-                VStack(spacing: 6) {
-                    Image(systemName: "forward.fill")
-                        .font(.system(size: 28, weight: .bold))
-                    Text("NEXT")
-                        .font(.system(size: 13, weight: .heavy))
-                        .kerning(1.5)
-                }
-                .foregroundStyle(MemoryInkColors.secondaryInk)
-                .padding(14)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(MemoryInkColors.hairline.opacity(0.6), lineWidth: 2)
-                }
-                .opacity(Double(max(0, -dragOffset.width - 20)) / 60.0)
-                .rotationEffect(.degrees(15))
-                .padding(.trailing, 28)
-                .padding(.top, 40)
-            }
-        }
-    }
-
-    // MARK: – Gesture
-
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 10)
-            .onChanged { value in
-                isDragging = true
-                dragOffset = value.translation
-            }
-            .onEnded { value in
-                isDragging = false
-                let projected = value.translation.width + value.predictedEndTranslation.width * 0.25
-                if projected > swipeThreshold {
-                    flyCard(direction: .right)
-                } else if projected < -swipeThreshold {
-                    flyCard(direction: .left)
-                } else {
-                    snapBack()
-                }
-            }
-    }
-
-    private func flyCard(direction: FlyDirection) {
-        let targetX: CGFloat = direction == .right ? 500 : -500
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        withAnimation(.spring(response: 0.36, dampingFraction: 0.72)) {
-            dragOffset = CGSize(width: targetX, height: 0)
-        }
-
-        // Favorite action on right swipe
-        if direction == .right && currentIndex < entries.count {
-            repository.toggleFavorite(id: entries[currentIndex].id)
-            // Flash heart
-            showFavoriteFlash = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                showFavoriteFlash = false
-            }
-        }
-
-        // Advance to next card after fly-out animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            currentIndex = min(currentIndex + 1, entries.count)
-            dragOffset = .zero
-        }
-    }
-
-    private func snapBack() {
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.80)) {
-            dragOffset = .zero
-        }
-    }
-
-    // MARK: – Action row (bottom buttons)
-
-    private var actionRow: some View {
-        HStack(spacing: 28) {
-            // Skip button
-            actionButton(
-                icon: "forward.fill",
-                color: MemoryInkColors.secondaryInk,
-                background: MemoryInkColors.paper.opacity(0.90),
-                size: 52
-            ) {
-                flyCard(direction: .left)
-            }
-
-            // Share button
-            actionButton(
-                icon: "square.and.arrow.up",
-                color: MemoryInkColors.mistBlue,
-                background: MemoryInkColors.mistBlue.opacity(0.12),
-                size: 46
-            ) {
-                showShareSheet = true
-            }
-
-            // Favorite button
-            actionButton(
-                icon: currentIndex < entries.count && entries[currentIndex].isFavorite ? "heart.fill" : "heart",
-                color: MemoryInkColors.amber,
-                background: MemoryInkColors.amber.opacity(0.12),
-                size: 52
-            ) {
-                flyCard(direction: .right)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private func actionButton(
-        icon: String,
-        color: Color,
-        background: Color,
-        size: CGFloat,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            action()
-        }) {
-            Image(systemName: icon)
-                .font(.system(size: size * 0.38, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: size, height: size)
-                .background(background)
-                .clipShape(Circle())
-                .overlay {
-                    Circle()
-                        .stroke(color.opacity(0.18), lineWidth: 1)
-                }
-                .shadow(color: color.opacity(0.12), radius: 10, x: 0, y: 5)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: – End state
-
-    private var endState: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 52, weight: .medium))
-                .foregroundStyle(MemoryInkColors.sage)
-
-            Text("You've seen all your memories.")
-                .font(MemoryInkTypography.subtitle)
-                .foregroundStyle(MemoryInkColors.secondaryInk)
-                .multilineTextAlignment(.center)
-
-            Button("Start over") {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                    currentIndex = 0
-                    dragOffset = .zero
-                }
-            }
-            .font(MemoryInkTypography.narrativeCompact.weight(.medium))
-            .foregroundStyle(MemoryInkColors.ink)
-            .padding(.horizontal, 22)
-            .padding(.vertical, 11)
-            .background(MemoryInkColors.paper.opacity(0.90))
-            .clipShape(Capsule())
-            .overlay { Capsule().stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.8) }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 40)
+    .foregroundStyle(MemoryInkColors.ink)
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 16)
+    .background(
+        LinearGradient(
+            colors: [MemoryInkColors.amber.opacity(0.18), MemoryInkColors.amber.opacity(0.08)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .overlay {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .stroke(MemoryInkColors.amber.opacity(0.35), lineWidth: 0.8)
     }
 }
-
-// MARK: – BrowseCardFace
-
-/// The visual face of a single card in the browse stack.
-struct BrowseCardFace: View {
-    @EnvironmentObject private var imagePipeline: ImagePipelineService
-    let entry: JournalEntry
-
-    var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            // Photo or mood gradient
-            Group {
-                if let path = entry.localThumbnailPath,
-                   let image = ImagePipelineService.image(forRelativePath: path) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    LinearGradient(
-                        colors: entry.mood.palette,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-
-            // Bottom gradient scrim
-            LinearGradient(
-                colors: [.clear, Color.black.opacity(0.72)],
-                startPoint: .center,
-                endPoint: .bottom
-            )
-
-            // Text overlay
-            VStack(alignment: .leading, spacing: 10) {
-                // Mood badge
-                Text(entry.mood.title)
-                    .font(MemoryInkTypography.badge)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial)
-                    .background(entry.mood.tint.opacity(0.28))
-                    .clipShape(Capsule())
-
-                // Narrative or note
-                if let narrative = entry.aiNarrative, !narrative.isEmpty {
-                    Text(narrative)
-                        .font(MemoryInkTypography.narrativeCompact)
-                        .foregroundStyle(.white.opacity(0.92))
-                        .lineSpacing(5)
-                        .lineLimit(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                // Date
-                Text(entry.createdAt.formatted(date: .long, time: .omitted))
-                    .font(MemoryInkTypography.timestamp)
-                    .foregroundStyle(.white.opacity(0.62))
-            }
-            .padding(22)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(height: 520)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.white.opacity(0.16), lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(0.22), radius: 28, x: 0, y: 18)
-    }
-}
+.buttonStyle(.plain)
+.padding(.horizontal, 22)
 ```
-
-**Important:** `JournalEntry` has a `localThumbnailPath` property (the path stored in CoreData for the local thumbnail). Use this for the image. `entry.mood.palette` does not exist — use `[entry.mood.tint.opacity(0.8), entry.mood.tint.opacity(0.4)]` as the gradient colors if `palette` isn't available on `JournalEntry` directly. Check what palette-like properties exist on `JournalEntry` or `MoodType` and use the closest available property. If `MoodType` has a `tint: Color` property, use `[mood.tint, mood.tint.opacity(0.5)]`.
-
-Also: `entry.mood` — check if `JournalEntry` exposes `mood: MoodType` directly or via `moodRawValue`. Use whatever is available.
 
 ---
 
-### Step 3 — `TimelineView.swift`
-
-#### 3a — Add Browse button to header icon strip
-
-In the `header(isCompact:)` method, find the icon strip `HStack` (the one with grid toggle, calendar, gear, search buttons). Add a browse button **before** the grid toggle button:
+## State Variables
 
 ```swift
-if repository.entries.count >= 5 {
-    Button {
-        router.path.append(.browse)
-    } label: {
-        Image(systemName: "rectangle.stack")
-            .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(MemoryInkColors.secondaryInk)
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Browse memories")
+@State private var isGenerating = false
+@State private var barsVisible = false
+```
+
+---
+
+## Computed Properties
+
+```swift
+private var weekEntries: [JournalEntry] {
+    let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+    return repository.entriesSince(weekAgo)
+}
+
+private var dominantMood: MoodType {
+    let counts = Dictionary(grouping: weekEntries, by: \.mood).mapValues(\.count)
+    return counts.max(by: { $0.value < $1.value })?.key ?? .peaceful
+}
+
+private var moodCounts: [(mood: MoodType, count: Int)] {
+    let counts = Dictionary(grouping: weekEntries, by: \.mood).mapValues(\.count)
+    return MoodType.allCases
+        .compactMap { mood in
+            let count = counts[mood, default: 0]
+            return count > 0 ? (mood: mood, count: count) : nil
+        }
+        .sorted { $0.count > $1.count }
 }
 ```
 
-Note: the existing grid-toggle button uses `"rectangle.stack"` or `"square.grid.2x2"`. Use `"square.stack"` for Browse to avoid confusion. Check what icon the grid toggle uses and pick something distinct. Use `"square.stack"` for Browse.
+---
 
-#### 3b — Add `.browse` destination
-
-In `destination(for:)` `@ViewBuilder`, add:
+## View Assembly
 
 ```swift
-case .browse:
-    CardBrowseView()
+var body: some View {
+    ScrollView(showsIndicators: false) {
+        VStack(alignment: .leading, spacing: 22) {
+            heroHeader
+                .padding(.horizontal, 22)
+            
+            if !weekEntries.isEmpty {
+                memoryStrip  // full-bleed horizontal scroll, no horizontal padding
+            }
+            
+            if !weekEntries.isEmpty {
+                moodDistributionBars
+            }
+            
+            if let recap = recapService.latestRecap {
+                recapCard(recap)
+            } else if isGenerating {
+                loadingCard
+                    .padding(.horizontal, 22)
+            } else if let error = recapService.errorMessage {
+                EmptyStateView(
+                    message: error,
+                    actionLabel: "Try again",
+                    isActionDisabled: false
+                ) {
+                    Task { await generateRecap() }
+                }
+                .padding(.horizontal, 22)
+            } else {
+                EmptyStateView(
+                    message: "Your weekly recap will appear when there's enough to reflect on."
+                )
+                .padding(.horizontal, 22)
+            }
+            
+            if recapService.latestRecap == nil && !isGenerating {
+                generateButton
+            }
+        }
+        .padding(.top, 24)
+        .padding(.bottom, 48)
+    }
+    .background(MemoryInkColors.parchment.ignoresSafeArea())
+    .navigationTitle("Weekly Recap")
+    .navigationBarTitleDisplayMode(.inline)
+    .onAppear {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+            barsVisible = true
+        }
+    }
+    .task {
+        analyticsService.track(.recapOpened)
+    }
+}
 ```
 
 ---
@@ -519,23 +304,22 @@ case .browse:
 
 - [ ] No new Swift Package
 - [ ] No CoreData schema changes
-- [ ] `CardBrowseView` must not crash when `entries` is empty — show `endState` in that case
-- [ ] Right swipe = favorite (toggles isFavorite via `repository.toggleFavorite(id:)`)
-- [ ] Left swipe = next card (no data change, just advances index)
-- [ ] Card returns to origin if drag released below threshold
-- [ ] `BrowseCardFace` must not use properties that don't exist on `JournalEntry` — check the actual model before using
+- [ ] No new service methods — only use what already exists
+- [ ] Keep `generateRecap()` private func unchanged
+- [ ] Keep `analyticsService.track(.recapOpened)` in `.task`
+- [ ] `navigationTitle("Weekly Recap")` kept (inline display mode)
+- [ ] `@EnvironmentObject private var router: AppRouter` added (needed for thumbnail taps)
 
-## Success criteria
+---
 
-- [ ] "Browse" icon button visible in timeline header when 5+ entries exist
-- [ ] Tapping Browse navigates to full-screen `CardBrowseView`
-- [ ] Cards display as a stack — active card full-size, next card peeks behind
-- [ ] Dragging top card shows rotation + swipe overlay labels (SAVE / NEXT)
-- [ ] Committing right swipe: card flies off right, next card animates forward, heart flash shown
-- [ ] Committing left swipe: card flies off left, next card animates forward
-- [ ] Bottom buttons (skip, share, favorite) trigger same actions as swipe
-- [ ] After all cards seen: end state shown with "Start over"
-- [ ] Close button (×) dismisses the view
+## Success Criteria
+
+- [ ] Hero card shows correct week date range, entry count, dominant mood
+- [ ] Memory strip shows up to 7 thumbnails, tappable → MemoryViewerView
+- [ ] Mood bars animate in on appear, sorted by frequency
+- [ ] AI recap card renders with amber accent bar and narrative text
+- [ ] "Reflect on this week" button triggers generation
+- [ ] Loading state shows spinner card during generation
 - [ ] Xcode compiles without errors
 
-Save session report to `tasks/summary.md`.
+Save report to `tasks/summary.md`.

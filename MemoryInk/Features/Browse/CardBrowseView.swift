@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct CardBrowseView: View {
+    @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var repository: JournalEntryRepository
     @EnvironmentObject private var imagePipeline: ImagePipelineService
-    @Environment(\.dismiss) private var dismiss
 
     private var entries: [JournalEntry] { repository.entries }
 
@@ -78,7 +78,7 @@ struct CardBrowseView: View {
     private var topBar: some View {
         HStack {
             Button {
-                dismiss()
+                router.path.removeLast()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .semibold))
@@ -216,6 +216,8 @@ struct CardBrowseView: View {
     }
 
     private func flyCard(direction: FlyDirection) {
+        guard currentIndex < entries.count else { return }
+
         let targetX: CGFloat = direction == .right ? 500 : -500
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
