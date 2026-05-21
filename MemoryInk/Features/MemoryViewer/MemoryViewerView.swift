@@ -135,17 +135,18 @@ struct MemoryViewerPage: View {
                         .font(MemoryInkTypography.narrative)
                         .foregroundStyle(.white.opacity(0.92))
                         .lineSpacing(6)
-                        .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(4)
+                        .multilineTextAlignment(.leading)
                 }
 
                 Text(entry.createdAt.formatted(date: .long, time: .omitted))
                     .font(MemoryInkTypography.timestamp)
                     .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 22)
+            .frame(width: UIScreen.main.bounds.width - 44, alignment: .leading)
             .padding(.bottom, 80)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 22)
         }
         .ignoresSafeArea()
     }

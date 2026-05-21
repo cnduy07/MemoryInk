@@ -127,34 +127,33 @@ private struct MemoryDetailContentView: View {
 
     @ViewBuilder
     private func imageArea(for entry: JournalEntry) -> some View {
+        let screenWidth = UIScreen.main.bounds.width
         ZStack(alignment: .bottom) {
-            Group {
-                if let image = detailImage(for: entry) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    LinearGradient(
-                        colors: [
-                            entry.mood.tint.opacity(0.74),
-                            MemoryInkColors.paperWarm,
-                            MemoryInkColors.parchmentDeep
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
+            if let image = detailImage(for: entry) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: screenWidth, height: 380)
+                    .clipped()
+            } else {
+                LinearGradient(
+                    colors: [
+                        entry.mood.tint.opacity(0.74),
+                        MemoryInkColors.paperWarm,
+                        MemoryInkColors.parchmentDeep
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(width: screenWidth, height: 380)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 380)
-            .clipped()
 
             LinearGradient(
                 colors: [.clear, .black.opacity(0.50)],
                 startPoint: .center,
                 endPoint: .bottom
             )
-            .frame(height: 380)
+            .frame(width: screenWidth, height: 380)
 
             HStack {
                 Text(entry.mood.title)
@@ -171,13 +170,13 @@ private struct MemoryDetailContentView: View {
                 Text(entry.createdAt.formatted(.dateTime.month(.abbreviated).day().year()))
                     .font(MemoryInkTypography.timestamp)
                     .foregroundStyle(.white.opacity(0.75))
+                    .lineLimit(1)
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 16)
+            .frame(width: screenWidth)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 380)
-        .clipped()
+        .frame(width: screenWidth, height: 380)
         .shadow(color: MemoryInkColors.filmShadow.opacity(0.12), radius: 18, x: 0, y: 10)
     }
 
