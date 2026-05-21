@@ -168,7 +168,7 @@ private struct MemoryDetailContentView: View {
 
                 Spacer()
 
-                Text(entry.createdAt.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()))
+                Text(entry.createdAt.formatted(.dateTime.month(.abbreviated).day().year()))
                     .font(MemoryInkTypography.timestamp)
                     .foregroundStyle(.white.opacity(0.75))
             }
@@ -176,6 +176,8 @@ private struct MemoryDetailContentView: View {
             .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity)
+        .frame(height: 380)
+        .clipped()
         .shadow(color: MemoryInkColors.filmShadow.opacity(0.12), radius: 18, x: 0, y: 10)
     }
 
@@ -341,6 +343,8 @@ private struct MemoryDetailContentView: View {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFill()
+                        .frame(width: 88, height: 110)
+                        .clipped()
                 } else {
                     LinearGradient(
                         colors: [entry.mood.tint, entry.mood.tint.opacity(0.5)],

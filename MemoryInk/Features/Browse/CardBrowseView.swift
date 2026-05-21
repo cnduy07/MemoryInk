@@ -357,6 +357,7 @@ struct BrowseCardFace: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
+            .contentShape(Rectangle())
 
             LinearGradient(
                 colors: [.clear, Color.black.opacity(0.72)],
@@ -390,6 +391,7 @@ struct BrowseCardFace: View {
             .padding(22)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity)
         .frame(height: 520)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .overlay {
