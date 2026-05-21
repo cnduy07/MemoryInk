@@ -7,6 +7,7 @@ enum AppRoute: Hashable {
     case onThisDay
     case yearlyReview
     case calendar
+    case browse
     case settings
     case subscription
     case subscriptionPreview

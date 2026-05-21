@@ -78,7 +78,7 @@ private struct MemoryDetailContentView: View {
             }
         }
         .sheet(item: $shareItem) { item in
-            ShareSheet(activityItems: [item.image])
+            ShareSheet(items: [item.image])
         }
         .confirmationDialog(
             "Delete this memory?",
@@ -286,16 +286,6 @@ private struct MemoryDetailContentView: View {
 private struct MemoryShareItem: Identifiable {
     let id = UUID()
     let image: UIImage
-}
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 @MainActor

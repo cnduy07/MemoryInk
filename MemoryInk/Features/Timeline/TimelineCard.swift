@@ -8,7 +8,12 @@ struct TimelineCard: View {
     let isCompact: Bool
     let isGridCompact: Bool
     let retryAction: (() -> Void)?
+    var onShare: (() -> Void)?
+    var onFavorite: (() -> Void)?
     let onTap: () -> Void
+
+    @State private var dragX: CGFloat = 0
+    private let swipeThreshold: CGFloat = 100
 
     init(
         memory: TimelineMemory,
@@ -17,6 +22,8 @@ struct TimelineCard: View {
         isCompact: Bool = false,
         isGridCompact: Bool = false,
         retryAction: (() -> Void)? = nil,
+        onShare: (() -> Void)? = nil,
+        onFavorite: (() -> Void)? = nil,
         onTap: @escaping () -> Void
     ) {
         self.memory = memory
@@ -25,6 +32,8 @@ struct TimelineCard: View {
         self.isCompact = isCompact
         self.isGridCompact = isGridCompact
         self.retryAction = retryAction
+        self.onShare = onShare
+        self.onFavorite = onFavorite
         self.onTap = onTap
     }
 
@@ -37,6 +46,62 @@ struct TimelineCard: View {
     }
 
     private var listBody: some View {
+        ZStack {
+            HStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(MemoryInkColors.sage)
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .scaleEffect(hintScale(for: dragX, positive: true))
+                .opacity(hintOpacity(for: dragX, positive: true))
+                .padding(.leading, 8)
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(MemoryInkColors.mistBlue)
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .scaleEffect(hintScale(for: dragX, positive: false))
+                .opacity(hintOpacity(for: dragX, positive: false))
+                .padding(.trailing, 8)
+            }
+
+            listCard
+                .offset(x: dragX)
+                .rotationEffect(
+                    .degrees(Double(dragX) / 24.0),
+                    anchor: UnitPoint(x: 0.5, y: 1.1)
+                )
+                .gesture(
+                    DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            dragX = value.translation.width
+                        }
+                        .onEnded { value in
+                            let projected = value.translation.width + value.predictedEndTranslation.width * 0.22
+                            if projected > swipeThreshold {
+                                commitSwipe(right: true)
+                            } else if projected < -swipeThreshold {
+                                commitSwipe(right: false)
+                            } else {
+                                springBack()
+                            }
+                        }
+                )
+        }
+    }
+
+    private var listCard: some View {
         VStack(alignment: .leading, spacing: isCompact ? 12 : 16) {
             imageArea
 
@@ -106,8 +171,56 @@ struct TimelineCard: View {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 onTap()
             }
+            .contextMenu {
+                Button {
+                    onShare?()
+                } label: {
+                    Label("Share Memory", systemImage: "square.and.arrow.up")
+                }
+
+                Divider()
+
+                Button {
+                    onFavorite?()
+                } label: {
+                    Label(
+                        memory.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                        systemImage: memory.isFavorite ? "heart.slash" : "heart"
+                    )
+                }
+            }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(memory.mood.title) memory from \(memory.timestamp.formatted(date: .abbreviated, time: .shortened))")
+    }
+
+    // MARK: - Swipe helpers
+
+    private func hintScale(for offset: CGFloat, positive: Bool) -> CGFloat {
+        let magnitude = positive ? max(0, offset - 30) : max(0, -offset - 30)
+        return min(1.0, 0.4 + magnitude / 100.0)
+    }
+
+    private func hintOpacity(for offset: CGFloat, positive: Bool) -> Double {
+        let magnitude = positive ? max(0, offset - 30) : max(0, -offset - 30)
+        return min(1.0, Double(magnitude) / 60.0)
+    }
+
+    private func commitSwipe(right: Bool) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.62)) {
+            dragX = 0
+        }
+        if right {
+            onFavorite?()
+        } else {
+            onShare?()
+        }
+    }
+
+    private func springBack() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.80)) {
+            dragX = 0
+        }
     }
 
     private var imageArea: some View {

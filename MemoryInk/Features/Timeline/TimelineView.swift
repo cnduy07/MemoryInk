@@ -15,6 +15,7 @@ struct TimelineView: View {
     @State private var selectedMemory: TimelineMemory?
     @State private var isShowingCreation = false
     @State private var showingPaywall: Bool = false
+    @State private var sharingMemory: TimelineMemory?
     @State private var milestoneToast: String?
     @FocusState private var isSearchFocused: Bool
 
@@ -65,9 +66,15 @@ struct TimelineView: View {
                                                 namespace: cardNamespace,
                                                 isCompact: metrics.isCompact,
                                                 isGridCompact: true,
-                                                retryAction: retryAction(for: memory)
+                                                retryAction: retryAction(for: memory),
+                                                onShare: { sharingMemory = memory },
+                                                onFavorite: {
+                                                    withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                                                        repository.toggleFavorite(id: memory.id)
+                                                    }
+                                                }
                                             ) {
-                                                withAnimation(.easeInOut(duration: 0.25)) {
+                                                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                                                     selectedMemory = memory
                                                 }
                                             }
@@ -86,9 +93,15 @@ struct TimelineView: View {
                                             memory: memory,
                                             namespace: cardNamespace,
                                             isCompact: metrics.isCompact,
-                                            retryAction: retryAction(for: memory)
+                                            retryAction: retryAction(for: memory),
+                                            onShare: { sharingMemory = memory },
+                                            onFavorite: {
+                                                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                                                    repository.toggleFavorite(id: memory.id)
+                                                }
+                                            }
                                         ) {
-                                            withAnimation(.easeInOut(duration: 0.25)) {
+                                            withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                                                 selectedMemory = memory
                                             }
                                         }
@@ -115,7 +128,7 @@ struct TimelineView: View {
                         .blur(radius: selectedMemory == nil ? 0 : 3.5)
                         .scaleEffect(selectedMemory == nil ? 1 : 0.992)
                         .allowsHitTesting(selectedMemory == nil)
-                        .animation(.easeInOut(duration: 0.24), value: selectedMemory)
+                        .animation(.spring(response: 0.38, dampingFraction: 0.72), value: selectedMemory)
                     }
 
                     if selectedMemory == nil {
@@ -173,6 +186,14 @@ struct TimelineView: View {
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $sharingMemory) { memory in
+            let image = MemoryShareRenderer.render(
+                narrative: memory.narrative,
+                mood: memory.mood,
+                date: memory.timestamp
+            )
+            ShareSheet(items: [image])
         }
     }
 
@@ -247,8 +268,20 @@ struct TimelineView: View {
                 HStack {
                     Spacer()
 
+                    if repository.entries.count >= 5 {
+                        Button {
+                            router.path.append(.browse)
+                        } label: {
+                            Image(systemName: "square.stack")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(MemoryInkColors.secondaryInk)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Browse memories")
+                    }
+
                     Button {
-                        withAnimation(.easeInOut(duration: 0.24)) {
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                             viewModel.isGridLayout.toggle()
                         }
                     } label: {
@@ -280,7 +313,7 @@ struct TimelineView: View {
                     .accessibilityLabel("Settings")
 
                     Button {
-                        withAnimation(.easeInOut(duration: 0.24)) {
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                             viewModel.isSearching = true
                         }
                     } label: {
@@ -323,39 +356,8 @@ struct TimelineView: View {
             }
 
             if repository.entries.count >= 1 {
-                HStack(spacing: 10) {
-                    timelinePill("Weekly Recap") {
-                        router.path.append(.recap)
-                    }
-
-                    timelinePill("On This Day") {
-                        router.path.append(.onThisDay)
-                    }
-
-                    timelinePill("Favorites", isSelected: viewModel.showingFavoritesOnly) {
-                        withAnimation(.easeInOut(duration: 0.22)) {
-                            viewModel.showingFavoritesOnly.toggle()
-                        }
-                    }
-
-                    if repository.entries.count >= 5 {
-                        timelinePill("Surprise me ✦") {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if let memory = repository.randomEntry() {
-                                router.path.append(.memoryDetail(id: memory.id))
-                            }
-                        }
-                    }
-
-                    if repository.entriesSince(oneYearAgo).count >= 10 {
-                        timelinePill("Year in Memories") {
-                            router.path.append(.yearlyReview)
-                        }
-                    }
-
-                    Spacer()
-                }
-                .padding(.top, 4)
+                featureCards
+                    .padding(.top, 8)
             }
 
             if repository.entries.count >= 3 {
@@ -418,7 +420,7 @@ struct TimelineView: View {
 
     private func moodFilterPill(title: String, mood: MoodType?, isSelected: Bool) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.22)) {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                 viewModel.activeMoodFilter = mood
             }
         } label: {
@@ -448,6 +450,147 @@ struct TimelineView: View {
                             ? (mood?.tint ?? MemoryInkColors.sunlit).opacity(0.55)
                             : MemoryInkColors.hairline.opacity(0.24),
                         lineWidth: 0.7
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var featureCards: some View {
+        LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+            spacing: 10
+        ) {
+            featureCard(
+                icon: "chart.bar.fill",
+                title: "Weekly Recap",
+                subtitle: "Your emotional week",
+                tint: MemoryInkColors.sage
+            ) {
+                router.path.append(.recap)
+            }
+
+            featureCard(
+                icon: "clock.arrow.circlepath",
+                title: "On This Day",
+                subtitle: "From past years",
+                tint: MemoryInkColors.rosewood
+            ) {
+                router.path.append(.onThisDay)
+            }
+
+            featureCard(
+                icon: "heart.fill",
+                title: "Favorites",
+                subtitle: favoritesSubtitle,
+                tint: MemoryInkColors.amber,
+                isSelected: viewModel.showingFavoritesOnly
+            ) {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                    viewModel.showingFavoritesOnly.toggle()
+                }
+            }
+
+            if repository.entries.count >= 5 {
+                featureCard(
+                    icon: "shuffle",
+                    title: "Surprise Me",
+                    subtitle: "Random moment",
+                    tint: MemoryInkColors.mistBlue
+                ) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    if let memory = repository.randomEntry() {
+                        router.path.append(.memoryDetail(id: memory.id))
+                    }
+                }
+            }
+
+            if repository.entriesSince(oneYearAgo).count >= 10 {
+                featureCard(
+                    icon: "star.fill",
+                    title: "Year in Memories",
+                    subtitle: "Your year, captured",
+                    tint: MemoryInkColors.sunlit
+                ) {
+                    router.path.append(.yearlyReview)
+                }
+            }
+        }
+    }
+
+    private var favoritesSubtitle: String {
+        let count = repository.entries.filter(\.isFavorite).count
+        return count == 0 ? "Your saved memories" : "\(count) saved"
+    }
+
+    private func featureCard(
+        icon: String,
+        title: String,
+        subtitle: String,
+        tint: Color,
+        isSelected: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(tint)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                    Spacer()
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(tint)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(MemoryInkTypography.narrativeCompact.weight(.semibold))
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(MemoryInkTypography.timestamp)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+                        .lineLimit(1)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                isSelected ? tint.opacity(0.14) : MemoryInkColors.paper.opacity(0.92),
+                                isSelected ? tint.opacity(0.06) : MemoryInkColors.paperWarm.opacity(0.82)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(
+                        color: tint.opacity(isSelected ? 0.18 : 0.06),
+                        radius: 14,
+                        x: 0,
+                        y: 7
+                    )
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(
+                        isSelected ? tint.opacity(0.32) : MemoryInkColors.hairline.opacity(0.20),
+                        lineWidth: isSelected ? 1.1 : 0.7
                     )
             }
         }
@@ -491,6 +634,8 @@ struct TimelineView: View {
             YearlyReviewView()
         case .calendar:
             CalendarView()
+        case .browse:
+            CardBrowseView()
         case .settings:
             SettingsView()
         case .subscription:
@@ -633,13 +778,13 @@ struct TimelineView: View {
     private func animateCardIn(_ id: UUID) {
         guard !appearedCards.contains(id) else { return }
 
-        withAnimation(.easeOut(duration: 0.26)) {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
             _ = appearedCards.insert(id)
         }
     }
 
     private func closeDetail() {
-        withAnimation(.easeInOut(duration: 0.24)) {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
             selectedMemory = nil
         }
     }
@@ -650,7 +795,7 @@ struct TimelineView: View {
             return
         }
 
-        withAnimation(.easeInOut(duration: 0.24)) {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
             viewModel.isSearching = false
             isSearchFocused = false
         }
@@ -673,7 +818,7 @@ struct TimelineView: View {
             return
         }
 
-        withAnimation(.easeInOut(duration: 0.24)) {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
             milestoneToast = message
         }
 
@@ -683,7 +828,7 @@ struct TimelineView: View {
             await MainActor.run {
                 guard milestoneToast == message else { return }
 
-                withAnimation(.easeInOut(duration: 0.24)) {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                     milestoneToast = nil
                 }
             }

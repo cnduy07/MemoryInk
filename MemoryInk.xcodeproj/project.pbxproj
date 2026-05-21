@@ -63,11 +63,13 @@
 		0E80000D2FC1000000000001 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80000C2FC1000000000001 /* ToastView.swift */; };
 		0E8000212FC1000000000001 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000202FC1000000000001 /* NotificationService.swift */; };
 		0E8000232FC1000000000001 /* MemoryShareRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000222FC1000000000001 /* MemoryShareRenderer.swift */; };
+		0E8000312FC1000000000001 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000302FC1000000000001 /* ShareSheet.swift */; };
 		0E8000252FC1000000000001 /* MilestoneService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000242FC1000000000001 /* MilestoneService.swift */; };
 		0E8000292FC1000000000001 /* YearlyReviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000272FC1000000000001 /* YearlyReviewService.swift */; };
 		0E80002A2FC1000000000001 /* YearlyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000282FC1000000000001 /* YearlyReviewView.swift */; };
 		0E80002E2FC1000000000001 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80002C2FC1000000000001 /* CalendarView.swift */; };
 		0E80002F2FC1000000000001 /* CalendarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80002D2FC1000000000001 /* CalendarViewModel.swift */; };
+		0E8000412FC1000000000001 /* CardBrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000402FC1000000000001 /* CardBrowseView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -128,11 +130,13 @@
 		0E80000C2FC1000000000001 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		0E8000202FC1000000000001 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		0E8000222FC1000000000001 /* MemoryShareRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryShareRenderer.swift; sourceTree = "<group>"; };
+		0E8000302FC1000000000001 /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		0E8000242FC1000000000001 /* MilestoneService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneService.swift; sourceTree = "<group>"; };
 		0E8000272FC1000000000001 /* YearlyReviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearlyReviewService.swift; sourceTree = "<group>"; };
 		0E8000282FC1000000000001 /* YearlyReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearlyReviewView.swift; sourceTree = "<group>"; };
 		0E80002C2FC1000000000001 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		0E80002D2FC1000000000001 /* CalendarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewModel.swift; sourceTree = "<group>"; };
+		0E8000402FC1000000000001 /* CardBrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBrowseView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +205,7 @@
 			isa = PBXGroup;
 			children = (
 				0E79FB3C2FBAD8A0009A6E8E /* Timeline */,
+				0E80003F2FC1000000000001 /* Browse */,
 				0E79FC0C2FBB0001009A6E8E /* MemoryCreation */,
 				0E8000082FC1000000000001 /* MemoryDetail */,
 				0E79FD0C2FBC0001009A6E8E /* Recap */,
@@ -222,6 +227,14 @@
 				0E79FB2A2FBAD8A0009A6E8E /* TimelineCard.swift */,
 			);
 			path = Timeline;
+			sourceTree = "<group>";
+		};
+		0E80003F2FC1000000000001 /* Browse */ = {
+			isa = PBXGroup;
+			children = (
+				0E8000402FC1000000000001 /* CardBrowseView.swift */,
+			);
+			path = Browse;
 			sourceTree = "<group>";
 		};
 		0E79FB3D2FBAD8A0009A6E8E /* Models */ = {
@@ -318,6 +331,7 @@
 				0E80000B2FC1000000000001 /* EmptyStateView.swift */,
 				0E80000C2FC1000000000001 /* ToastView.swift */,
 				0E8000222FC1000000000001 /* MemoryShareRenderer.swift */,
+				0E8000302FC1000000000001 /* ShareSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -476,6 +490,7 @@
 				0E80002F2FC1000000000001 /* CalendarViewModel.swift in Sources */,
 				0E79FC152FBB0001009A6E8E /* ImagePipelineService.swift in Sources */,
 				0E79FB342FBAD8A0009A6E8E /* TimelineCard.swift in Sources */,
+				0E8000412FC1000000000001 /* CardBrowseView.swift in Sources */,
 				0E8000062FC1000000000001 /* LoadingIndicator.swift in Sources */,
 				0E80000D2FC1000000000001 /* ToastView.swift in Sources */,
 				0E79FD232FBC0001009A6E8E /* AIUsageTracker.swift in Sources */,
@@ -514,6 +529,7 @@
 				0E8000072FC1000000000001 /* EmptyStateView.swift in Sources */,
 				0E8000212FC1000000000001 /* NotificationService.swift in Sources */,
 				0E8000232FC1000000000001 /* MemoryShareRenderer.swift in Sources */,
+				0E8000312FC1000000000001 /* ShareSheet.swift in Sources */,
 				0E8000252FC1000000000001 /* MilestoneService.swift in Sources */,
 				0E79FC192FBB0001009A6E8E /* MoodPickerView.swift in Sources */,
 				0E79FB322FBAD8A0009A6E8E /* TimelineView.swift in Sources */,
