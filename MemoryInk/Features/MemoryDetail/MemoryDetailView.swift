@@ -23,6 +23,8 @@ struct MemoryDetailView: View {
 private struct MemoryDetailContentView: View {
     let viewModel: MemoryDetailViewModel
 
+    @EnvironmentObject private var repository: JournalEntryRepository
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingDeleteConfirmation = false
     @State private var isShowingEditSheet = false
@@ -34,27 +36,35 @@ private struct MemoryDetailContentView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 0) {
                 if let entry = viewModel.entry {
                     imageArea(for: entry)
-                    metadata(for: entry)
-                    narrativeBlock(for: entry)
+
+                    VStack(alignment: .leading, spacing: 18) {
+                        metadataRow(for: entry)
+                        narrativeBlock(for: entry)
+                        if let note = entry.rawNote, !note.isEmpty {
+                            noteCard(note: note, mood: entry.mood)
+                        }
+                        similarMoments(for: entry)
+                    }
+                    .padding(.horizontal, MemoryInkSpacing.screenHorizontal)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
                 } else {
                     Text("This memory is not available.")
                         .font(MemoryInkTypography.narrative)
                         .foregroundStyle(MemoryInkColors.secondaryInk)
                         .padding(.top, 40)
+                        .padding(.horizontal, MemoryInkSpacing.screenHorizontal)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, MemoryInkSpacing.screenHorizontal)
-            .padding(.top, 18)
-            .padding(.bottom, 40)
         }
         .background(MemoryInkColors.parchment.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarLeading) {
                 if viewModel.entry != nil {
                     Menu {
                         Button {
@@ -74,6 +84,18 @@ private struct MemoryDetailContentView: View {
                             .foregroundStyle(MemoryInkColors.secondaryInk)
                     }
                     .accessibilityLabel("Memory actions")
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                if viewModel.entry != nil {
+                    Button {
+                        shareCurrentMemory()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
                 }
             }
         }
@@ -105,70 +127,63 @@ private struct MemoryDetailContentView: View {
 
     @ViewBuilder
     private func imageArea(for entry: JournalEntry) -> some View {
-        Color.clear
-            .aspectRatio(4.0 / 5.0, contentMode: .fit)
-            .overlay {
-                ZStack {
-                    if let image = detailImage(for: entry) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .clipped()
-                    } else {
-                        LinearGradient(
-                            colors: [
-                                entry.mood.tint.opacity(0.74),
-                                MemoryInkColors.paperWarm,
-                                MemoryInkColors.parchmentDeep
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    }
-
-                    RadialGradient(
+        ZStack(alignment: .bottom) {
+            Group {
+                if let image = detailImage(for: entry) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    LinearGradient(
                         colors: [
-                            entry.mood.tint.opacity(0.08),
-                            MemoryInkColors.paper.opacity(0)
+                            entry.mood.tint.opacity(0.74),
+                            MemoryInkColors.paperWarm,
+                            MemoryInkColors.parchmentDeep
                         ],
-                        center: .topTrailing,
-                        startRadius: 12,
-                        endRadius: 220
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 }
             }
             .frame(maxWidth: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                .stroke(MemoryInkColors.hairline.opacity(0.24), lineWidth: 0.8)
+            .frame(height: 380)
+            .clipped()
+
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.50)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .frame(height: 380)
+
+            HStack {
+                Text(entry.mood.title)
+                    .font(MemoryInkTypography.badge)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.ultraThinMaterial)
+                    .background(entry.mood.tint.opacity(0.30))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Text(entry.createdAt.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()))
+                    .font(MemoryInkTypography.timestamp)
+                    .foregroundStyle(.white.opacity(0.75))
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 16)
         }
-        .shadow(color: MemoryInkColors.filmShadow.opacity(0.10), radius: 18, x: 0, y: 10)
+        .frame(maxWidth: .infinity)
+        .shadow(color: MemoryInkColors.filmShadow.opacity(0.12), radius: 18, x: 0, y: 10)
     }
 
-    private func metadata(for entry: JournalEntry) -> some View {
+    private func metadataRow(for entry: JournalEntry) -> some View {
         HStack(alignment: .center, spacing: 12) {
             moodBadge(for: entry.mood)
 
-            Rectangle()
-                .fill(MemoryInkColors.hairline.opacity(0.36))
-                .frame(width: 1, height: 16)
-
-            if entry.aiNarrative?.isEmpty == false {
-                Text(entry.narrativeStyle.rawValue.capitalized)
-                    .font(MemoryInkTypography.badge)
-                    .foregroundStyle(MemoryInkColors.tertiaryInk)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(MemoryInkColors.paper.opacity(0.72))
-                    .clipShape(Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.6)
-                    }
-            }
-
-            Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+            Text(entry.createdAt.formatted(date: .long, time: .omitted))
                 .font(MemoryInkTypography.timestamp)
                 .foregroundStyle(MemoryInkColors.tertiaryInk)
 
@@ -191,6 +206,40 @@ private struct MemoryDetailContentView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(entry.isFavorite ? "Remove favorite" : "Mark favorite")
+        }
+    }
+
+    private func noteCard(note: String, mood: MoodType) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(MemoryInkColors.sage.opacity(0.55))
+                .frame(width: 2)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Your words", systemImage: "quote.opening")
+                    .font(MemoryInkTypography.badge)
+                    .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+                Text(note)
+                    .font(MemoryInkTypography.narrativeCompact)
+                    .foregroundStyle(MemoryInkColors.ink)
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(MemoryInkSpacing.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(
+            LinearGradient(
+                colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
+                .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.7)
         }
     }
 
@@ -256,6 +305,62 @@ private struct MemoryDetailContentView: View {
                 Capsule()
                     .stroke(MemoryInkColors.paper.opacity(0.28), lineWidth: 0.6)
             }
+    }
+
+    @ViewBuilder
+    private func similarMoments(for entry: JournalEntry) -> some View {
+        let similar = Array(repository.entries.filter { $0.mood == entry.mood && $0.id != entry.id }.prefix(4))
+
+        Group {
+            if !similar.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("More \(entry.mood.title) moments")
+                        .font(MemoryInkTypography.eyebrow)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+                        .textCase(.uppercase)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(similar) { similar in
+                                similarTile(similar)
+                            }
+                        }
+                        .padding(.horizontal, 1)
+                    }
+                }
+            }
+        }
+    }
+
+    private func similarTile(_ entry: JournalEntry) -> some View {
+        Button {
+            router.path.append(.memoryDetail(id: entry.id))
+        } label: {
+            ZStack(alignment: .bottom) {
+                if let img = ImagePipelineService.image(forRelativePath: entry.thumbnailPath) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    LinearGradient(
+                        colors: [entry.mood.tint, entry.mood.tint.opacity(0.5)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+
+                LinearGradient(colors: [.clear, .black.opacity(0.40)], startPoint: .center, endPoint: .bottom)
+
+                Text(entry.createdAt.formatted(.dateTime.month(.abbreviated).day()))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.90))
+                    .padding(6)
+            }
+            .frame(width: 88, height: 110)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
     }
 
     private func narrativeText(for entry: JournalEntry) -> String {

@@ -1,27 +1,30 @@
-# Task 3 Implementation Report
+# Task C Implementation Report
 
 ## Files Changed
-- `MemoryInk/Features/Recap/RecapView.swift`
+- `MemoryInk/Common/Components/BackgroundScene.swift`
+- `MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`
+- `MemoryInk/Features/MemoryCreation/MemoryCreationViewModel.swift`
+- `MemoryInk.xcodeproj/project.pbxproj`
 - `tasks/summary.md`
 
 ## Behavior Change
-- Rebuilt the weekly recap screen with the requested hero header, last-7-days memory strip, animated mood distribution bars, redesigned recap card, loading card, error/empty states, and gradient generate button.
-- Added `@EnvironmentObject private var router: AppRouter` and wired thumbnail taps to `router.path.append(.memoryViewer(entryId: entry.id))`.
-- Kept `generateRecap()` unchanged and preserved `analyticsService.track(.recapOpened)` in `.task`.
+- Added eight preset gradient background scenes rendered as `UIImage` values in Swift.
+- Updated memory creation so users can choose either a library photo or a scene, preview the selected image/scene, and save through the existing image pipeline.
 
 ## Checks Run
-- `git diff --check -- MemoryInk/Features/Recap/RecapView.swift tasks/summary.md`
+- `git diff --check -- MemoryInk/Features/MemoryCreation/MemoryCreationView.swift MemoryInk/Features/MemoryCreation/MemoryCreationViewModel.swift MemoryInk/Common/Components/BackgroundScene.swift MemoryInk.xcodeproj/project.pbxproj`
+- `plutil -lint MemoryInk.xcodeproj/project.pbxproj`
+- `TMPDIR=/private/tmp xcrun swiftc -typecheck -sdk <iphoneos-sdk> -target arm64-apple-ios17.5 -module-cache-path /private/tmp/MemoryInkModuleCache -parse-as-library $(rg --files MemoryInk -g '*.swift')`
 - `xcodebuild -list -project MemoryInk.xcodeproj`
-- `xcodebuild -list -project MemoryInk.xcodeproj -clonedSourcePackagesDirPath /private/tmp/MemoryInkSourcePackages`
-- `TMPDIR=/private/tmp xcodebuild -list -project MemoryInk.xcodeproj -clonedSourcePackagesDirPath /private/tmp/MemoryInkSourcePackages`
-- `TMPDIR=/private/tmp xcodebuild build -project MemoryInk.xcodeproj -scheme MemoryInk -destination 'generic/platform=iOS' -derivedDataPath /private/tmp/MemoryInkDerivedData -clonedSourcePackagesDirPath /private/tmp/MemoryInkSourcePackages COMPILER_INDEX_STORE_ENABLE=NO`
 
 ## Build Result
 - `git diff --check` passed.
-- Xcode did not reach scheme listing or source compilation. SwiftPM failed while loading the `purchases-ios-spm` manifest with `unable to make temporary file: Operation not permitted`; CoreSimulatorService is also unavailable in this sandbox.
+- `plutil -lint` passed for the Xcode project file.
+- Swift typecheck passed for the app sources; it reported existing iOS 17 `onChange` deprecation warnings.
+- `xcodebuild -list` did not complete because Xcode/SwiftPM attempted to use sandbox-blocked user cache and simulator services, then failed while resolving the existing `purchases-ios-spm` manifest.
 
 ## Not Verified
-- Full Xcode compile.
+- Full Xcode build.
 - Runtime UI behavior in Simulator.
 
 ## Next Step Needs Approval

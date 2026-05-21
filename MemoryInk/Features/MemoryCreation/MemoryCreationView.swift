@@ -4,6 +4,7 @@ import SwiftUI
 struct MemoryCreationView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: MemoryCreationViewModel
+    @State private var showingScenePicker = false
 
     init(
         repository: JournalEntryRepository,
@@ -76,6 +77,11 @@ struct MemoryCreationView: View {
                     dismiss()
                 }
             }
+            .sheet(isPresented: $showingScenePicker) {
+                ScenePickerSheet { scene in
+                    viewModel.setBackgroundScene(scene)
+                }
+            }
         }
     }
 
@@ -91,49 +97,107 @@ struct MemoryCreationView: View {
     }
 
     private var photoPicker: some View {
-        PhotosPicker(
-            selection: $viewModel.selectedPhotoItem,
-            matching: .images,
-            photoLibrary: .shared()
-        ) {
-            GeometryReader { proxy in
-                let imageSize = finiteSize(proxy.size)
+        VStack(spacing: 12) {
+            photoPreview
 
-                ZStack {
-                    RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                        .fill(MemoryInkColors.paper.opacity(0.88))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                                .stroke(MemoryInkColors.hairline.opacity(0.30), lineWidth: 0.8)
-                        }
+            if viewModel.selectedImage == nil {
+                HStack(spacing: 12) {
+                    PhotosPicker(
+                        selection: $viewModel.selectedPhotoItem,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        Label("From Library", systemImage: "photo")
+                            .font(MemoryInkTypography.badge)
+                            .foregroundStyle(MemoryInkColors.ink)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(MemoryInkColors.paper.opacity(0.88))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                            }
+                    }
+                    .buttonStyle(.plain)
 
-                    if let selectedImage = viewModel.selectedImage {
-                        Image(uiImage: selectedImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(
-                                width: imageSize.width,
-                                height: imageSize.height
-                            )
-                            .clipped()
-                    } else {
-                        VStack(spacing: 10) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 24, weight: .regular))
-                                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                    Button {
+                        showingScenePicker = true
+                    } label: {
+                        Label("Choose Scene", systemImage: "paintbrush")
+                            .font(MemoryInkTypography.badge)
+                            .foregroundStyle(MemoryInkColors.ink)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(MemoryInkColors.paper.opacity(0.88))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    PhotosPicker(
+                        selection: $viewModel.selectedPhotoItem,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        Text("Change Photo")
+                            .font(MemoryInkTypography.badge)
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
+                    .buttonStyle(.plain)
 
-                            Text("Choose a photo")
-                                .font(MemoryInkTypography.subtitle)
-                                .foregroundStyle(MemoryInkColors.secondaryInk)
-                        }
+                    Button("Choose Scene") {
+                        showingScenePicker = true
+                    }
+                    .font(MemoryInkTypography.badge)
+                    .foregroundStyle(MemoryInkColors.secondaryInk)
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
+    private var photoPreview: some View {
+        GeometryReader { proxy in
+            let imageSize = finiteSize(proxy.size)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
+                    .fill(MemoryInkColors.paper.opacity(0.88))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
+                            .stroke(MemoryInkColors.hairline.opacity(0.30), lineWidth: 0.8)
+                    }
+
+                if let selectedImage = viewModel.selectedImage {
+                    Image(uiImage: selectedImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: imageSize.width, height: imageSize.height)
+                        .clipped()
+                } else {
+                    VStack(spacing: 10) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+                        Text("Add a photo or choose a scene")
+                            .font(MemoryInkTypography.subtitle)
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                            .multilineTextAlignment(.center)
                     }
                 }
             }
-            .aspectRatio(4.0 / 5.0, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
-            .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 18, x: 0, y: 10)
         }
-        .buttonStyle(.plain)
+        .aspectRatio(4.0 / 5.0, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
+        .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 18, x: 0, y: 10)
     }
 
     private func finiteSize(_ size: CGSize) -> CGSize {
@@ -170,6 +234,66 @@ struct MemoryCreationView: View {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(MemoryInkColors.hairline.opacity(0.26), lineWidth: 0.8)
                 }
+        }
+    }
+}
+
+private struct ScenePickerSheet: View {
+    let onSelect: (BackgroundScene) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(BackgroundScene.all) { scene in
+                        Button {
+                            onSelect(scene)
+                            dismiss()
+                        } label: {
+                            ZStack(alignment: .bottom) {
+                                LinearGradient(
+                                    colors: scene.previewColors,
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+
+                                Text(scene.name)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(.bottom, 8)
+                            }
+                            .frame(height: 110)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
+            }
+            .background(MemoryInkColors.parchment.ignoresSafeArea())
+            .navigationTitle("Choose Background")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                }
+            }
         }
     }
 }

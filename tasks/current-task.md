@@ -1,4 +1,4 @@
-# Task 3: Weekly Recap — Full Screen Redesign
+# Task C: Background Scenes for Memory Creation
 
 **Date:** 2026-05-21
 **Priority:** High
@@ -7,319 +7,376 @@
 
 ## Context
 
-`RecapView.swift` currently shows a plain eyebrow label, an 8pt mood dot grid, a simple amber-bar narrative card, and a generate button. The user wants it to look "awesome" — immersive, data-rich, and emotional. This task redesigns the view in-place with no new files or packages.
+When creating a memory without a photo, users currently see a plain "Choose a photo" placeholder. This task adds 8 preset "scene" backgrounds — rendered purely in Swift as gradient UIImages via `UIGraphicsImageRenderer` (no new image files, no new packages, no CoreData changes). Users can tap "Choose scene" to pick a preset, or still use the existing photo library picker.
 
 ---
 
-## File
+## Files
 
 | File | Action |
 |------|--------|
-| `MemoryInk/Features/Recap/RecapView.swift` | **rewrite** |
-
-No other files change.
-
----
-
-## Data Available (do NOT add new service calls)
-
-- `recapService.latestRecap: WeeklyRecap?` — `recap: String`, `generatedAt: Date`, `entryIds: [UUID]`
-- `recapService.errorMessage: String?`
-- `repository.entriesSince(_ date: Date) -> [JournalEntry]` — use this to get the last-7-days entries
-- `JournalEntry` properties: `.mood: MoodType`, `.thumbnailPath: String?`, `.aiNarrative: String?`, `.createdAt: Date`
-- `ImagePipelineService.image(forRelativePath: entry.thumbnailPath)` — static call, returns `UIImage?`
-- `MoodType.CaseIterable` — 6 cases: peaceful, nostalgic, happy, proud, sad, reflective — each has `.tint: Color`, `.title: String`
-- `router.path.append(.memoryViewer(entryId: entry.id))` — navigate to full-screen viewer (Task 2 already done)
-- Colors: `MemoryInkColors.parchment`, `.paper`, `.paperWarm`, `.ink`, `.secondaryInk`, `.tertiaryInk`, `.hairline`, `.amber`, `.sage`
-- Typography: `MemoryInkTypography.eyebrow`, `.narrative`, `.narrativeCompact`, `.badge`, `.timestamp`, `.subtitle`
+| `MemoryInk/Features/MemoryCreation/MemoryCreationView.swift` | **modify** |
+| `MemoryInk/Features/MemoryCreation/MemoryCreationViewModel.swift` | **modify** — add `setBackgroundScene(_ scene: BackgroundScene)` method |
+| `MemoryInk/Common/Components/BackgroundScene.swift` | **create** — scene definitions + renderer |
 
 ---
 
-## New Design Layout
+## Step 1 — `BackgroundScene.swift`
 
-The view is a `ScrollView` (no navigation title — remove `.navigationTitle` and use a custom header). Structure from top to bottom:
-
-### 1 — Hero Header Card
-
-Full-width card with:
-- Gradient background: `LinearGradient(colors: [dominantMood.tint.opacity(0.65), dominantMood.tint.opacity(0.18), MemoryInkColors.parchment], startPoint: .topLeading, endPoint: .bottomTrailing)`
-- Top-left: "WEEKLY REFLECTION" in `MemoryInkTypography.eyebrow`
-- Center: Week range label — format both ends of the 7-day window: `"May 14 – May 21"` using `.dateTime.month(.wide).day()` for start and `.day()` for end
-- Bottom-left: Entry count badge — `"\(weekEntries.count) memories"` in `.badge` font, `.ultraThinMaterial` background, capsule-clipped
-- Bottom-right: Dominant mood badge — `dominantMood.title` in `.badge` font, tinted with `dominantMood.tint.opacity(0.30)` background, `.ultraThinMaterial`, capsule-clipped
-- Card height: `160`
-- Corner radius: `MemoryInkSpacing.cardCornerRadius + 4`
-- Overlay stroke: `MemoryInkColors.hairline.opacity(0.18)`
-- Shadow: `dominantMood.tint.opacity(0.18)`, radius 24, y 12
-- Padding: `.horizontal(22).vertical(22)` inside the card
-
-When no entries this week: use `MemoryInkColors.secondaryInk` as dominantMood fallback (use a computed var that returns `.peaceful` if empty, so `.tint` still works).
-
-### 2 — Memory Strip (horizontal scroll)
-
-Only shown when `weekEntries.count > 0`. A `ScrollView(.horizontal, showsIndicators: false)` containing an `HStack(spacing: 10)` of thumbnail tiles. Show up to 7 entries.
-
-Each tile:
-- Size: `80 × 100` 
-- Content: `ZStack` — photo via `ImagePipelineService.image(forRelativePath: entry.thumbnailPath)` scaled to fill, or `LinearGradient(colors: [entry.mood.tint, entry.mood.tint.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)` if no image
-- Overlay: bottom scrim `LinearGradient(colors: [.clear, .black.opacity(0.45)], startPoint: .center, endPoint: .bottom)`
-- Overlay bottom-left: entry day number `entry.createdAt.formatted(.dateTime.day())` in `.system(size: 11, weight: .bold)`, white, 6pt padding
-- `.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))`
-- `.shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)`
-- `onTapGesture`: `router.path.append(.memoryViewer(entryId: entry.id))`
-- First tile has `.padding(.leading, 22)`, last has `.padding(.trailing, 22)`, others no extra padding
-
-### 3 — Mood Distribution Bar
-
-Only shown when `weekEntries.count > 0`. A `VStack(alignment: .leading, spacing: 10)` with:
-- Section label: `"THIS WEEK'S MOOD"` in `.eyebrow`
-- For each `MoodType.allCases` where count > 0: a horizontal bar row
-
-Each bar row is an `HStack(spacing: 10)`:
-- Mood title: fixed width `Text(mood.title)` in `.timestamp`, `foregroundStyle(.secondaryInk)`, `.frame(width: 80, alignment: .trailing)`
-- Bar: `GeometryReader` → `RoundedRectangle(cornerRadius: 4)` with `mood.tint`, height 8, width = `max(8, proxy.size.width * fraction)` where `fraction = Double(count) / Double(weekEntries.count)`. Animate the bar appearing: use `@State private var barsVisible = false` set to `true` in `.onAppear`, animate with `.animation(.spring(response: 0.6, dampingFraction: 0.75).delay(Double(index) * 0.08), value: barsVisible)`. Width multiplied by `barsVisible ? 1.0 : 0.0`.
-- Count: `Text("\(count)")` in `.timestamp`, `.tertiaryInk`, after the bar
-- `GeometryReader` for the bar should have `.frame(height: 8)`
-
-Wrap the whole bar chart in `.padding(.horizontal, 22)`.
-
-Sort mood rows by count descending. Skip moods with count == 0.
-
-### 4 — AI Recap Card
-
-Shown when `recapService.latestRecap != nil`. A styled card:
-
-```
-ZStack(alignment: .topLeading) {
-    // warm gradient background
-    LinearGradient(
-        colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
-        startPoint: .top,
-        endPoint: .bottomTrailing
-    )
-    
-    // decorative corner mark
-    Text("✦")
-        .font(.system(size: 9, weight: .medium))
-        .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.50))
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(18)
-    
-    VStack(alignment: .leading, spacing: 16) {
-        // amber accent bar + label
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(MemoryInkColors.amber)
-                .frame(width: 3, height: 18)
-            Text("Your Week")
-                .font(MemoryInkTypography.eyebrow)
-                .foregroundStyle(MemoryInkColors.tertiaryInk)
-        }
-        
-        // recap text
-        Text(recap.recap)
-            .font(MemoryInkTypography.narrative)
-            .foregroundStyle(MemoryInkColors.ink)
-            .lineSpacing(7)
-            .fixedSize(horizontal: false, vertical: true)
-        
-        // date
-        Text("Week of \(recap.generatedAt.formatted(.dateTime.month(.wide).day()))")
-            .font(MemoryInkTypography.timestamp)
-            .foregroundStyle(MemoryInkColors.tertiaryInk)
-        
-        // cached badge if recap.cached == true
-        if recap.cached {
-            Text("From earlier this week")
-                .font(MemoryInkTypography.timestamp)
-                .foregroundStyle(MemoryInkColors.tertiaryInk.opacity(0.60))
-        }
-    }
-    .padding(22)
-}
-```
-
-Card styling: `.clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))`, overlay stroke `MemoryInkColors.hairline.opacity(0.22)` lineWidth 0.7, shadow `MemoryInkColors.amber.opacity(0.10)` radius 20 y 10.
-
-Padding: `.horizontal(22)`.
-
-### 5 — Empty / Loading / Error States
-
-When `recapService.latestRecap == nil`:
-- If `isGenerating`:
-  - Show a pulsing placeholder card instead of the recap card:
-    ```
-    RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
-        .fill(MemoryInkColors.paper.opacity(0.60))
-        .frame(height: 160)
-        .overlay {
-            VStack(spacing: 10) {
-                ProgressView()
-                    .tint(MemoryInkColors.amber)
-                Text("Writing your reflection...")
-                    .font(MemoryInkTypography.narrativeCompact)
-                    .foregroundStyle(MemoryInkColors.tertiaryInk)
-            }
-        }
-    ```
-  - Padding `.horizontal(22)`
-
-- If `recapService.errorMessage != nil` (and not generating): use the existing `EmptyStateView(message: errorMessage, actionLabel: "Try again", isActionDisabled: false)` with the retry action
-
-- If neither (no recap, no error, not generating): use `EmptyStateView(message: "Your weekly recap will appear when there's enough to reflect on.")`
-
-### 6 — Generate Button
-
-Shown when `recapService.latestRecap == nil && !isGenerating`. Place at bottom of scroll content:
+Create `MemoryInk/Common/Components/BackgroundScene.swift`:
 
 ```swift
-Button {
-    Task { await generateRecap() }
-} label: {
-    HStack(spacing: 8) {
-        Image(systemName: "sparkles")
-            .font(.system(size: 14, weight: .medium))
-        Text("Reflect on this week")
-            .font(MemoryInkTypography.narrativeCompact.weight(.semibold))
-    }
-    .foregroundStyle(MemoryInkColors.ink)
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 16)
-    .background(
-        LinearGradient(
-            colors: [MemoryInkColors.amber.opacity(0.18), MemoryInkColors.amber.opacity(0.08)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+import SwiftUI
+import UIKit
+
+struct BackgroundScene: Identifiable {
+    let id: String
+    let name: String
+    let colors: [UIColor]
+    let startPoint: CGPoint
+    let endPoint: CGPoint
+
+    static let all: [BackgroundScene] = [
+        BackgroundScene(
+            id: "golden_hour",
+            name: "Golden Hour",
+            colors: [UIColor(red: 0.98, green: 0.80, blue: 0.42, alpha: 1),
+                     UIColor(red: 0.95, green: 0.55, blue: 0.30, alpha: 1),
+                     UIColor(red: 0.72, green: 0.35, blue: 0.32, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "misty_morning",
+            name: "Misty Morning",
+            colors: [UIColor(red: 0.75, green: 0.85, blue: 0.95, alpha: 1),
+                     UIColor(red: 0.60, green: 0.78, blue: 0.85, alpha: 1),
+                     UIColor(red: 0.88, green: 0.92, blue: 0.90, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "sage_garden",
+            name: "Sage Garden",
+            colors: [UIColor(red: 0.55, green: 0.72, blue: 0.60, alpha: 1),
+                     UIColor(red: 0.70, green: 0.82, blue: 0.68, alpha: 1),
+                     UIColor(red: 0.88, green: 0.92, blue: 0.84, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "rose_dusk",
+            name: "Rose Dusk",
+            colors: [UIColor(red: 0.72, green: 0.42, blue: 0.50, alpha: 1),
+                     UIColor(red: 0.88, green: 0.60, blue: 0.55, alpha: 1),
+                     UIColor(red: 0.96, green: 0.82, blue: 0.72, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "night_ink",
+            name: "Night Ink",
+            colors: [UIColor(red: 0.08, green: 0.10, blue: 0.18, alpha: 1),
+                     UIColor(red: 0.14, green: 0.18, blue: 0.32, alpha: 1),
+                     UIColor(red: 0.22, green: 0.28, blue: 0.42, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "ocean_calm",
+            name: "Ocean Calm",
+            colors: [UIColor(red: 0.22, green: 0.55, blue: 0.75, alpha: 1),
+                     UIColor(red: 0.40, green: 0.72, blue: 0.85, alpha: 1),
+                     UIColor(red: 0.75, green: 0.90, blue: 0.92, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "forest_deep",
+            name: "Forest Deep",
+            colors: [UIColor(red: 0.10, green: 0.28, blue: 0.18, alpha: 1),
+                     UIColor(red: 0.22, green: 0.45, blue: 0.30, alpha: 1),
+                     UIColor(red: 0.48, green: 0.65, blue: 0.45, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
+        ),
+        BackgroundScene(
+            id: "warm_parchment",
+            name: "Parchment",
+            colors: [UIColor(red: 0.95, green: 0.90, blue: 0.80, alpha: 1),
+                     UIColor(red: 0.88, green: 0.82, blue: 0.70, alpha: 1),
+                     UIColor(red: 0.80, green: 0.74, blue: 0.62, alpha: 1)],
+            startPoint: CGPoint(x: 0, y: 0),
+            endPoint: CGPoint(x: 1, y: 1)
         )
-    )
-    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    .overlay {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .stroke(MemoryInkColors.amber.opacity(0.35), lineWidth: 0.8)
+    ]
+
+    /// Renders this scene as a UIImage at the given size.
+    func render(size: CGSize = CGSize(width: 800, height: 1000)) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let cgContext = ctx.cgContext
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let cgColors = colors.map(\.cgColor) as CFArray
+            let locations: [CGFloat] = colors.enumerated().map { i, _ in
+                CGFloat(i) / CGFloat(max(colors.count - 1, 1))
+            }
+            guard let gradient = CGGradient(
+                colorsSpace: colorSpace,
+                colors: cgColors,
+                locations: locations
+            ) else { return }
+
+            let start = CGPoint(x: startPoint.x * size.width, y: startPoint.y * size.height)
+            let end = CGPoint(x: endPoint.x * size.width, y: endPoint.y * size.height)
+            cgContext.drawLinearGradient(
+                gradient,
+                start: start,
+                end: end,
+                options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+            )
+        }
+    }
+
+    /// Returns a SwiftUI Color for previewing (uses the middle color).
+    var previewColors: [Color] {
+        colors.map { Color(uiColor: $0) }
     }
 }
-.buttonStyle(.plain)
-.padding(.horizontal, 22)
 ```
 
 ---
 
-## State Variables
+## Step 2 — `MemoryCreationViewModel.swift`
+
+Add one method after `loadSelectedPhoto()`:
 
 ```swift
-@State private var isGenerating = false
-@State private var barsVisible = false
-```
-
----
-
-## Computed Properties
-
-```swift
-private var weekEntries: [JournalEntry] {
-    let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-    return repository.entriesSince(weekAgo)
-}
-
-private var dominantMood: MoodType {
-    let counts = Dictionary(grouping: weekEntries, by: \.mood).mapValues(\.count)
-    return counts.max(by: { $0.value < $1.value })?.key ?? .peaceful
-}
-
-private var moodCounts: [(mood: MoodType, count: Int)] {
-    let counts = Dictionary(grouping: weekEntries, by: \.mood).mapValues(\.count)
-    return MoodType.allCases
-        .compactMap { mood in
-            let count = counts[mood, default: 0]
-            return count > 0 ? (mood: mood, count: count) : nil
-        }
-        .sorted { $0.count > $1.count }
+func setBackgroundScene(_ scene: BackgroundScene) {
+    selectedImage = scene.render()
 }
 ```
 
+Do NOT change any other existing method.
+
 ---
 
-## View Assembly
+## Step 3 — `MemoryCreationView.swift`
+
+Add `@State private var showingScenePicker = false` to the view.
+
+### 3a — Restructure `photoPicker`
+
+Replace the existing `photoPicker` computed property with a new one that separates the preview area from the action buttons:
 
 ```swift
-var body: some View {
-    ScrollView(showsIndicators: false) {
-        VStack(alignment: .leading, spacing: 22) {
-            heroHeader
-                .padding(.horizontal, 22)
-            
-            if !weekEntries.isEmpty {
-                memoryStrip  // full-bleed horizontal scroll, no horizontal padding
-            }
-            
-            if !weekEntries.isEmpty {
-                moodDistributionBars
-            }
-            
-            if let recap = recapService.latestRecap {
-                recapCard(recap)
-            } else if isGenerating {
-                loadingCard
-                    .padding(.horizontal, 22)
-            } else if let error = recapService.errorMessage {
-                EmptyStateView(
-                    message: error,
-                    actionLabel: "Try again",
-                    isActionDisabled: false
+private var photoPicker: some View {
+    VStack(spacing: 12) {
+        // Preview area (no longer the picker trigger itself)
+        photoPreview
+
+        // Action buttons — only shown if no image selected
+        if viewModel.selectedImage == nil {
+            HStack(spacing: 12) {
+                // Library picker
+                PhotosPicker(
+                    selection: $viewModel.selectedPhotoItem,
+                    matching: .images,
+                    photoLibrary: .shared()
                 ) {
-                    Task { await generateRecap() }
+                    Label("From Library", systemImage: "photo")
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(MemoryInkColors.paper.opacity(0.88))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                        }
+                }
+                .buttonStyle(.plain)
+
+                // Scene picker
+                Button {
+                    showingScenePicker = true
+                } label: {
+                    Label("Choose Scene", systemImage: "paintbrush")
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(MemoryInkColors.ink)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(MemoryInkColors.paper.opacity(0.88))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            // Change button shown when an image is already selected
+            HStack(spacing: 12) {
+                PhotosPicker(
+                    selection: $viewModel.selectedPhotoItem,
+                    matching: .images,
+                    photoLibrary: .shared()
+                ) {
+                    Text("Change Photo")
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                }
+                .buttonStyle(.plain)
+
+                Button("Choose Scene") {
+                    showingScenePicker = true
+                }
+                .font(MemoryInkTypography.badge)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+    .sheet(isPresented: $showingScenePicker) {
+        ScenePickerSheet { scene in
+            viewModel.setBackgroundScene(scene)
+        }
+    }
+}
+```
+
+### 3b — `photoPreview` computed property
+
+```swift
+private var photoPreview: some View {
+    GeometryReader { proxy in
+        let imageSize = finiteSize(proxy.size)
+
+        ZStack {
+            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
+                .fill(MemoryInkColors.paper.opacity(0.88))
+                .overlay {
+                    RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
+                        .stroke(MemoryInkColors.hairline.opacity(0.30), lineWidth: 0.8)
+                }
+
+            if let selectedImage = viewModel.selectedImage {
+                Image(uiImage: selectedImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: imageSize.width, height: imageSize.height)
+                    .clipped()
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+                    Text("Add a photo or choose a scene")
+                        .font(MemoryInkTypography.subtitle)
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                        .multilineTextAlignment(.center)
+                }
+            }
+        }
+    }
+    .aspectRatio(4.0 / 5.0, contentMode: .fit)
+    .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
+    .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 18, x: 0, y: 10)
+}
+```
+
+### 3c — `ScenePickerSheet` (private struct in the same file)
+
+Add at the bottom of `MemoryCreationView.swift`:
+
+```swift
+private struct ScenePickerSheet: View {
+    let onSelect: (BackgroundScene) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(BackgroundScene.all) { scene in
+                        Button {
+                            onSelect(scene)
+                            dismiss()
+                        } label: {
+                            ZStack(alignment: .bottom) {
+                                LinearGradient(
+                                    colors: scene.previewColors,
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+
+                                Text(scene.name)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(.bottom, 8)
+                            }
+                            .frame(height: 110)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.horizontal, 22)
-            } else {
-                EmptyStateView(
-                    message: "Your weekly recap will appear when there's enough to reflect on."
-                )
-                .padding(.horizontal, 22)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
-            
-            if recapService.latestRecap == nil && !isGenerating {
-                generateButton
+            .background(MemoryInkColors.parchment.ignoresSafeArea())
+            .navigationTitle("Choose Background")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                }
             }
         }
-        .padding(.top, 24)
-        .padding(.bottom, 48)
-    }
-    .background(MemoryInkColors.parchment.ignoresSafeArea())
-    .navigationTitle("Weekly Recap")
-    .navigationBarTitleDisplayMode(.inline)
-    .onAppear {
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
-            barsVisible = true
-        }
-    }
-    .task {
-        analyticsService.track(.recapOpened)
     }
 }
 ```
+
+---
+
+## Important: Add file to Xcode project
+
+Add `MemoryInk/Common/Components/BackgroundScene.swift` to the Xcode project target in `MemoryInk.xcodeproj/project.pbxproj`.
 
 ---
 
 ## Constraints
 
-- [ ] No new Swift Package
-- [ ] No CoreData schema changes
-- [ ] No new service methods — only use what already exists
-- [ ] Keep `generateRecap()` private func unchanged
-- [ ] Keep `analyticsService.track(.recapOpened)` in `.task`
-- [ ] `navigationTitle("Weekly Recap")` kept (inline display mode)
-- [ ] `@EnvironmentObject private var router: AppRouter` added (needed for thumbnail taps)
-
----
+- [ ] No new Swift Package, no CoreData changes
+- [ ] `canSave` logic unchanged (`selectedImage != nil && saveState != .saving`) — scenes set `selectedImage` so Save button enables correctly
+- [ ] `loadSelectedPhoto()` and `save()` in ViewModel unchanged
+- [ ] The `finiteSize`/`finiteDimension` helpers in MemoryCreationView unchanged
 
 ## Success Criteria
 
-- [ ] Hero card shows correct week date range, entry count, dominant mood
-- [ ] Memory strip shows up to 7 thumbnails, tappable → MemoryViewerView
-- [ ] Mood bars animate in on appear, sorted by frequency
-- [ ] AI recap card renders with amber accent bar and narrative text
-- [ ] "Reflect on this week" button triggers generation
-- [ ] Loading state shows spinner card during generation
+- [ ] "From Library" and "Choose Scene" buttons shown when no image selected
+- [ ] Tapping "Choose Scene" shows a 3-column grid sheet of 8 gradient tiles
+- [ ] Selecting a scene dismisses sheet and shows the gradient in the preview
+- [ ] Save button enables after selecting a scene
+- [ ] Memory saves normally (scene image stored via existing imagePipeline)
 - [ ] Xcode compiles without errors
 
 Save report to `tasks/summary.md`.

@@ -58,6 +58,10 @@ final class MemoryCreationViewModel: ObservableObject {
         }
     }
 
+    func setBackgroundScene(_ scene: BackgroundScene) {
+        selectedImage = scene.render()
+    }
+
     func save() {
         guard let selectedImage else { return }
 
