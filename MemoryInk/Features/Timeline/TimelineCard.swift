@@ -90,6 +90,10 @@ struct TimelineCard: View {
 
     private var gridBody: some View {
         imageArea
+            .overlay(alignment: .bottomLeading) {
+                dateStamp
+                    .padding(10)
+            }
             .overlay(alignment: .bottomTrailing) {
                 if memory.isFavorite {
                     favoriteBadge
@@ -230,12 +234,28 @@ struct TimelineCard: View {
             .padding(.horizontal, isCompact ? 10 : 11)
             .padding(.vertical, isCompact ? 5 : 6)
             .background(.ultraThinMaterial)
-            .background(memory.mood.tint.opacity(0.12))
+            .background(memory.mood.tint.opacity(0.28))
             .overlay {
                 Capsule()
                     .stroke(Color.white.opacity(0.28), lineWidth: 0.6)
             }
             .clipShape(Capsule())
+    }
+
+    private var dateStamp: some View {
+        VStack(alignment: .center, spacing: -1) {
+            Text(memory.timestamp.formatted(.dateTime.day()))
+                .font(.system(size: 17, weight: .bold, design: .default))
+            Text(memory.timestamp.formatted(.dateTime.month(.abbreviated)).uppercased())
+                .font(.system(size: 9, weight: .semibold))
+                .kerning(0.5)
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(.ultraThinMaterial)
+        .background(memory.mood.tint.opacity(0.22))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var favoriteBadge: some View {

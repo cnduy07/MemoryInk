@@ -245,11 +245,6 @@ struct TimelineView: View {
                 }
             } else {
                 HStack {
-                    Text("Private timeline")
-                        .font(MemoryInkTypography.eyebrow)
-                        .foregroundStyle(MemoryInkColors.tertiaryInk)
-                        .textCase(.uppercase)
-
                     Spacer()
 
                     Button {
@@ -307,6 +302,27 @@ struct TimelineView: View {
                 .foregroundStyle(MemoryInkColors.secondaryInk)
 
             if repository.entries.count >= 1 {
+                HStack(spacing: 8) {
+                    let count = repository.entries.count
+                    Text("\(count) \(count == 1 ? "memory" : "memories")")
+                        .font(MemoryInkTypography.timestamp)
+                        .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+                    let streak = repository.currentStreak
+                    if streak >= 2 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("\(streak)-day streak")
+                                .font(MemoryInkTypography.timestamp.weight(.medium))
+                        }
+                        .foregroundStyle(MemoryInkColors.amber)
+                    }
+                }
+                .padding(.top, 3)
+            }
+
+            if repository.entries.count >= 1 {
                 HStack(spacing: 10) {
                     timelinePill("Weekly Recap") {
                         router.path.append(.recap)
@@ -347,13 +363,36 @@ struct TimelineView: View {
             }
 
             if subscriptionManager.isPaywallEligible && !subscriptionManager.hasPremiumEntitlement {
-                Button("MemoryInk+") {
+                Button {
                     router.path.append(.subscription)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Go Premium")
+                            .font(MemoryInkTypography.timestamp.weight(.semibold))
+                    }
+                    .foregroundStyle(MemoryInkColors.ink)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 7)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                MemoryInkColors.sunlit.opacity(0.42),
+                                MemoryInkColors.amber.opacity(0.30)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(MemoryInkColors.amber.opacity(0.24), lineWidth: 0.8)
+                    }
                 }
-                .font(MemoryInkTypography.timestamp.weight(.medium))
-                .foregroundStyle(MemoryInkColors.tertiaryInk)
                 .buttonStyle(.plain)
-                .padding(.top, 2)
+                .padding(.top, 4)
             }
         }
         .padding(.bottom, isCompact ? 0 : 2)

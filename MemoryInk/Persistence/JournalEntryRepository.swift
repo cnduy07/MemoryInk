@@ -6,6 +6,34 @@ import Foundation
 final class JournalEntryRepository: ObservableObject {
     @Published private(set) var entries: [JournalEntry] = []
 
+    var currentStreak: Int {
+        guard !entries.isEmpty else { return 0 }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        // Unique journaling days, most-recent first
+        let days = Array(
+            Set(entries.map { calendar.startOfDay(for: $0.createdAt) })
+        ).sorted(by: >)
+
+        guard let mostRecent = days.first else { return 0 }
+
+        // Streak is 0 if the user didn't journal today or yesterday
+        let gap = calendar.dateComponents([.day], from: mostRecent, to: today).day ?? 0
+        guard gap <= 1 else { return 0 }
+
+        var streak = 1
+        for i in 0..<days.count - 1 {
+            let diff = calendar.dateComponents([.day], from: days[i + 1], to: days[i]).day ?? 0
+            if diff == 1 {
+                streak += 1
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+
     private let context: NSManagedObjectContext
 
     init(context: NSManagedObjectContext) {

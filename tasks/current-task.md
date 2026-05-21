@@ -1,27 +1,26 @@
-# Task: Phase 3 Integration Completion — Auto-Sync + Paywall Sheet
+# Task: UI Polish Sprint — Timeline & Settings
 
 **Date:** 2026-05-21
-**Phase:** Phase 3 — Monetization & Sync
-**Priority:** Critical
-**Estimated scope:** Small (3 files)
+**Phase:** V1.1 Polish
+**Priority:** High
+**Estimated scope:** Medium (4 files)
 
 ---
 
 ## Context
 
-All 12 V1.1 feature tasks are complete. The Phase 3 services (RevenueCat, AuthService, SyncService, SubscriptionManager) are all implemented and wired in `MemoryInkApp`. However, three integration gaps remain before the app behaves correctly end-to-end:
+Screenshots of the live app reveal four clear visual gaps:
 
-1. **Sync never fires automatically.** `syncService.syncMetadataIfAllowed()` is only reachable via a manual button in Settings. Premium users' data is never synced on launch or after saving a new memory — the sync infrastructure exists but is never triggered.
-
-2. **Paywall only appears as a tiny header button.** When `subscriptionManager.isPaywallEligible` becomes true (after first AI narrative), a small "MemoryInk+" text button appears in the timeline header. The product spec requires the paywall to *automatically* appear as a full sheet the first time the user becomes eligible — not wait for them to notice and tap a button.
-
-3. **SubscriptionView has no close button.** When presented as a sheet, users must rely on swipe-to-dismiss. A close button is required for clarity and accessibility.
+1. **Timeline header wastes space** — "Private timeline" eyebrow is redundant with the app title. No sense of the user's journaling momentum (streak, memory count) is shown near the title. The "MemoryInk+" upgrade prompt is invisible plain text.
+2. **Grid cards are bare** — no date stamp, so every card is anonymous. The mood badge looks dark/gray because the tint opacity is too low.
+3. **Settings feels flat and cold** — section cards have no warmth gradient. Auth status says "Sync unavailable: configuration missing" — developer jargon the user should never see. The plan value ("Free") is just plain text with no visual weight.
+4. **No journaling streak** — there is no feedback loop telling users they're building a habit.
 
 ---
 
 ## Objective
 
-Wire sync to fire automatically (on launch + on foreground return + after new memory saved). Auto-present `SubscriptionView` as a sheet the first time `isPaywallEligible` becomes true. Add a close button to `SubscriptionView`.
+Polish the Timeline and Settings screens with targeted improvements. Add a journaling streak to the repository and surface it in the UI.
 
 ---
 
@@ -29,115 +28,314 @@ Wire sync to fire automatically (on launch + on foreground return + after new me
 
 | File | Action | Reason |
 |------|--------|--------|
-| `MemoryInk/App/MemoryInkApp.swift` | modify | Trigger sync on launch and on app foreground |
-| `MemoryInk/Features/Timeline/TimelineView.swift` | modify | Auto-present paywall sheet on first eligibility; trigger sync when entry count changes |
-| `MemoryInk/Features/Subscription/SubscriptionView.swift` | modify | Add close/dismiss toolbar button |
+| `MemoryInk/Persistence/JournalEntryRepository.swift` | modify | Add `currentStreak: Int` computed property |
+| `MemoryInk/Features/Timeline/TimelineView.swift` | modify | Header cleanup, streak + count display, styled upgrade CTA |
+| `MemoryInk/Features/Timeline/TimelineCard.swift` | modify | Date stamp on grid cards, stronger mood badge tint |
+| `MemoryInk/Features/Settings/SettingsView.swift` | modify | Gradient card background, softer status text, plan badge |
 
 ---
 
 ## Implementation spec
 
-### Step 1 — `MemoryInkApp.swift`: sync on launch + on foreground
+### Step 1 — `JournalEntryRepository.swift`: add `currentStreak`
 
-**Launch sync:** In the existing `.task` block, after `subscriptionManager.refreshEntitlements()`, add:
-
-```swift
-await syncService.syncMetadataIfAllowed()
-```
-
-**Foreground sync:** In the `WindowGroup` body, add `@Environment(\.scenePhase) private var scenePhase` to the `App` struct and add:
+Add this computed property after the existing `entries` property:
 
 ```swift
-.onChange(of: scenePhase) { phase in
-    if phase == .active {
-        Task { await syncService.syncMetadataIfAllowed() }
-    }
-}
-```
+var currentStreak: Int {
+    guard !entries.isEmpty else { return 0 }
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
 
-Place the `.onChange` on the `Group` inside `WindowGroup`, alongside the existing `.environmentObject(...)` modifiers.
+    // Unique journaling days, most-recent first
+    let days = Array(
+        Set(entries.map { calendar.startOfDay(for: $0.createdAt) })
+    ).sorted(by: >)
 
-The full `.task` block after changes:
+    guard let mostRecent = days.first else { return 0 }
 
-```swift
-.task {
-    await authService.restoreSession()
-    await subscriptionManager.refreshEntitlements()
-    await syncService.syncMetadataIfAllowed()
-    onThisDayService.refresh()
-    await notificationService.scheduleOnThisDayIfNeeded(entryCount: onThisDayService.entries.count)
-}
-```
+    // Streak is 0 if the user didn't journal today or yesterday
+    let gap = calendar.dateComponents([.day], from: mostRecent, to: today).day ?? 0
+    guard gap <= 1 else { return 0 }
 
----
-
-### Step 2 — `TimelineView.swift`: auto-present paywall sheet + post-save sync
-
-**Paywall sheet auto-present:**
-
-Add two new state properties near the top of `TimelineView`:
-
-```swift
-@AppStorage("paywall_auto_shown") private var paywallAutoShown: Bool = false
-@State private var showingPaywall: Bool = false
-```
-
-Add this `.onChange` modifier to the root view of `TimelineView` (on the `NavigationStack` or its outermost container):
-
-```swift
-.onChange(of: subscriptionManager.isPaywallEligible) { eligible in
-    if eligible && !subscriptionManager.hasPremiumEntitlement && !paywallAutoShown {
-        paywallAutoShown = true
-        showingPaywall = true
-    }
-}
-```
-
-Add this `.sheet` modifier to the same root view:
-
-```swift
-.sheet(isPresented: $showingPaywall) {
-    NavigationStack {
-        SubscriptionView()
-    }
-    .presentationDetents([.large])
-    .presentationDragIndicator(.visible)
-}
-```
-
-**Do not remove** the existing "MemoryInk+" header button — it remains as an upgrade reminder for users who dismiss the sheet without subscribing.
-
-**Post-save sync:** Add `.onChange(of: repository.entries.count)` to the root view of `TimelineView`:
-
-```swift
-.onChange(of: repository.entries.count) { _ in
-    Task { await syncService.syncMetadataIfAllowed() }
-}
-```
-
-`syncService` is already available as `@EnvironmentObject private var syncService: SyncService` — confirm it is declared in `TimelineView`; add it if missing.
-
----
-
-### Step 3 — `SubscriptionView.swift`: add close button
-
-`SubscriptionView` uses `.navigationTitle("MemoryInk+")`. Add a dismiss button to its toolbar so it works correctly whether accessed via navigation push or sheet presentation:
-
-```swift
-@Environment(\.dismiss) private var dismiss
-```
-
-Add to the `body`'s modifier chain:
-
-```swift
-.toolbar {
-    ToolbarItem(placement: .topBarTrailing) {
-        Button("Close") {
-            dismiss()
+    var streak = 1
+    for i in 0..<days.count - 1 {
+        let diff = calendar.dateComponents([.day], from: days[i + 1], to: days[i]).day ?? 0
+        if diff == 1 {
+            streak += 1
+        } else {
+            break
         }
-        .font(MemoryInkTypography.timestamp.weight(.medium))
-        .foregroundStyle(MemoryInkColors.secondaryInk)
     }
+    return streak
+}
+```
+
+`JournalEntry.createdAt` is the existing CoreData `createdAt: Date` field. Do not change the schema.
+
+---
+
+### Step 2 — `TimelineView.swift`: header cleanup + streak + upgrade CTA
+
+#### 2a — Remove the "Private timeline" eyebrow
+
+Find this block in `header(isCompact:)`:
+
+```swift
+HStack {
+    Text("Private timeline")
+        .font(MemoryInkTypography.eyebrow)
+        .foregroundStyle(MemoryInkColors.tertiaryInk)
+        .textCase(.uppercase)
+
+    Spacer()
+
+    Button { ... } // grid toggle
+    Button { ... } // calendar
+    Button { ... } // gear
+    Button { ... } // search
+}
+```
+
+Replace `Text("Private timeline")` + `Spacer()` with just a plain `Spacer()` — keep the icon buttons in the same `HStack`. The row becomes a right-aligned icon strip.
+
+#### 2b — Add memory count + streak below the subtitle
+
+Directly after:
+```swift
+Text("Small moments, held quietly.")
+    .font(MemoryInkTypography.subtitle)
+    .foregroundStyle(MemoryInkColors.secondaryInk)
+```
+
+Add:
+```swift
+if repository.entries.count >= 1 {
+    HStack(spacing: 8) {
+        let count = repository.entries.count
+        Text("\(count) \(count == 1 ? "memory" : "memories")")
+            .font(MemoryInkTypography.timestamp)
+            .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+        let streak = repository.currentStreak
+        if streak >= 2 {
+            HStack(spacing: 4) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("\(streak)-day streak")
+                    .font(MemoryInkTypography.timestamp.weight(.medium))
+            }
+            .foregroundStyle(MemoryInkColors.amber)
+        }
+    }
+    .padding(.top, 3)
+}
+```
+
+#### 2c — Replace plain "MemoryInk+" text with a styled upgrade capsule
+
+Find and replace:
+```swift
+if subscriptionManager.isPaywallEligible && !subscriptionManager.hasPremiumEntitlement {
+    Button("MemoryInk+") {
+        router.path.append(.subscription)
+    }
+    .font(MemoryInkTypography.timestamp.weight(.medium))
+    .foregroundStyle(MemoryInkColors.tertiaryInk)
+    .buttonStyle(.plain)
+    .padding(.top, 2)
+}
+```
+
+With:
+```swift
+if subscriptionManager.isPaywallEligible && !subscriptionManager.hasPremiumEntitlement {
+    Button {
+        router.path.append(.subscription)
+    } label: {
+        HStack(spacing: 5) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 10, weight: .semibold))
+            Text("Go Premium")
+                .font(MemoryInkTypography.timestamp.weight(.semibold))
+        }
+        .foregroundStyle(MemoryInkColors.ink)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 7)
+        .background(
+            LinearGradient(
+                colors: [
+                    MemoryInkColors.sunlit.opacity(0.42),
+                    MemoryInkColors.amber.opacity(0.30)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(MemoryInkColors.amber.opacity(0.24), lineWidth: 0.8)
+        }
+    }
+    .buttonStyle(.plain)
+    .padding(.top, 4)
+}
+```
+
+---
+
+### Step 3 — `TimelineCard.swift`: grid card date stamp + mood badge
+
+#### 3a — Date stamp on grid cards
+
+In `gridBody`, add a `.overlay(alignment: .bottomLeading)` for the date stamp, alongside the existing `.overlay(alignment: .bottomTrailing)` for the favorite badge:
+
+```swift
+private var gridBody: some View {
+    imageArea
+        .overlay(alignment: .bottomLeading) {
+            dateStamp
+                .padding(10)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if memory.isFavorite {
+                favoriteBadge
+                    .padding(10)
+            }
+        }
+        .shadow(...)
+        .contentShape(...)
+        .onTapGesture { ... }
+        .accessibilityElement(...)
+        .accessibilityLabel(...)
+}
+```
+
+Add this private computed property:
+
+```swift
+private var dateStamp: some View {
+    VStack(alignment: .center, spacing: -1) {
+        Text(memory.timestamp.formatted(.dateTime.day()))
+            .font(.system(size: 17, weight: .bold, design: .default))
+        Text(memory.timestamp.formatted(.dateTime.month(.abbreviated)).uppercased())
+            .font(.system(size: 9, weight: .semibold))
+            .kerning(0.5)
+    }
+    .foregroundStyle(.white)
+    .padding(.horizontal, 9)
+    .padding(.vertical, 7)
+    .background(.ultraThinMaterial)
+    .background(memory.mood.tint.opacity(0.22))
+    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+}
+```
+
+#### 3b — Stronger mood badge tint
+
+In `moodBadge`, change `memory.mood.tint.opacity(0.12)` to `memory.mood.tint.opacity(0.28)`:
+
+```swift
+// Before:
+.background(memory.mood.tint.opacity(0.12))
+
+// After:
+.background(memory.mood.tint.opacity(0.28))
+```
+
+No other changes to `moodBadge`.
+
+---
+
+### Step 4 — `SettingsView.swift`: warmth + softer status text + plan badge
+
+#### 4a — Gradient on section cards
+
+In the `section(_:content:)` helper, change the card background fill from:
+```swift
+.fill(MemoryInkColors.paper.opacity(0.88))
+```
+to:
+```swift
+.fill(
+    LinearGradient(
+        colors: [
+            MemoryInkColors.paper.opacity(0.92),
+            MemoryInkColors.paperWarm.opacity(0.80)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+)
+```
+
+#### 4b — Soften raw config error text
+
+In `accountStatusText`, change:
+```swift
+case .unavailableMissingConfig:
+    return "Sync unavailable: configuration missing"
+```
+to:
+```swift
+case .unavailableMissingConfig:
+    return "Offline mode"
+```
+
+In `syncDescription`, change:
+```swift
+case .notConfigured:
+    return "Sync unavailable: configuration missing"
+```
+to:
+```swift
+case .notConfigured:
+    return "Local only"
+```
+
+#### 4c — Plan badge in Subscription section
+
+Replace:
+```swift
+infoRow("Plan", subscriptionManager.plan.title, icon: "sparkles")
+```
+with:
+```swift
+HStack(spacing: 10) {
+    Image(systemName: "sparkles")
+        .font(.system(size: 13, weight: .medium))
+        .foregroundStyle(MemoryInkColors.tertiaryInk)
+        .frame(width: 22, height: 22)
+        .background(MemoryInkColors.parchment.opacity(0.70))
+        .clipShape(Circle())
+
+    Text("Plan")
+        .font(MemoryInkTypography.narrativeCompact)
+        .foregroundStyle(MemoryInkColors.secondaryInk)
+
+    Spacer()
+
+    Text(subscriptionManager.plan.title)
+        .font(MemoryInkTypography.timestamp.weight(.semibold))
+        .foregroundStyle(subscriptionManager.hasPremiumEntitlement ? MemoryInkColors.amber : MemoryInkColors.ink)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            subscriptionManager.hasPremiumEntitlement
+                ? MemoryInkColors.sunlit.opacity(0.28)
+                : MemoryInkColors.parchment.opacity(0.60)
+        )
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(
+                    subscriptionManager.hasPremiumEntitlement
+                        ? MemoryInkColors.amber.opacity(0.24)
+                        : MemoryInkColors.hairline.opacity(0.22),
+                    lineWidth: 0.7
+                )
+        }
 }
 ```
 
@@ -146,28 +344,21 @@ Add to the `body`'s modifier chain:
 ## Constraints
 
 - [ ] No new Swift Package
-- [ ] No CoreData schema changes
-- [ ] `syncMetadataIfAllowed()` is already guarded — free users, signed-out users, and unconfigured Supabase will all short-circuit silently. Do not add redundant guards.
-- [ ] Paywall sheet auto-presents only once ever (`paywallAutoShown` gate). After that, only the header button triggers it.
-- [ ] `paywallAutoShown` uses `@AppStorage` — persists across launches.
-- [ ] Do NOT change subscription pricing, entitlement IDs, or product IDs.
-
----
+- [ ] No CoreData schema changes — `currentStreak` is a computed property on the existing `entries` array
+- [ ] No subscription pricing, entitlement ID, or product ID changes
+- [ ] No photo data sent anywhere
+- [ ] Do not change the Apple Sign In button color — it must stay black per Apple HIG
+- [ ] `currentStreak` only counts unique calendar days — one entry per day counts as 1
 
 ## Success criteria
 
-- [ ] App launch calls `syncMetadataIfAllowed()` after entitlements refresh
-- [ ] Returning to foreground calls `syncMetadataIfAllowed()`
-- [ ] Saving a new memory calls `syncMetadataIfAllowed()`
-- [ ] When first AI narrative generates and `isPaywallEligible` becomes true, `SubscriptionView` appears automatically as a sheet (not navigation push) — exactly once, ever
-- [ ] `SubscriptionView` has a "Close" button in the top-right toolbar corner
-- [ ] Existing "MemoryInk+" header button still works for subsequent accesses
+- [ ] "Private timeline" eyebrow text is gone from the header
+- [ ] Memory count ("N memories") appears below the subtitle
+- [ ] A flame icon + "N-day streak" appears in amber when streak ≥ 2
+- [ ] "Go Premium" capsule with amber gradient replaces the plain "MemoryInk+" text
+- [ ] Grid cards show a date stamp (day number + month abbreviation) in bottom-left
+- [ ] Mood badge background tint is visibly more colorful (0.28 opacity)
+- [ ] Settings section cards have a warm gradient background
+- [ ] "Sync unavailable: configuration missing" is never shown — replaced by "Offline mode" / "Local only"
+- [ ] Plan row in Settings shows "Free" or "Monthly"/"Yearly" as a styled capsule badge
 - [ ] Xcode compiles without errors
-
----
-
-## Out of scope
-
-- Sync on every CoreData save (too frequent; entry count change is sufficient)
-- Paywall A/B testing
-- Push notifications for sync status

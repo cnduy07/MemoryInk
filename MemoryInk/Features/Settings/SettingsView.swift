@@ -17,7 +17,41 @@ struct SettingsView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
                 section("Subscription") {
-                    infoRow("Plan", subscriptionManager.plan.title, icon: "sparkles")
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(MemoryInkColors.tertiaryInk)
+                            .frame(width: 22, height: 22)
+                            .background(MemoryInkColors.parchment.opacity(0.70))
+                            .clipShape(Circle())
+
+                        Text("Plan")
+                            .font(MemoryInkTypography.narrativeCompact)
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+
+                        Spacer()
+
+                        Text(subscriptionManager.plan.title)
+                            .font(MemoryInkTypography.timestamp.weight(.semibold))
+                            .foregroundStyle(subscriptionManager.hasPremiumEntitlement ? MemoryInkColors.amber : MemoryInkColors.ink)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                subscriptionManager.hasPremiumEntitlement
+                                    ? MemoryInkColors.sunlit.opacity(0.28)
+                                    : MemoryInkColors.parchment.opacity(0.60)
+                            )
+                            .clipShape(Capsule())
+                            .overlay {
+                                Capsule()
+                                    .stroke(
+                                        subscriptionManager.hasPremiumEntitlement
+                                            ? MemoryInkColors.amber.opacity(0.24)
+                                            : MemoryInkColors.hairline.opacity(0.22),
+                                        lineWidth: 0.7
+                                    )
+                            }
+                    }
                     infoRow("AI narratives/day", "\(subscriptionManager.dailyNarrativeLimit)", icon: "wand.and.sparkles")
 
                     Button {
@@ -138,7 +172,7 @@ struct SettingsView: View {
         case let .signedIn(session):
             return "Signed in as \(session.email ?? session.provider.title)"
         case .unavailableMissingConfig:
-            return "Sync unavailable: configuration missing"
+            return "Offline mode"
         case .error:
             return "Couldn't connect right now"
         }
@@ -233,7 +267,7 @@ struct SettingsView: View {
         case .idle:
             return "Ready"
         case .notConfigured:
-            return "Sync unavailable: configuration missing"
+            return "Local only"
         case .localOnly:
             return "Local only"
         case .signedOut:
@@ -291,7 +325,16 @@ struct SettingsView: View {
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(MemoryInkColors.paper.opacity(0.88))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                MemoryInkColors.paper.opacity(0.92),
+                                MemoryInkColors.paperWarm.opacity(0.80)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .shadow(color: MemoryInkColors.filmShadow.opacity(0.07), radius: 16, x: 0, y: 8)
             )
             .overlay {
