@@ -360,6 +360,8 @@ struct SettingsView: View {
             Spacer()
             Text(value)
                 .foregroundStyle(MemoryInkColors.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
         .font(MemoryInkTypography.narrativeCompact)
     }

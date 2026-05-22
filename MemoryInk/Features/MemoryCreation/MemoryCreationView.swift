@@ -5,6 +5,11 @@ struct MemoryCreationView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: MemoryCreationViewModel
     @State private var showingScenePicker = false
+    @State private var showingLibraryPicker = false
+    @State private var showingCollagePicker = false
+    @State private var showingCreationSlideshow = false
+    @State private var showingPhotoActionSheet = false
+    @State private var showingSuccessSheet = false
 
     init(
         repository: JournalEntryRepository,
@@ -60,26 +65,87 @@ struct MemoryCreationView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(viewModel.saveState == .saving ? "Saving" : "Save") {
+                    Button {
                         viewModel.save()
+                    } label: {
+                        Group {
+                            if viewModel.saveState == .saving {
+                                HStack(spacing: 6) {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .tint(.white)
+                                    Text("Saving")
+                                }
+                            } else {
+                                Text("Save")
+                            }
+                        }
+                        .font(MemoryInkTypography.badge.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 9)
+                        .background(
+                            viewModel.canSave
+                                ? MemoryInkColors.amber
+                                : MemoryInkColors.tertiaryInk.opacity(0.35)
+                        )
+                        .clipShape(Capsule())
                     }
                     .disabled(!viewModel.canSave)
-                    .foregroundStyle(viewModel.canSave ? MemoryInkColors.ink : MemoryInkColors.tertiaryInk)
+                    .buttonStyle(.plain)
                 }
             }
             .onChange(of: viewModel.selectedPhotoItem) { _ in
-                Task {
-                    await viewModel.loadSelectedPhoto()
-                }
+                Task { await viewModel.loadSelectedPhoto() }
+            }
+            .onChange(of: viewModel.selectedCollageItems) { _ in
+                Task { await viewModel.loadCollagePhotos() }
             }
             .onChange(of: viewModel.saveState) { _ in
                 if viewModel.saveState == .saved {
-                    dismiss()
+                    // Close any open sub-sheet first, then wait for dismissal animation
+                    // before presenting success sheet. Without the delay, SwiftUI drops
+                    // the success sheet when a slideshow creation sheet is mid-dismissal.
+                    showingCreationSlideshow = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        showingSuccessSheet = true
+                    }
                 }
             }
+            .confirmationDialog("Add to your memory", isPresented: $showingPhotoActionSheet, titleVisibility: .visible) {
+                Button("From Library") { showingLibraryPicker = true }
+                Button("Photo Collage (up to 4)") { showingCollagePicker = true }
+                Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
+                Button("Mood Backdrop") { showingScenePicker = true }
+                Button("Cancel", role: .cancel) {}
+            }
+            .photosPicker(
+                isPresented: $showingLibraryPicker,
+                selection: $viewModel.selectedPhotoItem,
+                matching: .images
+            )
+            .photosPicker(
+                isPresented: $showingCollagePicker,
+                selection: $viewModel.selectedCollageItems,
+                maxSelectionCount: 4,
+                matching: .images
+            )
             .sheet(isPresented: $showingScenePicker) {
                 ScenePickerSheet { scene in
                     viewModel.setBackgroundScene(scene)
+                }
+            }
+            .sheet(isPresented: $showingCreationSlideshow) {
+                CreationSlideshowSheet(mood: viewModel.selectedMood) { firstImage, videoURL, chosenMood in
+                    viewModel.saveAsSlideshow(firstImage: firstImage, videoURL: videoURL, mood: chosenMood)
+                }
+            }
+            .sheet(isPresented: $showingSuccessSheet) {
+                if let entry = viewModel.savedEntry {
+                    MemorySavedSheet(entry: entry) {
+                        showingSuccessSheet = false
+                        dismiss()
+                    }
                 }
             }
         }
@@ -102,12 +168,10 @@ struct MemoryCreationView: View {
 
             if viewModel.selectedImage == nil {
                 HStack(spacing: 12) {
-                    PhotosPicker(
-                        selection: $viewModel.selectedPhotoItem,
-                        matching: .images,
-                        photoLibrary: .shared()
-                    ) {
-                        Label("From Library", systemImage: "photo")
+                    Button {
+                        showingPhotoActionSheet = true
+                    } label: {
+                        Label("Add Photo", systemImage: "photo.badge.plus")
                             .font(MemoryInkTypography.badge)
                             .foregroundStyle(MemoryInkColors.ink)
                             .frame(maxWidth: .infinity)
@@ -124,7 +188,7 @@ struct MemoryCreationView: View {
                     Button {
                         showingScenePicker = true
                     } label: {
-                        Label("Choose Scene", systemImage: "paintbrush")
+                        Label("Mood Backdrop", systemImage: "paintpalette")
                             .font(MemoryInkTypography.badge)
                             .foregroundStyle(MemoryInkColors.ink)
                             .frame(maxWidth: .infinity)
@@ -139,19 +203,17 @@ struct MemoryCreationView: View {
                     .buttonStyle(.plain)
                 }
             } else {
-                HStack(spacing: 12) {
-                    PhotosPicker(
-                        selection: $viewModel.selectedPhotoItem,
-                        matching: .images,
-                        photoLibrary: .shared()
-                    ) {
-                        Text("Change Photo")
+                HStack(spacing: 20) {
+                    Button {
+                        showingPhotoActionSheet = true
+                    } label: {
+                        Label("Change", systemImage: "arrow.triangle.2.circlepath")
                             .font(MemoryInkTypography.badge)
                             .foregroundStyle(MemoryInkColors.secondaryInk)
                     }
                     .buttonStyle(.plain)
 
-                    Button("Choose Scene") {
+                    Button("Mood Backdrop") {
                         showingScenePicker = true
                     }
                     .font(MemoryInkTypography.badge)
@@ -182,15 +244,18 @@ struct MemoryCreationView: View {
                         .frame(width: imageSize.width, height: imageSize.height)
                         .clipped()
                 } else {
-                    VStack(spacing: 10) {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.system(size: 28, weight: .light))
-                            .foregroundStyle(MemoryInkColors.tertiaryInk)
+                    VStack(spacing: 14) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
 
-                        Text("Add a photo or choose a scene")
+                        Text("Tap to add a photo")
                             .font(MemoryInkTypography.subtitle)
                             .foregroundStyle(MemoryInkColors.secondaryInk)
-                            .multilineTextAlignment(.center)
+
+                        Text("Single · Collage · Slideshow · Mood")
+                            .font(MemoryInkTypography.timestamp)
+                            .foregroundStyle(MemoryInkColors.tertiaryInk)
                     }
                 }
             }
@@ -198,6 +263,10 @@ struct MemoryCreationView: View {
         .aspectRatio(4.0 / 5.0, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 18, x: 0, y: 10)
+        .onTapGesture {
+            showingPhotoActionSheet = true
+        }
+        .contentShape(Rectangle())
     }
 
     private func finiteSize(_ size: CGSize) -> CGSize {
@@ -286,7 +355,7 @@ private struct ScenePickerSheet: View {
                 .padding(.bottom, 32)
             }
             .background(MemoryInkColors.parchment.ignoresSafeArea())
-            .navigationTitle("Choose Background")
+            .navigationTitle("Mood Backdrop")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -295,5 +364,422 @@ private struct ScenePickerSheet: View {
                 }
             }
         }
+    }
+}
+
+private struct MemorySavedSheet: View {
+    let entry: JournalEntry
+    let onDone: () -> Void
+
+    @State private var checkmarkScale: CGFloat = 0.4
+    @State private var showShareSheet = false
+    @State private var shareImage: UIImage?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(Color.secondary.opacity(0.35))
+                .frame(width: 38, height: 4)
+                .padding(.top, 14)
+                .padding(.bottom, 32)
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 72, weight: .light))
+                .foregroundStyle(MemoryInkColors.sage)
+                .scaleEffect(checkmarkScale)
+                .animation(.spring(response: 0.5, dampingFraction: 0.60), value: checkmarkScale)
+                .padding(.bottom, 20)
+
+            Text("Memory saved")
+                .font(.system(size: 32, weight: .semibold, design: .default))
+                .foregroundStyle(MemoryInkColors.ink)
+
+            Text(entry.createdAt.formatted(date: .long, time: .omitted))
+                .font(MemoryInkTypography.narrative)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .padding(.top, 6)
+
+            Text(entry.mood.title)
+                .font(MemoryInkTypography.badge)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(entry.mood.tint)
+                .clipShape(Capsule())
+                .padding(.top, 18)
+
+            Spacer()
+
+            Text("Your AI narrative is being crafted…")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                .padding(.bottom, 12)
+
+            Button {
+                let image = MemoryShareRenderer.render(
+                    narrative: entry.aiNarrative ?? entry.mood.title,
+                    mood: entry.mood,
+                    date: entry.createdAt
+                )
+                shareImage = image
+                showShareSheet = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Share this moment")
+                        .font(MemoryInkTypography.subtitle.weight(.semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    LinearGradient(
+                        colors: [MemoryInkColors.amber, MemoryInkColors.sunlit],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: MemoryInkColors.amber.opacity(0.35), radius: 14, x: 0, y: 6)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 28)
+
+            Button("Done") {
+                onDone()
+            }
+            .font(MemoryInkTypography.subtitle.weight(.medium))
+            .foregroundStyle(MemoryInkColors.secondaryInk)
+            .padding(.top, 16)
+            .padding(.bottom, 36)
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [MemoryInkColors.parchment, MemoryInkColors.paperWarm],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.hidden)
+        .sheet(isPresented: $showShareSheet) {
+            if let image = shareImage {
+                ShareSheet(items: [
+                    image,
+                    "I captured this moment with MemoryInk ✨"
+                ])
+            }
+        }
+        .onAppear {
+            checkmarkScale = 1.0
+        }
+    }
+}
+
+private struct CreationSlideshowSheet: View {
+    let mood: MoodType
+    let onCreated: (UIImage, URL, MoodType) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @StateObject private var slideshowService = SlideshowService()
+
+    @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var loadedImages: [UIImage] = []
+    @State private var isLoadingImages = false
+    @State private var errorMessage: String?
+    @State private var selectedStyle: SlideshowStyle = .natural
+    @State private var localMood: MoodType
+
+    private var maxPhotos: Int { 5 }
+    private let previewColumns = [
+        GridItem(.flexible(), spacing: 3),
+        GridItem(.flexible(), spacing: 3),
+        GridItem(.flexible(), spacing: 3)
+    ]
+
+    init(mood: MoodType, onCreated: @escaping (UIImage, URL, MoodType) -> Void) {
+        self.mood = mood
+        self.onCreated = onCreated
+        _localMood = State(initialValue: mood)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Select 2–\(maxPhotos) photos")
+                            .font(MemoryInkTypography.subtitle.weight(.medium))
+                            .foregroundStyle(MemoryInkColors.ink)
+                        Text("A 10-second slideshow will be created and saved")
+                            .font(MemoryInkTypography.timestamp)
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    }
+                    Spacer()
+                    Text("10 sec")
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(MemoryInkColors.amber)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(MemoryInkColors.amber.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .background(MemoryInkColors.paperWarm)
+
+                Divider()
+
+                PhotosPicker(
+                    selection: $selectedItems,
+                    maxSelectionCount: maxPhotos,
+                    matching: .images
+                ) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 16, weight: .medium))
+                        Text(selectedItems.isEmpty
+                             ? "Choose Photos"
+                             : "Change Selection (\(selectedItems.count))")
+                            .font(MemoryInkTypography.badge.weight(.medium))
+                    }
+                    .foregroundStyle(MemoryInkColors.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(MemoryInkColors.paper.opacity(0.88))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .onChange(of: selectedItems) { _ in
+                    Task { await loadImages() }
+                }
+
+                if !loadedImages.isEmpty {
+                    ScrollView(showsIndicators: false) {
+                        LazyVGrid(columns: previewColumns, spacing: 3) {
+                            ForEach(Array(loadedImages.enumerated()), id: \.offset) { idx, image in
+                                ZStack(alignment: .topLeading) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(
+                                            width: (UIScreen.main.bounds.width - 6) / 3,
+                                            height: (UIScreen.main.bounds.width - 6) / 3
+                                        )
+                                        .clipped()
+                                    Text("\(idx + 1)")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 24, height: 24)
+                                        .background(Color.black.opacity(0.55))
+                                        .clipShape(Circle())
+                                        .padding(5)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                        }
+                    }
+                } else if isLoadingImages {
+                    ProgressView("Loading photos…")
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 40)
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                }
+
+                if !loadedImages.isEmpty {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Mood")
+                            .font(MemoryInkTypography.timestamp.weight(.medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                            .padding(.horizontal, 18)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(MoodType.allCases) { moodOption in
+                                    let isSelected = localMood == moodOption
+                                    Button {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            localMood = moodOption
+                                        }
+                                    } label: {
+                                        Text("\(moodOption.emoji) \(moodOption.title)")
+                                            .font(MemoryInkTypography.timestamp.weight(isSelected ? .semibold : .regular))
+                                            .foregroundStyle(isSelected ? .white : moodOption.tint)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 8)
+                                            .background(isSelected ? moodOption.tint : moodOption.tint.opacity(0.12))
+                                            .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 2)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                }
+
+                if !loadedImages.isEmpty {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Style")
+                            .font(MemoryInkTypography.timestamp.weight(.medium))
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                            .padding(.horizontal, 18)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(SlideshowStyle.allCases) { style in
+                                    Button {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            selectedStyle = style
+                                        }
+                                    } label: {
+                                        VStack(spacing: 5) {
+                                            Image(systemName: style.icon)
+                                                .font(.system(size: 18, weight: .medium))
+                                                .foregroundStyle(selectedStyle == style ? .white : style.accentColor)
+                                                .frame(width: 44, height: 44)
+                                                .background(
+                                                    selectedStyle == style
+                                                        ? style.accentColor
+                                                        : style.accentColor.opacity(0.12)
+                                                )
+                                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                                .overlay {
+                                                    if selectedStyle == style {
+                                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                            .stroke(style.accentColor, lineWidth: 2)
+                                                    }
+                                                }
+
+                                            Text(style.title)
+                                                .font(.system(size: 10, weight: selectedStyle == style ? .semibold : .regular))
+                                                .foregroundStyle(selectedStyle == style ? style.accentColor : MemoryInkColors.tertiaryInk)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                }
+
+                Spacer(minLength: 0)
+
+                Divider()
+
+                VStack(spacing: 8) {
+                    if slideshowService.isGenerating {
+                        ProgressView(value: slideshowService.progress)
+                            .progressViewStyle(.linear)
+                            .tint(MemoryInkColors.amber)
+                            .padding(.horizontal, 22)
+                        Text("Creating slideshow… \(Int(slideshowService.progress * 100))%")
+                            .font(MemoryInkTypography.timestamp)
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                    } else {
+                        Button {
+                            guard loadedImages.count >= 2 else { return }
+                            Task {
+                                do {
+                                    let url = try await slideshowService.generateFromImages(
+                                        loadedImages,
+                                        mood: localMood,
+                                        style: selectedStyle,
+                                        isPremium: subscriptionManager.hasPremiumEntitlement,
+                                        totalSeconds: 10
+                                    )
+                                    let firstFrame = loadedImages[0]
+                                    onCreated(firstFrame, url, localMood)
+                                } catch {
+                                    errorMessage = error.localizedDescription
+                                }
+                            }
+                        } label: {
+                            Text(loadedImages.count < 2
+                                 ? "Select at least 2 photos"
+                                 : "Create 10-Second Slideshow")
+                                .font(MemoryInkTypography.subtitle.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 52)
+                                .background(
+                                    loadedImages.count >= 2
+                                        ? LinearGradient(
+                                            colors: [MemoryInkColors.amber, MemoryInkColors.sunlit],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [
+                                                MemoryInkColors.tertiaryInk.opacity(0.35),
+                                                MemoryInkColors.tertiaryInk.opacity(0.35)
+                                            ],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(loadedImages.count < 2)
+                        .padding(.horizontal, 22)
+                    }
+                }
+                .padding(.vertical, 16)
+                .background(MemoryInkColors.paperWarm.opacity(0.95))
+            }
+            .background(MemoryInkColors.parchment.ignoresSafeArea())
+            .navigationTitle("Short Slideshow")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                        .font(MemoryInkTypography.timestamp.weight(.medium))
+                        .foregroundStyle(MemoryInkColors.secondaryInk)
+                }
+            }
+            .alert("Error", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    private func loadImages() async {
+        isLoadingImages = true
+        var images: [UIImage] = []
+        for item in selectedItems {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data)
+            else {
+                continue
+            }
+            images.append(image)
+        }
+        loadedImages = images
+        isLoadingImages = false
     }
 }

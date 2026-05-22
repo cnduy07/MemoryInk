@@ -12,6 +12,7 @@ struct TimelineMemory: Identifiable, Hashable {
     let accent: Color
     let narrativeStyle: NarrativeStyle
     let isFavorite: Bool
+    let voicePath: String?
 }
 
 extension TimelineMemory {
@@ -30,7 +31,8 @@ extension TimelineMemory {
         lightLeak: Color(red: 0.96, green: 0.70, blue: 0.44),
         accent: Color(red: 0.36, green: 0.42, blue: 0.34),
         narrativeStyle: .warm,
-        isFavorite: true
+        isFavorite: true,
+        voicePath: nil
     )
 }
 
@@ -71,7 +73,8 @@ final class TimelineViewModel: ObservableObject {
                 lightLeak: lightLeak(for: entry.mood),
                 accent: accent(for: entry.mood),
                 narrativeStyle: entry.narrativeStyle,
-                isFavorite: entry.isFavorite
+                isFavorite: entry.isFavorite,
+                voicePath: entry.voicePath
             )
         }
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import AVFoundation
 
 struct TimelineCard: View {
     let memory: TimelineMemory
@@ -151,6 +152,28 @@ struct TimelineCard: View {
                 .stroke(MemoryInkColors.hairline.opacity(0.20), lineWidth: 0.7)
         }
         .shadow(color: MemoryInkColors.filmShadow.opacity(isExpanded ? 0.16 : 0.10), radius: isExpanded ? 28 : 18, x: 0, y: isExpanded ? 16 : 10)
+        .contextMenu {
+            Button {
+                onTap()
+            } label: {
+                Label("Play Video", systemImage: "play.fill")
+            }
+            if let onShare {
+                Button {
+                    onShare()
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+            }
+        } preview: {
+            if memory.voicePath?.hasPrefix("slideshows/") == true,
+               let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let url = docsURL.appendingPathComponent(memory.voicePath!)
+                SilentVideoPreview(url: url)
+                    .frame(width: 300, height: 170)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+        }
         .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
         .onTapGesture {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -173,29 +196,39 @@ struct TimelineCard: View {
                         .padding(10)
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if memory.voicePath?.hasPrefix("slideshows/") == true {
+                    videoBadge
+                        .padding(10)
+                }
+            }
+            .contextMenu {
+                Button {
+                    onTap()
+                } label: {
+                    Label("Play Video", systemImage: "play.fill")
+                }
+                if let onShare {
+                    Button {
+                        onShare()
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                }
+            } preview: {
+                if memory.voicePath?.hasPrefix("slideshows/") == true,
+                   let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                    let url = docsURL.appendingPathComponent(memory.voicePath!)
+                    SilentVideoPreview(url: url)
+                        .frame(width: 300, height: 170)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
             .shadow(color: MemoryInkColors.filmShadow.opacity(0.10), radius: 14, x: 0, y: 8)
             .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
             .onTapGesture {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 onTap()
-            }
-            .contextMenu {
-                Button {
-                    onShare?()
-                } label: {
-                    Label("Share Memory", systemImage: "square.and.arrow.up")
-                }
-
-                Divider()
-
-                Button {
-                    onFavorite?()
-                } label: {
-                    Label(
-                        memory.isFavorite ? "Remove from Favorites" : "Add to Favorites",
-                        systemImage: memory.isFavorite ? "heart.slash" : "heart"
-                    )
-                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(memory.mood.title) memory from \(memory.timestamp.formatted(date: .abbreviated, time: .shortened))")
@@ -247,6 +280,27 @@ struct TimelineCard: View {
         .overlay(alignment: .topLeading) {
             moodBadge
                 .padding(isCompact ? 12 : 14)
+        }
+        .overlay(alignment: .topTrailing) {
+            if memory.voicePath?.hasPrefix("slideshows/") == true {
+                videoBadge
+                    .padding(isCompact ? 12 : 14)
+            }
+        }
+        .overlay(alignment: .center) {
+            if memory.voicePath?.hasPrefix("slideshows/") == true {
+                ZStack {
+                    Circle()
+                        .fill(.black.opacity(0.26))
+                        .frame(width: 42, height: 42)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .offset(x: 1.5)
+                }
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
@@ -392,6 +446,20 @@ struct TimelineCard: View {
             }
     }
 
+    private var videoBadge: some View {
+        Image(systemName: "film.fill")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 22, height: 22)
+            .background(.ultraThinMaterial)
+            .background(Color.black.opacity(0.38))
+            .clipShape(Circle())
+            .overlay {
+                Circle()
+                    .stroke(Color.white.opacity(0.28), lineWidth: 0.6)
+            }
+    }
+
     private var timestampRow: some View {
         HStack(spacing: 8) {
             Rectangle()
@@ -472,6 +540,40 @@ struct TimelineCard: View {
         }
 
         return max(value, 0)
+    }
+}
+
+private struct SilentVideoPreview: UIViewRepresentable {
+    let url: URL
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .black
+        let player = AVPlayer(url: url)
+        player.isMuted = true
+        let layer = AVPlayerLayer(player: player)
+        layer.videoGravity = .resizeAspectFill
+        view.layer.addSublayer(layer)
+        player.play()
+        context.coordinator.player = player
+        context.coordinator.layer = layer
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            player.pause()
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.layer?.frame = uiView.bounds
+    }
+
+    class Coordinator {
+        var player: AVPlayer?
+        var layer: AVPlayerLayer?
+
+        deinit { player?.pause() }
     }
 }
 

@@ -10,6 +10,10 @@ enum MoodType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var audioFileNames: [String] {
+        ["audio_\(rawValue)_1"]
+    }
+
     var title: String {
         switch self {
         case .peaceful:
@@ -41,6 +45,28 @@ enum MoodType: String, CaseIterable, Identifiable {
             return MemoryInkColors.mistBlue
         case .reflective:
             return MemoryInkColors.taupe
+        }
+    }
+
+    var valence: Int {
+        switch self {
+        case .happy:      return  5
+        case .proud:      return  4
+        case .peaceful:   return  3
+        case .nostalgic:  return  1
+        case .reflective: return  0
+        case .sad:        return -4
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .happy:      return "😊"
+        case .proud:      return "🌟"
+        case .peaceful:   return "😌"
+        case .nostalgic:  return "🌙"
+        case .reflective: return "🤔"
+        case .sad:        return "😔"
         }
     }
 }

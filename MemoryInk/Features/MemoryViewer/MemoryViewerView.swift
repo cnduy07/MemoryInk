@@ -96,57 +96,66 @@ struct MemoryViewerPage: View {
     let entry: JournalEntry
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Group {
-                if let img = ImagePipelineService.image(forRelativePath: entry.thumbnailPath) {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    LinearGradient(
-                        colors: [entry.mood.tint, entry.mood.tint.opacity(0.38)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            ZStack(alignment: .bottom) {
+                // Background: photo or mood gradient, explicitly sized to geo dimensions
+                Group {
+                    if let img = ImagePipelineService.image(forRelativePath: entry.thumbnailPath) {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        LinearGradient(
+                            colors: [entry.mood.tint, entry.mood.tint.opacity(0.38)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
+                .frame(width: w, height: h)
+                .clipped()
 
-            LinearGradient(
-                colors: [.clear, .clear, .black.opacity(0.70)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+                // Scrim: explicitly sized, no ignoresSafeArea needed
+                LinearGradient(
+                    colors: [.clear, .clear, .black.opacity(0.70)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(width: w, height: h)
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text(entry.mood.title)
-                    .font(MemoryInkTypography.badge)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial)
-                    .background(entry.mood.tint.opacity(0.30))
-                    .clipShape(Capsule())
+                // Text overlay: width comes from GeometryReader — guaranteed correct
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(entry.mood.title)
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial)
+                        .background(entry.mood.tint.opacity(0.30))
+                        .clipShape(Capsule())
 
-                if let narrative = entry.aiNarrative, !narrative.isEmpty {
-                    Text(narrative)
-                        .font(MemoryInkTypography.narrative)
-                        .foregroundStyle(.white.opacity(0.92))
-                        .lineSpacing(6)
-                        .lineLimit(4)
-                        .multilineTextAlignment(.leading)
+                    if let narrative = entry.aiNarrative, !narrative.isEmpty {
+                        Text(narrative)
+                            .font(MemoryInkTypography.narrative)
+                            .foregroundStyle(.white.opacity(0.92))
+                            .lineSpacing(6)
+                            .lineLimit(4)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Text(entry.createdAt.formatted(date: .long, time: .omitted))
+                        .font(MemoryInkTypography.timestamp)
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
                 }
-
-                Text(entry.createdAt.formatted(date: .long, time: .omitted))
-                    .font(MemoryInkTypography.timestamp)
-                    .foregroundStyle(.white.opacity(0.55))
-                    .lineLimit(1)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 80)
+                .frame(width: w, alignment: .leading)   // w from GeometryReader = actual screen width
             }
-            .frame(width: UIScreen.main.bounds.width - 44, alignment: .leading)
-            .padding(.bottom, 80)
-            .padding(.leading, 22)
+            .frame(width: w, height: h)   // ZStack explicitly sized — no ambiguity
         }
         .ignoresSafeArea()
     }

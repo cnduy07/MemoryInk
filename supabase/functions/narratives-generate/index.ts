@@ -133,7 +133,7 @@ async function generateNarrative(
     body: JSON.stringify({
       model,
       instructions:
-        "Write exactly one plain, warm, grounded memory sentence. Prefer 12-24 words; absolute max 32 words. Use only facts from scene_labels, mood, and note. Do not sound like an image caption. Avoid poetic or polished phrases. Do not use these words or phrases: invites, tranquility, gentle, marked by, softened by, captured, reflects, creates, features, includes, showcases. Target style: \"A calm evening after work, with coffee, sunset, and a peaceful pause.\" If information is limited, stay simple. Never add locations, people, actions, weather, colors, or emotions not explicitly provided. Never say \"I\" unless the note uses first person. Do not imply seeing a photo.",
+        "Write exactly one plain, honest, grounded memory sentence. Prefer 12-24 words; absolute max 32 words. Use only facts from scene_labels, mood, and note. Do not sound like an image caption. Avoid poetic or polished phrases. Do not use these words or phrases: invites, tranquility, gentle, warm, warmth, marked by, softened by, captured, reflects, creates, features, includes, showcases. Target style: \"A calm evening after work, with coffee, sunset, and a peaceful pause.\" If information is limited, stay simple. Never add locations, people, actions, weather, colors, or emotions not explicitly provided. Never say \"I\" unless the note uses first person. Do not imply seeing a photo.",
       input: JSON.stringify({
         scene_labels: body.scene_labels,
         mood: body.mood,

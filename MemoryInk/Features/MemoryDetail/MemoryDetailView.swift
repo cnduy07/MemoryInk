@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import AVKit
 
 @MainActor
 struct MemoryDetailView: View {
@@ -128,57 +129,70 @@ private struct MemoryDetailContentView: View {
     @ViewBuilder
     private func imageArea(for entry: JournalEntry) -> some View {
         let screenWidth = UIScreen.main.bounds.width
-        ZStack(alignment: .bottom) {
-            if let image = detailImage(for: entry) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
+
+        if let voicePath = entry.voicePath, voicePath.hasPrefix("slideshows/") {
+            // Slideshow memory - show the MP4 video
+            let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let videoURL = docsURL.appendingPathComponent(voicePath)
+            SlideshowVideoPlayer(url: videoURL)
+                .frame(width: screenWidth, height: 380)
+                .clipped()
+                .shadow(color: MemoryInkColors.filmShadow.opacity(0.12), radius: 18, x: 0, y: 10)
+        } else {
+            // Regular photo or mood gradient memory
+            ZStack(alignment: .bottom) {
+                if let image = detailImage(for: entry) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: screenWidth, height: 380)
+                        .clipped()
+                } else {
+                    LinearGradient(
+                        colors: [
+                            entry.mood.tint.opacity(0.74),
+                            MemoryInkColors.paperWarm,
+                            MemoryInkColors.parchmentDeep
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                     .frame(width: screenWidth, height: 380)
-                    .clipped()
-            } else {
+                }
+
                 LinearGradient(
-                    colors: [
-                        entry.mood.tint.opacity(0.74),
-                        MemoryInkColors.paperWarm,
-                        MemoryInkColors.parchmentDeep
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    colors: [.clear, .black.opacity(0.50)],
+                    startPoint: .center,
+                    endPoint: .bottom
                 )
                 .frame(width: screenWidth, height: 380)
-            }
 
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.50)],
-                startPoint: .center,
-                endPoint: .bottom
-            )
+                HStack {
+                    Text(entry.mood.title)
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial)
+                        .background(entry.mood.tint.opacity(0.30))
+                        .clipShape(Capsule())
+
+                    Spacer()
+
+                    Text(entry.createdAt.formatted(.dateTime.month(.abbreviated).day().year()))
+                        .font(MemoryInkTypography.timestamp)
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 16)
+                .frame(width: screenWidth)
+            }
             .frame(width: screenWidth, height: 380)
-
-            HStack {
-                Text(entry.mood.title)
-                    .font(MemoryInkTypography.badge)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(.ultraThinMaterial)
-                    .background(entry.mood.tint.opacity(0.30))
-                    .clipShape(Capsule())
-
-                Spacer()
-
-                Text(entry.createdAt.formatted(.dateTime.month(.abbreviated).day().year()))
-                    .font(MemoryInkTypography.timestamp)
-                    .foregroundStyle(.white.opacity(0.75))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 16)
-            .frame(width: screenWidth)
+            .shadow(color: MemoryInkColors.filmShadow.opacity(0.12), radius: 18, x: 0, y: 10)
         }
-        .frame(width: screenWidth, height: 380)
-        .shadow(color: MemoryInkColors.filmShadow.opacity(0.12), radius: 18, x: 0, y: 10)
     }
+
 
     private func metadataRow(for entry: JournalEntry) -> some View {
         HStack(alignment: .center, spacing: 12) {
@@ -394,6 +408,51 @@ private struct MemoryDetailContentView: View {
 private struct MemoryShareItem: Identifiable {
     let id = UUID()
     let image: UIImage
+}
+
+private struct SlideshowVideoPlayer: UIViewRepresentable {
+    let url: URL
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = PlayerView()
+        let player = AVPlayer(url: url)
+        player.actionAtItemEnd = .none
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.itemDidEnd(_:)),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem
+        )
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspectFill
+        context.coordinator.player = player
+        player.play()
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.player?.pause()
+        coordinator.player = nil
+        NotificationCenter.default.removeObserver(coordinator)
+    }
+
+    class Coordinator: NSObject {
+        var player: AVPlayer?
+
+        @objc func itemDidEnd(_ notification: Notification) {
+            player?.seek(to: .zero)
+            player?.play()
+        }
+    }
+
+    private class PlayerView: UIView {
+        override class var layerClass: AnyClass { AVPlayerLayer.self }
+        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    }
 }
 
 @MainActor

@@ -74,7 +74,11 @@ struct TimelineView: View {
                                                     }
                                                 }
                                             ) {
-                                                router.path.append(.memoryViewer(entryId: memory.id))
+                                                if memory.voicePath?.hasPrefix("slideshows/") == true {
+                                                    router.path.append(.memoryDetail(id: memory.id))
+                                                } else {
+                                                    router.path.append(.memoryViewer(entryId: memory.id))
+                                                }
                                             }
                                             .opacity(appearedCards.contains(memory.id) ? 1 : 0)
                                             .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
@@ -99,8 +103,12 @@ struct TimelineView: View {
                                                 }
                                             }
                                         ) {
-                                            withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
-                                                selectedMemory = memory
+                                            if memory.voicePath?.hasPrefix("slideshows/") == true {
+                                                router.path.append(.memoryDetail(id: memory.id))
+                                            } else {
+                                                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                                                    selectedMemory = memory
+                                                }
                                             }
                                         }
                                         .frame(width: metrics.cardMaxWidth)
@@ -353,6 +361,11 @@ struct TimelineView: View {
                 .padding(.top, 3)
             }
 
+            if repository.entries.count >= 3 {
+                EmotionGraphView(entries: repository.entries)
+                    .padding(.top, 6)
+            }
+
             if repository.entries.count >= 1 {
                 featureCards
                     .padding(.top, 8)
@@ -455,64 +468,39 @@ struct TimelineView: View {
     }
 
     private var featureCards: some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-            spacing: 10
-        ) {
-            featureCard(
-                icon: "chart.bar.fill",
-                title: "Weekly Recap",
-                subtitle: "Your emotional week",
-                tint: MemoryInkColors.sage
-            ) {
-                router.path.append(.recap)
-            }
-
-            featureCard(
-                icon: "clock.arrow.circlepath",
-                title: "On This Day",
-                subtitle: "From past years",
-                tint: MemoryInkColors.rosewood
-            ) {
-                router.path.append(.onThisDay)
-            }
-
-            featureCard(
-                icon: "heart.fill",
-                title: "Favorites",
-                subtitle: favoritesSubtitle,
-                tint: MemoryInkColors.amber,
-                isSelected: viewModel.showingFavoritesOnly
-            ) {
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
-                    viewModel.showingFavoritesOnly.toggle()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                featurePill(icon: "chart.bar.fill", title: "Weekly Recap", tint: MemoryInkColors.sage) {
+                    router.path.append(.recap)
                 }
-            }
-
-            if repository.entries.count >= 5 {
-                featureCard(
-                    icon: "shuffle",
-                    title: "Surprise Me",
-                    subtitle: "Random moment",
-                    tint: MemoryInkColors.mistBlue
+                featurePill(icon: "clock.arrow.circlepath", title: "On This Day", tint: MemoryInkColors.rosewood) {
+                    router.path.append(.onThisDay)
+                }
+                featurePill(
+                    icon: viewModel.showingFavoritesOnly ? "heart.fill" : "heart",
+                    title: "Favorites",
+                    tint: MemoryInkColors.amber,
+                    isSelected: viewModel.showingFavoritesOnly
                 ) {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    if let memory = repository.randomEntry() {
-                        router.path.append(.memoryDetail(id: memory.id))
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                        viewModel.showingFavoritesOnly.toggle()
+                    }
+                }
+                if repository.entries.count >= 5 {
+                    featurePill(icon: "shuffle", title: "Surprise Me", tint: MemoryInkColors.mistBlue) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        if let memory = repository.randomEntry() {
+                            router.path.append(.memoryDetail(id: memory.id))
+                        }
+                    }
+                }
+                if repository.entriesSince(oneYearAgo).count >= 10 {
+                    featurePill(icon: "star.fill", title: "Year in Memories", tint: MemoryInkColors.sunlit) {
+                        router.path.append(.yearlyReview)
                     }
                 }
             }
-
-            if repository.entriesSince(oneYearAgo).count >= 10 {
-                featureCard(
-                    icon: "star.fill",
-                    title: "Year in Memories",
-                    subtitle: "Your year, captured",
-                    tint: MemoryInkColors.sunlit
-                ) {
-                    router.path.append(.yearlyReview)
-                }
-            }
+            .padding(.vertical, 2)
         }
     }
 
@@ -521,10 +509,9 @@ struct TimelineView: View {
         return count == 0 ? "Your saved memories" : "\(count) saved"
     }
 
-    private func featureCard(
+    private func featurePill(
         icon: String,
         title: String,
-        subtitle: String,
         tint: Color,
         isSelected: Bool = false,
         action: @escaping () -> Void
@@ -533,63 +520,21 @@ struct TimelineView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
-                        .background(tint)
-                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-                    Spacer()
-
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(tint)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(MemoryInkTypography.narrativeCompact.weight(.semibold))
-                        .foregroundStyle(MemoryInkColors.ink)
-                        .lineLimit(1)
-
-                    Text(subtitle)
-                        .font(MemoryInkTypography.timestamp)
-                        .foregroundStyle(MemoryInkColors.tertiaryInk)
-                        .lineLimit(1)
-                }
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : tint)
+                Text(title)
+                    .font(MemoryInkTypography.timestamp.weight(.medium))
+                    .foregroundStyle(isSelected ? .white : MemoryInkColors.secondaryInk)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                isSelected ? tint.opacity(0.14) : MemoryInkColors.paper.opacity(0.92),
-                                isSelected ? tint.opacity(0.06) : MemoryInkColors.paperWarm.opacity(0.82)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(
-                        color: tint.opacity(isSelected ? 0.18 : 0.06),
-                        radius: 14,
-                        x: 0,
-                        y: 7
-                    )
-            )
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isSelected ? tint : tint.opacity(0.12))
+            .clipShape(Capsule())
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        isSelected ? tint.opacity(0.32) : MemoryInkColors.hairline.opacity(0.20),
-                        lineWidth: isSelected ? 1.1 : 0.7
-                    )
+                Capsule()
+                    .stroke(isSelected ? tint.opacity(0.60) : tint.opacity(0.28), lineWidth: 0.7)
             }
         }
         .buttonStyle(.plain)

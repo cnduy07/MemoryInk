@@ -1,0 +1,129 @@
+{
+  "identifier" : "2E028CF0",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6770572153",
+    "_developerTeamID" : "SBVW5779XF",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 801061487.25211203,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "22097891",
+      "localizations" : [
+
+      ],
+      "name" : "MemoryInk Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "5.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6770573031",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlock premium memory features.",
+              "displayName" : "MemoryInk Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "memoryink_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "MemoryInk Monthly",
+          "subscriptionGroupID" : "22097891",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6770574118",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlock premium memory features for a year.",
+              "displayName" : "MemoryInk Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "memoryink_yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "MemoryInk Yearly",
+          "subscriptionGroupID" : "22097891",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

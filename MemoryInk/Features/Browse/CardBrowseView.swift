@@ -73,6 +73,7 @@ struct CardBrowseView: View {
                 ShareSheet(items: [image])
             }
         }
+        .navigationBarHidden(true)
     }
 
     private var topBar: some View {
@@ -341,63 +342,84 @@ struct BrowseCardFace: View {
     let entry: JournalEntry
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            Group {
-                if let image = ImagePipelineService.image(forRelativePath: entry.thumbnailPath) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    LinearGradient(
-                        colors: [entry.mood.tint.opacity(0.8), entry.mood.tint.opacity(0.4)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+        GeometryReader { geo in
+            let w = geo.size.width
+
+            ZStack(alignment: .bottomLeading) {
+                Group {
+                    if let image = ImagePipelineService.image(forRelativePath: entry.thumbnailPath) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        LinearGradient(
+                            colors: [entry.mood.tint.opacity(0.8), entry.mood.tint.opacity(0.4)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    }
+                }
+                .frame(width: w, height: 520)
+                .clipped()
+                .contentShape(Rectangle())
+
+                LinearGradient(
+                    colors: [.clear, Color.black.opacity(0.72)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                .frame(width: w, height: 520)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(entry.mood.title)
+                        .font(MemoryInkTypography.badge)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial)
+                        .background(entry.mood.tint.opacity(0.28))
+                        .clipShape(Capsule())
+
+                    if let narrative = entry.aiNarrative, !narrative.isEmpty {
+                        Text(narrative)
+                            .font(MemoryInkTypography.narrativeCompact)
+                            .foregroundStyle(.white.opacity(0.92))
+                            .lineSpacing(5)
+                            .lineLimit(4)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Text(entry.createdAt.formatted(date: .long, time: .omitted))
+                        .font(MemoryInkTypography.timestamp)
+                        .foregroundStyle(.white.opacity(0.62))
+                }
+                .padding(22)
+                .frame(width: w, alignment: .leading)
+            }
+            .frame(width: w, height: 520)
+            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+            }
+            .overlay(alignment: .topTrailing) {
+                if entry.voicePath?.hasPrefix("slideshows/") == true {
+                    Image(systemName: "film.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(.ultraThinMaterial)
+                        .background(Color.black.opacity(0.38))
+                        .clipShape(Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.28), lineWidth: 0.6)
+                        }
+                        .padding(14)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            .contentShape(Rectangle())
-
-            LinearGradient(
-                colors: [.clear, Color.black.opacity(0.72)],
-                startPoint: .center,
-                endPoint: .bottom
-            )
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text(entry.mood.title)
-                    .font(MemoryInkTypography.badge)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial)
-                    .background(entry.mood.tint.opacity(0.28))
-                    .clipShape(Capsule())
-
-                if let narrative = entry.aiNarrative, !narrative.isEmpty {
-                    Text(narrative)
-                        .font(MemoryInkTypography.narrativeCompact)
-                        .foregroundStyle(.white.opacity(0.92))
-                        .lineSpacing(5)
-                        .lineLimit(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Text(entry.createdAt.formatted(date: .long, time: .omitted))
-                    .font(MemoryInkTypography.timestamp)
-                    .foregroundStyle(.white.opacity(0.62))
-            }
-            .padding(22)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .shadow(color: Color.black.opacity(0.22), radius: 28, x: 0, y: 18)
         }
-        .frame(maxWidth: .infinity)
         .frame(height: 520)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.white.opacity(0.16), lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(0.22), radius: 28, x: 0, y: 18)
     }
 }
