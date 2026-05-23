@@ -1,42 +1,45 @@
-# Task T Session Report
+### Planned Changes
+- MemoryCreationView.swift modify — Fix 1 (iPad width), Fix 2 (Spacer cap), Fix 3 (photoPreview Menu)
+- tasks/summary.md modify — Record implementation summary and verification results
 
-Date: 2026-05-23
+### Code
+```swift
+let contentWidth = finiteDimension(min(availableWidth, viewportSize.width > 700 ? 560 : 430))
+```
 
-## Files changed
-- MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-- MemoryInk/Features/MemoryCreation/MemoryCreationViewModel.swift
-- MemoryInk/Features/Onboarding/OnboardingView.swift
-- MemoryInk/Features/Onboarding/PrivacyScreenView.swift
-- MemoryInk/Features/Onboarding/MoodIntroView.swift
-- tasks/summary.md
+```swift
+Menu {
+    Button("From Library") { showingLibraryPicker = true }
+    Button("Photo Collage (up to 4)") { showingCollagePicker = true }
+    Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
+    Button("Mood Backdrop") { showingScenePicker = true }
+} label: {
+    VStack(spacing: 14) {
+        Image(systemName: "plus.circle.fill")
+            .font(.system(size: 44, weight: .light))
+            .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
 
-## Behavior change
-- The Memory Saved sheet Done button now has a full-width 44pt minimum tap target.
-- Onboarding content is capped at 560pt and centered on wider iPad screens while retaining leading text alignment.
-- The Add Photo and Change actions now use anchored Menus instead of an iPad confirmation dialog.
-- Mood backdrops now show the selected mood emoji and name over the generated backdrop image.
-- Backdrop state resets when the user selects a library photo or collage.
+        Text("Tap to add a photo")
+            .font(MemoryInkTypography.subtitle)
+            .foregroundStyle(MemoryInkColors.secondaryInk)
 
-## Checks run
-- `grep -A8 '"Done"' MemoryInk/Features/MemoryCreation/MemoryCreationView.swift | grep "minHeight"`
-- `grep -n "maxWidth.*560" MemoryInk/Features/Onboarding/OnboardingView.swift`
-- `grep -n "maxWidth.*560" MemoryInk/Features/Onboarding/PrivacyScreenView.swift`
-- `grep -n "maxWidth.*560" MemoryInk/Features/Onboarding/MoodIntroView.swift`
-- `grep -n "confirmationDialog\|showingPhotoActionSheet" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`
-- `grep -n "^    Menu {" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`
-- `grep -n "isBackdropSelected" MemoryInk/Features/MemoryCreation/MemoryCreationViewModel.swift`
-- `grep -n "isBackdropSelected\|selectedMood.emoji" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`
-- `xcrun swiftc -typecheck ... | grep "error:"`
-- `ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"`
+        Text("Single · Collage · Slideshow · Mood")
+            .font(MemoryInkTypography.timestamp)
+            .foregroundStyle(MemoryInkColors.tertiaryInk)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .contentShape(Rectangle())
+}
+```
 
-## Results
-- All grep checks matched the expected output.
-- The `confirmationDialog` / `showingPhotoActionSheet` grep returned no output as expected.
-- Typecheck produced no Swift `error:` output. The first exact run printed local `xcrun` SDK-path cache warnings before the Swift grep; a rerun with only the SDK-path warning stream isolated produced no output.
-- Package.resolved is still present.
+```swift
+Spacer(minLength: 0)
+    .frame(maxHeight: 80)
+```
 
-## Not verified
-- No simulator UI pass was run.
-
-## Needs human approval for next step
-- No.
+### Summary
+- Files changed: MemoryInk/Features/MemoryCreation/MemoryCreationView.swift; tasks/summary.md
+- Behavior change: iPad creation content can expand to 560pt while iPhone remains capped at 430pt. The Memory Saved sheet spacer is capped so Done remains reachable on iPhone SE. The empty photo card now opens the same photo-type Menu when tapped.
+- Checks run: `grep -n "viewportSize.width > 700" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`; `grep -n "maxHeight: 80" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`; `grep -n "Mood Backdrop" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`; `grep -n "contentShape" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift`; `grep -n "@State private var" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift | wc -l`; `SDK=$(xcrun --sdk iphonesimulator --show-sdk-path) && xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios17.0-simulator -parse-as-library -module-cache-path /private/tmp/MemoryInkMC $(find MemoryInk -name "*.swift") 2>&1 | grep "error:"`; `ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"`
+- Not verified: No simulator UI pass was run.
+- Needs human approval for next step: no

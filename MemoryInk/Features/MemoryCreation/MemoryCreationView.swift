@@ -33,7 +33,7 @@ struct MemoryCreationView: View {
                 let isCompact = viewportSize.height <= 670 || viewportSize.width <= 340
                 let horizontalPadding: CGFloat = isCompact ? 16 : 20
                 let availableWidth = finiteDimension(viewportSize.width - (horizontalPadding * 2))
-                let contentWidth = finiteDimension(min(availableWidth, 430))
+                let contentWidth = finiteDimension(min(availableWidth, viewportSize.width > 700 ? 560 : 430))
 
                 ZStack {
                     background
@@ -248,18 +248,27 @@ struct MemoryCreationView: View {
                         }
                     }
                 } else {
-                    VStack(spacing: 14) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 44, weight: .light))
-                            .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
+                    Menu {
+                        Button("From Library") { showingLibraryPicker = true }
+                        Button("Photo Collage (up to 4)") { showingCollagePicker = true }
+                        Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
+                        Button("Mood Backdrop") { showingScenePicker = true }
+                    } label: {
+                        VStack(spacing: 14) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 44, weight: .light))
+                                .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
 
-                        Text("Tap to add a photo")
-                            .font(MemoryInkTypography.subtitle)
-                            .foregroundStyle(MemoryInkColors.secondaryInk)
+                            Text("Tap to add a photo")
+                                .font(MemoryInkTypography.subtitle)
+                                .foregroundStyle(MemoryInkColors.secondaryInk)
 
-                        Text("Single · Collage · Slideshow · Mood")
-                            .font(MemoryInkTypography.timestamp)
-                            .foregroundStyle(MemoryInkColors.tertiaryInk)
+                            Text("Single · Collage · Slideshow · Mood")
+                                .font(MemoryInkTypography.timestamp)
+                                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
                     }
                 }
             }
@@ -408,7 +417,8 @@ private struct MemorySavedSheet: View {
                 .clipShape(Capsule())
                 .padding(.top, 18)
 
-            Spacer()
+            Spacer(minLength: 0)
+                .frame(maxHeight: 80)
 
             Text("Your AI narrative is being crafted…")
                 .font(MemoryInkTypography.timestamp)

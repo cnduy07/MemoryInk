@@ -1,115 +1,167 @@
-# Task S: Fix upside-down video and short slideshow photo limit
+# Task U: Fix 3 UX bugs — iPad content width, Done button position, tap-to-add-photo regression
 
 **Date:** 2026-05-23
 **Phase:** Phase 3 — Monetization & Sync
-**Priority:** Critical
-**Estimated scope:** Small (4 lines removed in SlideshowService, 2 lines changed in MemoryCreationView)
+**Priority:** High
+**Estimated scope:** Small (1 file, 3 targeted edits)
 
 ---
 
-## Fix 1 — Remove Y-flip from CVPixelBuffer copy step (SlideshowService.swift)
+## Context
 
-### Root cause
+Three bugs found in `MemoryCreationView.swift` during QA on iPhone SE and iPad:
 
-The CVPixelBuffer `CGContext` on iOS has its y=0 at the **first row of the buffer**, which is the TOP of the video frame. This makes it effectively a y-down coordinate system. `CGContext.draw(cgImage, in:)` in this context places the cgImage's row 0 (the top of the rendered UIGraphicsImageRenderer output) at y=0 (the first buffer row = TOP of video) — correct.
+1. **iPad content too narrow** — `contentWidth` is capped at 430pt regardless of device. On iPad (768–1366pt wide) the creation form occupies less than half the screen width, looking phone-sized and cramped.
 
-Task P added a Y-flip (`translateBy` + `scaleBy`) before the draw call. This flip inverts the mapping:
-- User y=0 → device y=height → LAST buffer row → BOTTOM of video
-- cgImage row 0 (top) now lands at the BOTTOM of the video → video is upside down.
+2. **Done button pushed off-screen on iPhone SE** — `MemorySavedSheet` uses an uncapped `Spacer()` to push the bottom section (AI text + Share + Done) as far down as possible. On iPhone SE (667pt screen) this sends the Done button to the very bottom edge, making it nearly unreachable.
 
-**Fix:** Remove the two Y-flip lines in BOTH `renderFrame` and `renderImageFrame`.
-
-### In `renderFrame` (around line 332), remove exactly these two lines:
-```swift
-        context.translateBy(x: 0, y: CGFloat(Constants.height))
-        context.scaleBy(x: 1, y: -1)
-```
-Leave `context.draw(cgImage, in: canvasRect)` and `return pixelBuffer` untouched.
-
-### In `renderImageFrame` (around line 461), remove exactly the same two lines:
-```swift
-        context.translateBy(x: 0, y: CGFloat(Constants.height))
-        context.scaleBy(x: 1, y: -1)
-```
-Leave `context.draw(cgImage, in: canvasRect)` and `return pixelBuffer` untouched.
-
-After the fix, the copy block in both functions should look like:
-```swift
-        context.draw(cgImage, in: canvasRect)
-        return pixelBuffer
-    }
-```
+3. **Tap-to-add-photo is a dead zone (regression from Task T)** — Task T removed `onTapGesture { showingPhotoActionSheet = true }` and `contentShape(Rectangle())` from `photoPreview` but did not replace them with a Menu. The empty-state card (showing "Tap to add a photo") looks interactive but does nothing when tapped.
 
 ---
 
-## Fix 2 — Hard-cap short slideshow to 5 photos (MemoryCreationView.swift)
+## Objective
 
-The user wants a maximum of 5 photos in the Short Slideshow, for all users (no premium distinction).
-
-### Change A — `maxPhotos` computed property (around line 497):
-
-Find:
-```swift
-    private var maxPhotos: Int { subscriptionManager.hasPremiumEntitlement ? 10 : 5 }
-```
-Replace with:
-```swift
-    private var maxPhotos: Int { 5 }
-```
-
-### Change B — confirmation dialog button label (around line 118):
-
-Find:
-```swift
-                Button("Short Slideshow (up to 10 photos)") { showingCreationSlideshow = true }
-```
-Replace with:
-```swift
-                Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
-```
+All three bugs fixed in `MemoryCreationView.swift` with no design changes on iPhone. On iPad, creation form is comfortably wide. On iPhone SE, Done button is always reachable. Tapping the empty photo card opens the photo-type menu.
 
 ---
 
 ## Files to modify
 
-| File | Changes |
-|------|---------|
-| `MemoryInk/Services/SlideshowService.swift` | Remove 4 lines (2 per function) |
-| `MemoryInk/Features/MemoryCreation/MemoryCreationView.swift` | 2 line changes |
+| File | Action | Reason |
+|------|--------|--------|
+| `MemoryInk/Features/MemoryCreation/MemoryCreationView.swift` | modify | All 3 fixes — see spec below |
 
-**Do NOT touch any other file. Do NOT delete Package.resolved.**
+**Do NOT touch:** `MemoryCreationViewModel.swift`, any onboarding file, `MoodType.swift`, `Package.resolved`, `AGENTS.md`.
+
+---
+
+## Implementation spec
+
+### Fix 1 — iPad content width (line 36)
+
+**Current (line 36):**
+```swift
+let contentWidth = finiteDimension(min(availableWidth, 430))
+```
+
+**Replace with:**
+```swift
+let contentWidth = finiteDimension(min(availableWidth, viewportSize.width > 700 ? 560 : 430))
+```
+
+**Why:** iPad logical widths start at 768pt; iPhones max at 430pt (iPhone 15 Pro Max). `> 700` reliably separates them. 560pt matches the onboarding max-width already in place.
+
+Do NOT change any other layout values on this line or nearby lines.
+
+---
+
+### Fix 2 — Done button position in MemorySavedSheet (line 411)
+
+**Current (line 411, inside `MemorySavedSheet` body VStack):**
+```swift
+            Spacer()
+```
+
+**Replace with:**
+```swift
+            Spacer(minLength: 0)
+                .frame(maxHeight: 80)
+```
+
+**Why:** The uncapped `Spacer()` expands to fill all remaining sheet height. On iPhone SE (~577pt available) the bottom content (AI text 30pt + Share 56pt + Done 96pt = 182pt) gets pushed to position ~395pt from top, placing Done's bottom at exactly the screen edge. Capping at 80pt leaves Done ~115pt from the bottom on SE — comfortably in thumb reach. On larger iPhones (812pt+) the cap never activates so design is unchanged.
+
+Do NOT change the Done button's `.frame(maxWidth: .infinity, minHeight: 44)`, `.padding(.top, 16)`, or `.padding(.bottom, 36)`.
+
+---
+
+### Fix 3 — Tap-to-add-photo in photoPreview (lines 250–263)
+
+**Current (lines 250–263, the `else` branch inside the `ZStack` in `photoPreview`):**
+```swift
+                } else {
+                    VStack(spacing: 14) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
+
+                        Text("Tap to add a photo")
+                            .font(MemoryInkTypography.subtitle)
+                            .foregroundStyle(MemoryInkColors.secondaryInk)
+
+                        Text("Single · Collage · Slideshow · Mood")
+                            .font(MemoryInkTypography.timestamp)
+                            .foregroundStyle(MemoryInkColors.tertiaryInk)
+                    }
+                }
+```
+
+**Replace with:**
+```swift
+                } else {
+                    Menu {
+                        Button("From Library") { showingLibraryPicker = true }
+                        Button("Photo Collage (up to 4)") { showingCollagePicker = true }
+                        Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
+                        Button("Mood Backdrop") { showingScenePicker = true }
+                    } label: {
+                        VStack(spacing: 14) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 44, weight: .light))
+                                .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
+
+                            Text("Tap to add a photo")
+                                .font(MemoryInkTypography.subtitle)
+                                .foregroundStyle(MemoryInkColors.secondaryInk)
+
+                            Text("Single · Collage · Slideshow · Mood")
+                                .font(MemoryInkTypography.timestamp)
+                                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                }
+```
+
+**Why:** The `Menu` wraps the entire empty-state label so tapping anywhere in the card — not just the text — presents the picker options. `frame(maxWidth: .infinity, maxHeight: .infinity)` expands the label to fill the `ZStack`/`GeometryReader` bounds. `contentShape(Rectangle())` ensures transparent areas inside the label are tappable. The 4 options match the subtitle text ("Single · Collage · Slideshow · Mood"). Do NOT change the icon, text content, fonts, or colors.
 
 ---
 
 ## Constraints
 
-- [ ] Y-flip lines (`translateBy` + `scaleBy`) must be removed from BOTH `renderFrame` AND `renderImageFrame` — not just one
-- [ ] `context.draw(cgImage, in: canvasRect)` must remain in both functions — do NOT remove it
-- [ ] `maxPhotos` must return the literal `5` — no conditional, no ternary
-- [ ] `@State private var subscriptionManager` and all other state in `CreationSlideshowSheet` must remain unchanged
-- [ ] Do NOT touch `SlideshowPickerView.swift` — it has its own separate `maxSelectable` logic that is not changed here
-- [ ] Do NOT delete Package.resolved
+- [ ] No new Swift Packages
+- [ ] Do NOT modify `MemoryCreationViewModel.swift`
+- [ ] Do NOT modify onboarding files
+- [ ] `MoodType.swift` must not be touched
+- [ ] Fix 1: only the `430` → conditional change on line 36; no other layout values changed
+- [ ] Fix 2: only `Spacer()` → `Spacer(minLength: 0).frame(maxHeight: 80)`; Done button modifiers unchanged
+- [ ] Fix 3: visual content (icon, text, fonts, colors) inside the VStack must be identical to what was there before; only the Menu wrapper is new
 
 ---
 
 ## Success criteria
 
 ```bash
-# No translateBy or scaleBy anywhere in SlideshowService
-grep -n "translateBy\|scaleBy" MemoryInk/Services/SlideshowService.swift
-# must return: no output
+# Fix 1: iPad width check present
+grep -n "viewportSize.width > 700" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
+# must return: 1 match on line 36
 
-# context.draw still present twice
-grep -c "context\.draw(cgImage" MemoryInk/Services/SlideshowService.swift
-# must return: 2
+# Fix 2: Spacer capped
+grep -n "maxHeight: 80" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
+# must return: 1 match (inside MemorySavedSheet)
 
-# maxPhotos returns 5
-grep -n "maxPhotos" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-# must show: private var maxPhotos: Int { 5 }
+# Fix 3: Menu in photoPreview empty state
+grep -n "Mood Backdrop" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
+# must return: 3 matches
+# (1 in the "Add Photo" Menu — no-image branch, 1 in the "Change" Menu — has-image branch, 1 in the new photoPreview Menu)
 
-# button label updated
-grep -n "up to 5 photos\|up to 10 photos" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-# must show "up to 5 photos" only, no "up to 10 photos"
+# Fix 3: contentShape in photoPreview
+grep -n "contentShape" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
+# must return: 1 match (inside photoPreview)
+
+# No new state variables added
+grep -n "@State private var" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift | wc -l
+# must return: 5 (same as before: showingScenePicker, showingLibraryPicker, showingCollagePicker, showingCreationSlideshow, showingSuccessSheet)
 
 # Typecheck — zero errors
 SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
@@ -124,16 +176,27 @@ ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolve
 
 ---
 
-## Expected response format
+## Out of scope for this task
+
+- Timeline, Settings, Recap, or any other screen — not investigated, not touched
+- iPad layout for screens other than MemoryCreationView
+- Font scaling for iPad
+- Subscription or paywall changes
+
+---
+
+## Expected Codex response format
 
 ```
 ### Planned Changes
-- SlideshowService.swift — Y-flip removed from renderFrame and renderImageFrame copy step
-- MemoryCreationView.swift — maxPhotos hard-capped at 5, button label updated
+- MemoryCreationView.swift modify — Fix 1 (iPad width), Fix 2 (Spacer cap), Fix 3 (photoPreview Menu)
+
+### Code
+[Code here]
 
 ### Summary
 - Files changed: [list]
-- Behavior change: [1 sentence per file]
+- Behavior change: [1 sentence per fix]
 - Not verified: [list]
-- Needs human approval: no
+- Needs human approval for next step: no
 ```

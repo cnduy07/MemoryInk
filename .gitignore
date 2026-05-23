@@ -26,3 +26,4 @@ fastlane/test_output/
 *.mobileprovision
 *.cer
 *.p12
+MemoryInk/Info.plist
