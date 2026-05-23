@@ -1,4 +1,4 @@
-# Task V: iPad font scale and Timeline card width
+# Task W: Share image includes the memory photo
 
 **Date:** 2026-05-23
 **Phase:** Phase 3 — Monetization & Sync
@@ -9,158 +9,231 @@
 
 ## Context
 
-After Task U raised `MemoryCreationView`'s content width to 560pt on iPad, two root causes of small iPad UI remain:
+When a user taps the share button in `MemoryDetailView`, the app calls:
 
-1. **`MemoryInkTypography`** — all 7 font sizes are hardcoded `static let` constants (12–36pt). These values are the same on every device. On iPad the fonts look phone-sized.
+```swift
+// MemoryDetailView.swift – shareCurrentMemory()
+let image = MemoryShareRenderer.render(
+    narrative: narrativeText(for: entry),
+    mood: entry.mood,
+    date: entry.createdAt
+)
+```
 
-2. **`TimelineView.layoutMetrics()`** — `cardMaxWidth` and `detailMaxWidth` are both capped at 430pt regardless of device. On an iPad Air (820pt wide) the Timeline card fills only 53% of the screen — text appears in a narrow column surrounded by empty space.
+`MemoryShareRenderer.render(narrative:mood:date:)` only draws a gradient background + AI narrative text. The memory photo is **never passed in and never drawn**. The friend who receives the shared image sees only a gradient with text — no photo.
 
----
-
-## Objective
-
-iPad users see comfortably scaled fonts app-wide, and the Timeline card column fills a sensible fraction of the iPad screen. iPhone behavior is unchanged.
+The fix is two-part:
+1. Add an optional `photo: UIImage?` parameter to `MemoryShareRenderer.render(...)` and draw the photo full-bleed when one is present.
+2. Pass `detailImage(for: entry)` from `shareCurrentMemory()` into the renderer.
 
 ---
 
 ## Files to modify
 
-| File | Action | Reason |
-|------|--------|--------|
-| `MemoryInk/Common/Theme/Typography.swift` | modify | Convert static lets to computed vars with iPad scale |
-| `MemoryInk/Features/Timeline/TimelineView.swift` | modify | Lift 430pt card cap to 580pt on iPad |
+| File | Action |
+|------|--------|
+| `MemoryInk/Common/Components/MemoryShareRenderer.swift` | Add `photo` param; draw photo layout when present |
+| `MemoryInk/Features/MemoryDetail/MemoryDetailView.swift` | Pass photo to renderer in `shareCurrentMemory()` |
 
-**Do NOT touch:** `MemoryCreationView.swift`, `TimelineCard.swift`, any onboarding file, `MoodType.swift`, `Package.resolved`, any Service or Model file.
+**Do NOT touch:** any other file. TimelineView, MemoryCreationView, Typography, ShareSheet, AppRouter — untouched.
 
 ---
 
 ## Implementation spec
 
-### Fix 1 — Typography.swift: iPad-adaptive font sizes
+### Fix 1 — MemoryShareRenderer.swift
 
-**Current file (full):**
+**Change the public signature from:**
 ```swift
-import SwiftUI
-
-enum MemoryInkTypography {
-    static let title = Font.system(size: 36, weight: .semibold, design: .default)
-    static let eyebrow = Font.system(size: 12, weight: .medium, design: .default)
-    static let subtitle = Font.system(size: 15, weight: .regular, design: .default)
-    static let narrative = Font.system(size: 18, weight: .medium, design: .default)
-    static let narrativeCompact = Font.system(size: 17, weight: .medium, design: .default)
-    static let timestamp = Font.system(size: 12, weight: .regular, design: .default)
-    static let badge = Font.system(size: 12, weight: .medium, design: .default)
-}
+static func render(narrative: String, mood: MoodType, date: Date) -> UIImage {
+```
+**To:**
+```swift
+static func render(narrative: String, mood: MoodType, date: Date, photo: UIImage? = nil) -> UIImage {
 ```
 
-**Replace with:**
+**Inside `renderer.image { context in ... }`, branch on `photo`:**
+
 ```swift
-import SwiftUI
-import UIKit
+return renderer.image { context in
+    let cgContext = context.cgContext
+    let rect = CGRect(origin: .zero, size: size)
 
-enum MemoryInkTypography {
-    private static var isPad: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad
-    }
-
-    static var title: Font {
-        .system(size: isPad ? 44 : 36, weight: .semibold, design: .default)
-    }
-    static var eyebrow: Font {
-        .system(size: isPad ? 13 : 12, weight: .medium, design: .default)
-    }
-    static var subtitle: Font {
-        .system(size: isPad ? 17 : 15, weight: .regular, design: .default)
-    }
-    static var narrative: Font {
-        .system(size: isPad ? 20 : 18, weight: .medium, design: .default)
-    }
-    static var narrativeCompact: Font {
-        .system(size: isPad ? 19 : 17, weight: .medium, design: .default)
-    }
-    static var timestamp: Font {
-        .system(size: isPad ? 14 : 12, weight: .regular, design: .default)
-    }
-    static var badge: Font {
-        .system(size: isPad ? 14 : 12, weight: .medium, design: .default)
+    if let photo = photo {
+        drawPhoto(photo, in: rect)
+        drawPhotoOverlay(in: rect, context: cgContext)
+        drawBadgeWhite(mood: mood, in: rect)
+        drawNarrativeWhite(narrative, in: rect)
+        drawDateWhite(date, in: rect)
+        drawWatermarkWhite(in: rect)
+    } else {
+        drawBackground(in: rect, mood: mood, context: cgContext)
+        drawBadge(mood: mood, in: rect)
+        drawNarrative(narrative, in: rect)
+        drawDate(date, in: rect)
+        drawWatermark(in: rect)
     }
 }
 ```
 
-**Rules:**
-- `UIKit` import is required for `UIDevice`.
-- All 7 existing names (`title`, `eyebrow`, `subtitle`, `narrative`, `narrativeCompact`, `timestamp`, `badge`) must remain — same names, same weights, same `design: .default`. Only the sizes are conditional.
-- The private `isPad` helper must be a computed `static var`, not a `static let`, because it reads a runtime value.
-- Do NOT add any new font styles. Do NOT change any weight or design parameter.
-- iPhone sizes (the `false` branch) must be byte-for-byte identical to what they are today.
+**Add these four new private helpers (photo path only). Do NOT modify the existing five helpers — they must remain exactly as they are for the no-photo fallback.**
+
+```swift
+private static func drawPhoto(_ photo: UIImage, in rect: CGRect) {
+    let photoSize = photo.size
+    guard photoSize.width > 0, photoSize.height > 0 else { return }
+    let scale = max(rect.width / photoSize.width, rect.height / photoSize.height)
+    let scaledWidth = photoSize.width * scale
+    let scaledHeight = photoSize.height * scale
+    let drawRect = CGRect(
+        x: (rect.width - scaledWidth) / 2,
+        y: (rect.height - scaledHeight) / 2,
+        width: scaledWidth,
+        height: scaledHeight
+    )
+    photo.draw(in: drawRect)
+}
+
+private static func drawPhotoOverlay(in rect: CGRect, context: CGContext) {
+    let colors = [
+        UIColor.black.withAlphaComponent(0).cgColor,
+        UIColor.black.withAlphaComponent(0.72).cgColor
+    ] as CFArray
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    guard let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0.25, 1.0]) else { return }
+    context.drawLinearGradient(
+        gradient,
+        start: CGPoint(x: rect.midX, y: rect.minY),
+        end: CGPoint(x: rect.midX, y: rect.maxY),
+        options: []
+    )
+}
+
+private static func drawBadgeWhite(mood: MoodType, in rect: CGRect) {
+    let badgeText = mood.title.uppercased()
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
+        .foregroundColor: UIColor.white.withAlphaComponent(0.90)
+    ]
+    let textSize = badgeText.size(withAttributes: attributes)
+    let badgeRect = CGRect(x: 92, y: 116, width: textSize.width + 42, height: 48)
+    UIColor.white.withAlphaComponent(0.18).setFill()
+    UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
+    badgeText.draw(at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11), withAttributes: attributes)
+}
+
+private static func drawNarrativeWhite(_ narrative: String, in rect: CGRect) {
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.lineSpacing = 8
+    paragraph.alignment = .left
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: UIFont.systemFont(ofSize: 42, weight: .medium),
+        .foregroundColor: UIColor.white,
+        .paragraphStyle: paragraph
+    ]
+    let attributed = NSAttributedString(string: narrative, attributes: attributes)
+    attributed.draw(
+        with: CGRect(x: 92, y: 560, width: rect.width - 184, height: 380),
+        options: [.usesLineFragmentOrigin, .usesFontLeading],
+        context: nil
+    )
+}
+
+private static func drawDateWhite(_ date: Date, in rect: CGRect) {
+    let dateText = date.formatted(date: .abbreviated, time: .omitted)
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: UIFont.systemFont(ofSize: 24, weight: .regular),
+        .foregroundColor: UIColor.white.withAlphaComponent(0.72)
+    ]
+    dateText.draw(at: CGPoint(x: 92, y: 940), withAttributes: attributes)
+}
+
+private static func drawWatermarkWhite(in rect: CGRect) {
+    let watermark = "MemoryInk"
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: UIFont.systemFont(ofSize: 22, weight: .medium),
+        .foregroundColor: UIColor.white.withAlphaComponent(0.55)
+    ]
+    let size = watermark.size(withAttributes: attributes)
+    watermark.draw(at: CGPoint(x: rect.maxX - size.width - 92, y: rect.maxY - 116), withAttributes: attributes)
+}
+```
+
+**Rules for Fix 1:**
+- The existing five helpers (`drawBackground`, `drawBadge`, `drawNarrative`, `drawDate`, `drawWatermark`) must be byte-for-byte identical to their current form.
+- The four new helpers are only called when `photo != nil`.
+- `photo` defaults to `nil` so all other call sites (if any) require no changes.
+- No new imports needed — `UIKit` is already imported.
 
 ---
 
-### Fix 2 — TimelineView.swift: card and detail max width for iPad
+### Fix 2 — MemoryDetailView.swift
 
-In `layoutMetrics(for:)` (near the bottom of the file), there are two lines that cap width at 430pt. Both must be changed.
+**In `shareCurrentMemory()` (currently lines 396–404), change from:**
+```swift
+private func shareCurrentMemory() {
+    guard let entry = viewModel.entry else { return }
 
-**Current lines:**
-```swift
-        let regularWidth = finiteDimension(min(availableWidth, 430))
-```
-and
-```swift
-        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : 430))
-```
-
-**Replace with:**
-```swift
-        let regularWidth = finiteDimension(min(availableWidth, viewportWidth > 700 ? 580 : 430))
-```
-and
-```swift
-        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : (viewportWidth > 700 ? 580 : 430)))
+    let image = MemoryShareRenderer.render(
+        narrative: narrativeText(for: entry),
+        mood: entry.mood,
+        date: entry.createdAt
+    )
+    shareItem = MemoryShareItem(image: image)
+}
 ```
 
-**Why 580?** The Timeline needs some breathing room on both sides even on iPad (it is not full-bleed), so 580pt on an 820pt iPad Air leaves 120pt of margin — appropriate for a journaling app. The 560pt onboarding cap stays at 560 (different file, not touched).
+**To:**
+```swift
+private func shareCurrentMemory() {
+    guard let entry = viewModel.entry else { return }
 
-**Rules:**
-- Only these 2 lines change. Do NOT touch `compactWidth` (304), `isCompact` logic, padding values, or any other metric.
-- The `> 700` threshold matches what was already used in `MemoryCreationView.swift` — keep it consistent.
+    let image = MemoryShareRenderer.render(
+        narrative: narrativeText(for: entry),
+        mood: entry.mood,
+        date: entry.createdAt,
+        photo: detailImage(for: entry)
+    )
+    shareItem = MemoryShareItem(image: image)
+}
+```
+
+**Rules for Fix 2:**
+- Only the `MemoryShareRenderer.render(...)` call changes — one new argument `photo: detailImage(for: entry)`.
+- `detailImage(for:)` already exists at line 391–394; do not duplicate or move it.
+- `detailImage(for:)` returns `nil` for slideshow memories (video path) — the renderer's `photo = nil` fallback handles that correctly, showing the gradient layout.
+- No other code in `MemoryDetailView.swift` changes.
 
 ---
 
 ## Constraints
 
+- [ ] Existing five `drawBackground/Badge/Narrative/Date/Watermark` helpers — zero changes
+- [ ] No-photo path behavior is byte-for-byte identical to today
 - [ ] No new Swift Packages
-- [ ] iPhone font sizes must be identical to today (36, 12, 15, 18, 17, 12, 12)
-- [ ] `MemoryCreationView.swift` must NOT be modified
-- [ ] `TimelineCard.swift` must NOT be modified
-- [ ] No new font styles added to Typography
-- [ ] No weight or design parameters changed in Typography
+- [ ] No changes to `ShareSheet.swift`, `TimelineView.swift`, `MemoryCreationView.swift`, or any Model/Service file
+- [ ] Slideshow memories (video-backed, `detailImage` returns nil) fall through to the existing gradient layout — no crash
 
 ---
 
 ## Success criteria
 
 ```bash
-# Fix 1: static let is gone — all are now static var
-grep -n "static let" MemoryInk/Common/Theme/Typography.swift
-# must return: no output
+# Renderer now accepts photo param
+grep -n "photo: UIImage?" MemoryInk/Common/Components/MemoryShareRenderer.swift
+# must return: 1 match (the function signature)
 
-# Fix 1: isPad helper present
-grep -n "isPad" MemoryInk/Common/Theme/Typography.swift
-# must return: 8 lines (1 declaration + 7 usages)
+# Four new helpers present
+grep -n "func drawPhoto\|func drawPhotoOverlay\|func drawBadgeWhite\|func drawNarrativeWhite\|func drawDateWhite\|func drawWatermarkWhite" MemoryInk/Common/Components/MemoryShareRenderer.swift
+# must return: 6 lines
 
-# Fix 1: iPad sizes correct
-grep -n "isPad ? 44" MemoryInk/Common/Theme/Typography.swift
-grep -n "isPad ? 20" MemoryInk/Common/Theme/Typography.swift
-grep -n "isPad ? 14" MemoryInk/Common/Theme/Typography.swift
-# must each return: 1 match
+# Original five helpers still present (unchanged)
+grep -n "func drawBackground\|func drawBadge\b\|func drawNarrative\b\|func drawDate\b\|func drawWatermark\b" MemoryInk/Common/Components/MemoryShareRenderer.swift
+# must return: 5 lines
 
-# Fix 2: Timeline uses 580 on iPad
-grep -n "580" MemoryInk/Features/Timeline/TimelineView.swift
-# must return: 2 matches (cardMaxWidth and detailMaxWidth)
-
-# Fix 2: compactWidth still 304
-grep -n "304" MemoryInk/Features/Timeline/TimelineView.swift
-# must return: 2 matches (unchanged)
+# Call site passes photo
+grep -n "photo: detailImage" MemoryInk/Features/MemoryDetail/MemoryDetailView.swift
+# must return: 1 match
 
 # Typecheck — zero errors
 SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
@@ -175,21 +248,12 @@ ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolve
 
 ---
 
-## Out of scope
-
-- Settings, Recap, OnThisDay, MemoryDetail views — not touched in this task
-- Spacing values (MemoryInkSpacing) — not changed
-- Dynamic Type / accessibility size classes
-- Any Supabase, RevenueCat, or auth work
-
----
-
 ## Expected Codex response format
 
 ```
 ### Planned Changes
-- Typography.swift modify — convert static lets to computed vars with isPad branching
-- TimelineView.swift modify — lift 430pt cap to 580pt on iPad
+- MemoryShareRenderer.swift modify — add photo param + 6 new white-text helpers for photo layout
+- MemoryDetailView.swift modify — pass detailImage(for:) as photo argument in shareCurrentMemory()
 
 ### Code
 [Code here]
