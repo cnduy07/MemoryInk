@@ -399,7 +399,8 @@ private struct MemoryDetailContentView: View {
         let image = MemoryShareRenderer.render(
             narrative: narrativeText(for: entry),
             mood: entry.mood,
-            date: entry.createdAt
+            date: entry.createdAt,
+            photo: detailImage(for: entry)
         )
         shareItem = MemoryShareItem(image: image)
     }
