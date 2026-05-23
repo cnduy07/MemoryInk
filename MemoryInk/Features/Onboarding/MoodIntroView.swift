@@ -42,6 +42,8 @@ struct MoodIntroView: View {
                 .buttonStyle(.plain)
             }
             .padding(28)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
         }
     }
 }

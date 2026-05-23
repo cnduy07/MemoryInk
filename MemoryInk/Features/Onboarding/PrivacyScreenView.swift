@@ -47,7 +47,8 @@ struct PrivacyScreenView: View {
                 }
             }
             .padding(28)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
         }
     }
 

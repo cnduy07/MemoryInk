@@ -8,7 +8,6 @@ struct MemoryCreationView: View {
     @State private var showingLibraryPicker = false
     @State private var showingCollagePicker = false
     @State private var showingCreationSlideshow = false
-    @State private var showingPhotoActionSheet = false
     @State private var showingSuccessSheet = false
 
     init(
@@ -112,13 +111,6 @@ struct MemoryCreationView: View {
                     }
                 }
             }
-            .confirmationDialog("Add to your memory", isPresented: $showingPhotoActionSheet, titleVisibility: .visible) {
-                Button("From Library") { showingLibraryPicker = true }
-                Button("Photo Collage (up to 4)") { showingCollagePicker = true }
-                Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
-                Button("Mood Backdrop") { showingScenePicker = true }
-                Button("Cancel", role: .cancel) {}
-            }
             .photosPicker(
                 isPresented: $showingLibraryPicker,
                 selection: $viewModel.selectedPhotoItem,
@@ -168,9 +160,11 @@ struct MemoryCreationView: View {
 
             if viewModel.selectedImage == nil {
                 HStack(spacing: 12) {
-                    Button {
-                        showingPhotoActionSheet = true
-                    } label: {
+    Menu {
+        Button("From Library") { showingLibraryPicker = true }
+        Button("Photo Collage (up to 4)") { showingCollagePicker = true }
+        Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
+    } label: {
                         Label("Add Photo", systemImage: "photo.badge.plus")
                             .font(MemoryInkTypography.badge)
                             .foregroundStyle(MemoryInkColors.ink)
@@ -183,7 +177,6 @@ struct MemoryCreationView: View {
                                     .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
                             }
                     }
-                    .buttonStyle(.plain)
 
                     Button {
                         showingScenePicker = true
@@ -204,14 +197,16 @@ struct MemoryCreationView: View {
                 }
             } else {
                 HStack(spacing: 20) {
-                    Button {
-                        showingPhotoActionSheet = true
-                    } label: {
+    Menu {
+        Button("From Library") { showingLibraryPicker = true }
+        Button("Photo Collage (up to 4)") { showingCollagePicker = true }
+        Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
+        Button("Mood Backdrop") { showingScenePicker = true }
+    } label: {
                         Label("Change", systemImage: "arrow.triangle.2.circlepath")
                             .font(MemoryInkTypography.badge)
                             .foregroundStyle(MemoryInkColors.secondaryInk)
                     }
-                    .buttonStyle(.plain)
 
                     Button("Mood Backdrop") {
                         showingScenePicker = true
@@ -243,6 +238,15 @@ struct MemoryCreationView: View {
                         .scaledToFill()
                         .frame(width: imageSize.width, height: imageSize.height)
                         .clipped()
+                    if viewModel.isBackdropSelected {
+                        VStack(spacing: 12) {
+                            Text(viewModel.selectedMood.emoji)
+                                .font(.system(size: 64))
+                            Text(viewModel.selectedMood.title)
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(.white.opacity(0.9))
+                        }
+                    }
                 } else {
                     VStack(spacing: 14) {
                         Image(systemName: "plus.circle.fill")
@@ -263,10 +267,6 @@ struct MemoryCreationView: View {
         .aspectRatio(4.0 / 5.0, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 18, x: 0, y: 10)
-        .onTapGesture {
-            showingPhotoActionSheet = true
-        }
-        .contentShape(Rectangle())
     }
 
     private func finiteSize(_ size: CGSize) -> CGSize {
@@ -451,6 +451,7 @@ private struct MemorySavedSheet: View {
             }
             .font(MemoryInkTypography.subtitle.weight(.medium))
             .foregroundStyle(MemoryInkColors.secondaryInk)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.top, 16)
             .padding(.bottom, 36)
         }

@@ -62,7 +62,8 @@ struct OnboardingView: View {
                 .padding(.bottom, 36)
             }
             .padding(.horizontal, 28)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
         }
     }
 }

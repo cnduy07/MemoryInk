@@ -19,6 +19,7 @@ final class MemoryCreationViewModel: ObservableObject {
     @Published var selectedMood: MoodType = .reflective
     @Published var saveState: SaveState = .idle
     @Published var savedEntry: JournalEntry?
+    @Published var isBackdropSelected: Bool = false
 
     private let repository: JournalEntryRepository
     private let imagePipeline: ImagePipelineService
@@ -54,6 +55,7 @@ final class MemoryCreationViewModel: ObservableObject {
             }
 
             selectedImage = image
+            isBackdropSelected = false
             saveState = .idle
         } catch {
             saveState = .failed
@@ -77,11 +79,13 @@ final class MemoryCreationViewModel: ObservableObject {
         guard !images.isEmpty else { return }
 
         selectedImage = renderCollage(images)
+        isBackdropSelected = false
         saveState = .idle
     }
 
     func setBackgroundScene(_ scene: BackgroundScene) {
         selectedImage = scene.render()
+        isBackdropSelected = true
     }
 
     func save() {
