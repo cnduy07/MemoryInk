@@ -1,27 +1,25 @@
-# Task U: Fix 3 UX bugs — iPad content width, Done button position, tap-to-add-photo regression
+# Task V: iPad font scale and Timeline card width
 
 **Date:** 2026-05-23
 **Phase:** Phase 3 — Monetization & Sync
 **Priority:** High
-**Estimated scope:** Small (1 file, 3 targeted edits)
+**Estimated scope:** Small (2 files, surgical edits)
 
 ---
 
 ## Context
 
-Three bugs found in `MemoryCreationView.swift` during QA on iPhone SE and iPad:
+After Task U raised `MemoryCreationView`'s content width to 560pt on iPad, two root causes of small iPad UI remain:
 
-1. **iPad content too narrow** — `contentWidth` is capped at 430pt regardless of device. On iPad (768–1366pt wide) the creation form occupies less than half the screen width, looking phone-sized and cramped.
+1. **`MemoryInkTypography`** — all 7 font sizes are hardcoded `static let` constants (12–36pt). These values are the same on every device. On iPad the fonts look phone-sized.
 
-2. **Done button pushed off-screen on iPhone SE** — `MemorySavedSheet` uses an uncapped `Spacer()` to push the bottom section (AI text + Share + Done) as far down as possible. On iPhone SE (667pt screen) this sends the Done button to the very bottom edge, making it nearly unreachable.
-
-3. **Tap-to-add-photo is a dead zone (regression from Task T)** — Task T removed `onTapGesture { showingPhotoActionSheet = true }` and `contentShape(Rectangle())` from `photoPreview` but did not replace them with a Menu. The empty-state card (showing "Tap to add a photo") looks interactive but does nothing when tapped.
+2. **`TimelineView.layoutMetrics()`** — `cardMaxWidth` and `detailMaxWidth` are both capped at 430pt regardless of device. On an iPad Air (820pt wide) the Timeline card fills only 53% of the screen — text appears in a narrow column surrounded by empty space.
 
 ---
 
 ## Objective
 
-All three bugs fixed in `MemoryCreationView.swift` with no design changes on iPhone. On iPad, creation form is comfortably wide. On iPhone SE, Done button is always reachable. Tapping the empty photo card opens the photo-type menu.
+iPad users see comfortably scaled fonts app-wide, and the Timeline card column fills a sensible fraction of the iPad screen. iPhone behavior is unchanged.
 
 ---
 
@@ -29,139 +27,140 @@ All three bugs fixed in `MemoryCreationView.swift` with no design changes on iPh
 
 | File | Action | Reason |
 |------|--------|--------|
-| `MemoryInk/Features/MemoryCreation/MemoryCreationView.swift` | modify | All 3 fixes — see spec below |
+| `MemoryInk/Common/Theme/Typography.swift` | modify | Convert static lets to computed vars with iPad scale |
+| `MemoryInk/Features/Timeline/TimelineView.swift` | modify | Lift 430pt card cap to 580pt on iPad |
 
-**Do NOT touch:** `MemoryCreationViewModel.swift`, any onboarding file, `MoodType.swift`, `Package.resolved`, `AGENTS.md`.
+**Do NOT touch:** `MemoryCreationView.swift`, `TimelineCard.swift`, any onboarding file, `MoodType.swift`, `Package.resolved`, any Service or Model file.
 
 ---
 
 ## Implementation spec
 
-### Fix 1 — iPad content width (line 36)
+### Fix 1 — Typography.swift: iPad-adaptive font sizes
 
-**Current (line 36):**
+**Current file (full):**
 ```swift
-let contentWidth = finiteDimension(min(availableWidth, 430))
+import SwiftUI
+
+enum MemoryInkTypography {
+    static let title = Font.system(size: 36, weight: .semibold, design: .default)
+    static let eyebrow = Font.system(size: 12, weight: .medium, design: .default)
+    static let subtitle = Font.system(size: 15, weight: .regular, design: .default)
+    static let narrative = Font.system(size: 18, weight: .medium, design: .default)
+    static let narrativeCompact = Font.system(size: 17, weight: .medium, design: .default)
+    static let timestamp = Font.system(size: 12, weight: .regular, design: .default)
+    static let badge = Font.system(size: 12, weight: .medium, design: .default)
+}
 ```
 
 **Replace with:**
 ```swift
-let contentWidth = finiteDimension(min(availableWidth, viewportSize.width > 700 ? 560 : 430))
+import SwiftUI
+import UIKit
+
+enum MemoryInkTypography {
+    private static var isPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
+
+    static var title: Font {
+        .system(size: isPad ? 44 : 36, weight: .semibold, design: .default)
+    }
+    static var eyebrow: Font {
+        .system(size: isPad ? 13 : 12, weight: .medium, design: .default)
+    }
+    static var subtitle: Font {
+        .system(size: isPad ? 17 : 15, weight: .regular, design: .default)
+    }
+    static var narrative: Font {
+        .system(size: isPad ? 20 : 18, weight: .medium, design: .default)
+    }
+    static var narrativeCompact: Font {
+        .system(size: isPad ? 19 : 17, weight: .medium, design: .default)
+    }
+    static var timestamp: Font {
+        .system(size: isPad ? 14 : 12, weight: .regular, design: .default)
+    }
+    static var badge: Font {
+        .system(size: isPad ? 14 : 12, weight: .medium, design: .default)
+    }
+}
 ```
 
-**Why:** iPad logical widths start at 768pt; iPhones max at 430pt (iPhone 15 Pro Max). `> 700` reliably separates them. 560pt matches the onboarding max-width already in place.
-
-Do NOT change any other layout values on this line or nearby lines.
+**Rules:**
+- `UIKit` import is required for `UIDevice`.
+- All 7 existing names (`title`, `eyebrow`, `subtitle`, `narrative`, `narrativeCompact`, `timestamp`, `badge`) must remain — same names, same weights, same `design: .default`. Only the sizes are conditional.
+- The private `isPad` helper must be a computed `static var`, not a `static let`, because it reads a runtime value.
+- Do NOT add any new font styles. Do NOT change any weight or design parameter.
+- iPhone sizes (the `false` branch) must be byte-for-byte identical to what they are today.
 
 ---
 
-### Fix 2 — Done button position in MemorySavedSheet (line 411)
+### Fix 2 — TimelineView.swift: card and detail max width for iPad
 
-**Current (line 411, inside `MemorySavedSheet` body VStack):**
+In `layoutMetrics(for:)` (near the bottom of the file), there are two lines that cap width at 430pt. Both must be changed.
+
+**Current lines:**
 ```swift
-            Spacer()
+        let regularWidth = finiteDimension(min(availableWidth, 430))
+```
+and
+```swift
+        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : 430))
 ```
 
 **Replace with:**
 ```swift
-            Spacer(minLength: 0)
-                .frame(maxHeight: 80)
+        let regularWidth = finiteDimension(min(availableWidth, viewportWidth > 700 ? 580 : 430))
 ```
-
-**Why:** The uncapped `Spacer()` expands to fill all remaining sheet height. On iPhone SE (~577pt available) the bottom content (AI text 30pt + Share 56pt + Done 96pt = 182pt) gets pushed to position ~395pt from top, placing Done's bottom at exactly the screen edge. Capping at 80pt leaves Done ~115pt from the bottom on SE — comfortably in thumb reach. On larger iPhones (812pt+) the cap never activates so design is unchanged.
-
-Do NOT change the Done button's `.frame(maxWidth: .infinity, minHeight: 44)`, `.padding(.top, 16)`, or `.padding(.bottom, 36)`.
-
----
-
-### Fix 3 — Tap-to-add-photo in photoPreview (lines 250–263)
-
-**Current (lines 250–263, the `else` branch inside the `ZStack` in `photoPreview`):**
+and
 ```swift
-                } else {
-                    VStack(spacing: 14) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 44, weight: .light))
-                            .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
-
-                        Text("Tap to add a photo")
-                            .font(MemoryInkTypography.subtitle)
-                            .foregroundStyle(MemoryInkColors.secondaryInk)
-
-                        Text("Single · Collage · Slideshow · Mood")
-                            .font(MemoryInkTypography.timestamp)
-                            .foregroundStyle(MemoryInkColors.tertiaryInk)
-                    }
-                }
+        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : (viewportWidth > 700 ? 580 : 430)))
 ```
 
-**Replace with:**
-```swift
-                } else {
-                    Menu {
-                        Button("From Library") { showingLibraryPicker = true }
-                        Button("Photo Collage (up to 4)") { showingCollagePicker = true }
-                        Button("Short Slideshow (up to 5 photos)") { showingCreationSlideshow = true }
-                        Button("Mood Backdrop") { showingScenePicker = true }
-                    } label: {
-                        VStack(spacing: 14) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 44, weight: .light))
-                                .foregroundStyle(MemoryInkColors.amber.opacity(0.70))
+**Why 580?** The Timeline needs some breathing room on both sides even on iPad (it is not full-bleed), so 580pt on an 820pt iPad Air leaves 120pt of margin — appropriate for a journaling app. The 560pt onboarding cap stays at 560 (different file, not touched).
 
-                            Text("Tap to add a photo")
-                                .font(MemoryInkTypography.subtitle)
-                                .foregroundStyle(MemoryInkColors.secondaryInk)
-
-                            Text("Single · Collage · Slideshow · Mood")
-                                .font(MemoryInkTypography.timestamp)
-                                .foregroundStyle(MemoryInkColors.tertiaryInk)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                    }
-                }
-```
-
-**Why:** The `Menu` wraps the entire empty-state label so tapping anywhere in the card — not just the text — presents the picker options. `frame(maxWidth: .infinity, maxHeight: .infinity)` expands the label to fill the `ZStack`/`GeometryReader` bounds. `contentShape(Rectangle())` ensures transparent areas inside the label are tappable. The 4 options match the subtitle text ("Single · Collage · Slideshow · Mood"). Do NOT change the icon, text content, fonts, or colors.
+**Rules:**
+- Only these 2 lines change. Do NOT touch `compactWidth` (304), `isCompact` logic, padding values, or any other metric.
+- The `> 700` threshold matches what was already used in `MemoryCreationView.swift` — keep it consistent.
 
 ---
 
 ## Constraints
 
 - [ ] No new Swift Packages
-- [ ] Do NOT modify `MemoryCreationViewModel.swift`
-- [ ] Do NOT modify onboarding files
-- [ ] `MoodType.swift` must not be touched
-- [ ] Fix 1: only the `430` → conditional change on line 36; no other layout values changed
-- [ ] Fix 2: only `Spacer()` → `Spacer(minLength: 0).frame(maxHeight: 80)`; Done button modifiers unchanged
-- [ ] Fix 3: visual content (icon, text, fonts, colors) inside the VStack must be identical to what was there before; only the Menu wrapper is new
+- [ ] iPhone font sizes must be identical to today (36, 12, 15, 18, 17, 12, 12)
+- [ ] `MemoryCreationView.swift` must NOT be modified
+- [ ] `TimelineCard.swift` must NOT be modified
+- [ ] No new font styles added to Typography
+- [ ] No weight or design parameters changed in Typography
 
 ---
 
 ## Success criteria
 
 ```bash
-# Fix 1: iPad width check present
-grep -n "viewportSize.width > 700" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-# must return: 1 match on line 36
+# Fix 1: static let is gone — all are now static var
+grep -n "static let" MemoryInk/Common/Theme/Typography.swift
+# must return: no output
 
-# Fix 2: Spacer capped
-grep -n "maxHeight: 80" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-# must return: 1 match (inside MemorySavedSheet)
+# Fix 1: isPad helper present
+grep -n "isPad" MemoryInk/Common/Theme/Typography.swift
+# must return: 8 lines (1 declaration + 7 usages)
 
-# Fix 3: Menu in photoPreview empty state
-grep -n "Mood Backdrop" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-# must return: 3 matches
-# (1 in the "Add Photo" Menu — no-image branch, 1 in the "Change" Menu — has-image branch, 1 in the new photoPreview Menu)
+# Fix 1: iPad sizes correct
+grep -n "isPad ? 44" MemoryInk/Common/Theme/Typography.swift
+grep -n "isPad ? 20" MemoryInk/Common/Theme/Typography.swift
+grep -n "isPad ? 14" MemoryInk/Common/Theme/Typography.swift
+# must each return: 1 match
 
-# Fix 3: contentShape in photoPreview
-grep -n "contentShape" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift
-# must return: 1 match (inside photoPreview)
+# Fix 2: Timeline uses 580 on iPad
+grep -n "580" MemoryInk/Features/Timeline/TimelineView.swift
+# must return: 2 matches (cardMaxWidth and detailMaxWidth)
 
-# No new state variables added
-grep -n "@State private var" MemoryInk/Features/MemoryCreation/MemoryCreationView.swift | wc -l
-# must return: 5 (same as before: showingScenePicker, showingLibraryPicker, showingCollagePicker, showingCreationSlideshow, showingSuccessSheet)
+# Fix 2: compactWidth still 304
+grep -n "304" MemoryInk/Features/Timeline/TimelineView.swift
+# must return: 2 matches (unchanged)
 
 # Typecheck — zero errors
 SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
@@ -176,12 +175,12 @@ ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolve
 
 ---
 
-## Out of scope for this task
+## Out of scope
 
-- Timeline, Settings, Recap, or any other screen — not investigated, not touched
-- iPad layout for screens other than MemoryCreationView
-- Font scaling for iPad
-- Subscription or paywall changes
+- Settings, Recap, OnThisDay, MemoryDetail views — not touched in this task
+- Spacing values (MemoryInkSpacing) — not changed
+- Dynamic Type / accessibility size classes
+- Any Supabase, RevenueCat, or auth work
 
 ---
 
@@ -189,7 +188,8 @@ ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolve
 
 ```
 ### Planned Changes
-- MemoryCreationView.swift modify — Fix 1 (iPad width), Fix 2 (Spacer cap), Fix 3 (photoPreview Menu)
+- Typography.swift modify — convert static lets to computed vars with isPad branching
+- TimelineView.swift modify — lift 430pt cap to 580pt on iPad
 
 ### Code
 [Code here]

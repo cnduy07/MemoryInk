@@ -787,10 +787,10 @@ struct TimelineView: View {
         let horizontalPadding: CGFloat = isCompact ? 14 : 20
         let availableWidth = finiteDimension(viewportWidth - (horizontalPadding * 2))
         let compactWidth = finiteDimension(min(availableWidth, 304))
-        let regularWidth = finiteDimension(min(availableWidth, 430))
+        let regularWidth = finiteDimension(min(availableWidth, viewportWidth > 700 ? 580 : 430))
         let overlayPadding: CGFloat = isCompact ? 14 : 20
         let availableDetailWidth = finiteDimension(viewportWidth - (overlayPadding * 2))
-        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : 430))
+        let detailWidth = finiteDimension(min(availableDetailWidth, isCompact ? 304 : (viewportWidth > 700 ? 580 : 430)))
 
         return TimelineLayoutMetrics(
             isCompact: isCompact,
