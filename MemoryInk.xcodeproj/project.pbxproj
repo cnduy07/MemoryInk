@@ -78,6 +78,7 @@
 		0E8000732FC1000000000001 /* SlideshowPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000712FC1000000000001 /* SlideshowPickerView.swift */; };
 		0E8000802FC2000000000001 /* EmotionGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80007F2FC2000000000001 /* EmotionGraphView.swift */; };
 		0E8000822FC2000000000001 /* SlideshowStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000812FC2000000000001 /* SlideshowStyle.swift */; };
+		0E8000912FC3000000000001 /* CinematicVisualSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000902FC3000000000001 /* CinematicVisualSystem.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -153,6 +154,8 @@
 		0E8000712FC1000000000001 /* SlideshowPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideshowPickerView.swift; sourceTree = "<group>"; };
 		0E80007F2FC2000000000001 /* EmotionGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionGraphView.swift; sourceTree = "<group>"; };
 		0E8000812FC2000000000001 /* SlideshowStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideshowStyle.swift; sourceTree = "<group>"; };
+		0E8000902FC3000000000001 /* CinematicVisualSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinematicVisualSystem.swift; sourceTree = "<group>"; };
+		0EBE26E72FC59DA00097F97A /* MemoryInk.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MemoryInk.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,6 +203,7 @@
 		0E79FB172FBAD5A4009A6E8E /* MemoryInk */ = {
 			isa = PBXGroup;
 			children = (
+				0EBE26E72FC59DA00097F97A /* MemoryInk.entitlements */,
 				0E76CE0B2FC00A6D00381EC8 /* Audio */,
 				0E76CE082FBCB92800381EC8 /* Info.plist */,
 				0E79FB3A2FBAD8A0009A6E8E /* App */,
@@ -394,6 +398,7 @@
 		0E8000092FC1000000000001 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				0E8000902FC3000000000001 /* CinematicVisualSystem.swift */,
 				0E80000A2FC1000000000001 /* LoadingIndicator.swift */,
 				0E80000B2FC1000000000001 /* EmptyStateView.swift */,
 				0E80000C2FC1000000000001 /* ToastView.swift */,
@@ -529,6 +534,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E79FB352FBAD8A0009A6E8E /* MoodType.swift in Sources */,
+				0E8000912FC3000000000001 /* CinematicVisualSystem.swift in Sources */,
 				0E8000822FC2000000000001 /* SlideshowStyle.swift in Sources */,
 				0E79FD202FBC0001009A6E8E /* AIContracts.swift in Sources */,
 				0E79FC122FBB0001009A6E8E /* CoreDataStack.swift in Sources */,
@@ -719,14 +725,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MemoryInk/MemoryInk.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "\"MemoryInk/Preview Content\"";
 				DEVELOPMENT_TEAM = SBVW5779XF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MemoryInk/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "MemoryInk uses your microphone to record voice notes for your memories.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "MemoryInk uses your photo library to add images to your memories.";
 				INFOPLIST_KEY_RevenueCatAPIKey = "";
@@ -759,14 +767,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MemoryInk/MemoryInk.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "\"MemoryInk/Preview Content\"";
 				DEVELOPMENT_TEAM = SBVW5779XF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MemoryInk/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "MemoryInk uses your microphone to record voice notes for your memories.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "MemoryInk uses your photo library to add images to your memories.";
 				INFOPLIST_KEY_RevenueCatAPIKey = "";

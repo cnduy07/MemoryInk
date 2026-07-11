@@ -6,14 +6,10 @@ struct SubscriptionView: View {
     @EnvironmentObject private var analyticsService: AnalyticsService
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showAuthAlert = false
+    @State private var showPostPurchaseSyncPrompt = false
 
     private var isSubscribed: Bool { subscriptionManager.hasPremiumEntitlement }
     private var activePlan: SubscriptionPlan { subscriptionManager.plan }
-    private var isSignedIn: Bool {
-        if case .signedIn = authService.state { return true }
-        return false
-    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -40,10 +36,10 @@ struct SubscriptionView: View {
                     .foregroundStyle(MemoryInkColors.secondaryInk)
             }
         }
-        .alert("Sign in required", isPresented: $showAuthAlert) {
-            Button("OK", role: .cancel) {}
+        .alert("Sync Available", isPresented: $showPostPurchaseSyncPrompt) {
+            Button("Got it", role: .cancel) {}
         } message: {
-            Text("Please create an account or sign in before subscribing to MemoryInk+.")
+            Text("Sign in from Settings anytime to sync your memories across your devices.")
         }
         .onAppear { analyticsService.track(.paywallShown) }
         .task {
@@ -189,8 +185,13 @@ struct SubscriptionView: View {
     ) -> some View {
         Button {
             guard !isDisabled else { return }
-            guard isSignedIn else { showAuthAlert = true; return }
-            Task { await subscriptionManager.purchase(plan) }
+            Task {
+                let wasSubscribed = subscriptionManager.hasPremiumEntitlement
+                await subscriptionManager.purchase(plan)
+                guard !wasSubscribed, subscriptionManager.hasPremiumEntitlement else { return }
+                if case .signedIn = authService.state { return }
+                showPostPurchaseSyncPrompt = true
+            }
         } label: {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -286,12 +287,22 @@ struct SubscriptionView: View {
     // MARK: - Footer
 
     private var footerNote: some View {
-        Text("Premium sync is metadata-only. Photos and voice notes stay on device.")
-            .font(MemoryInkTypography.timestamp)
-            .foregroundStyle(MemoryInkColors.tertiaryInk)
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 10) {
+            Text("Premium sync is metadata-only. Photos and voice notes stay on device.")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 20) {
+                Link("Privacy Policy", destination: URL(string: "https://sites.google.com/view/memoryink-app/home/privacy-policy")!)
+                Link("Terms of Use", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+            }
+            .font(MemoryInkTypography.timestamp.weight(.medium))
+            .foregroundStyle(MemoryInkColors.secondaryInk)
+        }
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
     }
 
     // MARK: - Helpers

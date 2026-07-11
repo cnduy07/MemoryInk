@@ -20,6 +20,15 @@ enum MemoryInkColors {
     static let mistBlue = Color(red: 0.48, green: 0.56, blue: 0.62)
     static let taupe = Color(red: 0.56, green: 0.50, blue: 0.44)
 
+    // Cinematic accents: richer than the neutral surfaces, but still soft enough
+    // to keep photos and writing at the center of the experience.
+    static let teal = Color(red: 0.25, green: 0.60, blue: 0.54)
+    static let ocean = Color(red: 0.28, green: 0.52, blue: 0.72)
+    static let orchid = Color(red: 0.58, green: 0.38, blue: 0.70)
+    static let coral = Color(red: 0.78, green: 0.39, blue: 0.42)
+    static let gold = Color(red: 0.88, green: 0.62, blue: 0.24)
+    static let twilight = Color(red: 0.38, green: 0.40, blue: 0.68)
+
     private static func adaptive(light: UIColor, dark: UIColor) -> Color {
         Color(
             UIColor { traitCollection in

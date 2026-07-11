@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var isShowingEmailSheet = false
     @State private var emailSheetMode: AuthMode = .signIn
     @State private var isAuthLoading = false
+    @State private var isShowingDeleteConfirmation = false
+    @State private var isDeletingAccount = false
     @State private var toastMessage: String?
     @State private var toastIsError = false
 
@@ -113,6 +115,28 @@ struct SettingsView: View {
             }
                 .presentationDetents([.medium, .large])
         }
+        .confirmationDialog(
+            "Delete Account",
+            isPresented: $isShowingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Account", role: .destructive) {
+                Task {
+                    isDeletingAccount = true
+                    let result = await authService.deleteAccount()
+                    isDeletingAccount = false
+                    switch result {
+                    case .success:
+                        showToast("Account deleted.", isError: false)
+                    case let .failure(message):
+                        showToast(message, isError: true)
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your account will be permanently deleted. Your journal entries will stay on this device.")
+        }
     }
 
     @ViewBuilder
@@ -162,6 +186,18 @@ struct SettingsView: View {
             }
             .font(MemoryInkTypography.narrativeCompact)
             .foregroundStyle(Color.red.opacity(0.75))
+
+            if isDeletingAccount {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            } else {
+                Button("Delete Account") {
+                    isShowingDeleteConfirmation = true
+                }
+                .font(MemoryInkTypography.narrativeCompact)
+                .foregroundStyle(Color.red.opacity(0.40))
+            }
         }
     }
 
@@ -189,7 +225,9 @@ struct SettingsView: View {
                 case .success:
                     showToast("Signed in.", isError: false)
                 case let .failure(message):
-                    showToast(message, isError: true)
+                    if !message.isEmpty {
+                        showToast(message, isError: true)
+                    }
                 }
             }
         } label: {

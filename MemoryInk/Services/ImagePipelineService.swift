@@ -13,6 +13,13 @@ final class ImagePipelineService: ObservableObject {
         case jpegEncodingFailed
     }
 
+    private static let imageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 120
+        cache.totalCostLimit = 64 * 1_024 * 1_024
+        return cache
+    }()
+
     private let fileManager: FileManager
 
     init(fileManager: FileManager = .default) {
@@ -27,9 +34,15 @@ final class ImagePipelineService: ObservableObject {
         let thumbnailPath = "thumbnails/\(id.uuidString).jpg"
         let mediumPreviewPath = "medium/\(id.uuidString).jpg"
 
+        let thumbnail = resized(image, maxPixelDimension: 500)
+        let mediumPreview = resized(image, maxPixelDimension: 1600)
+
         try writeJPEG(image, to: url(forRelativePath: originalPath), quality: 0.92)
-        try writeJPEG(resized(image, maxPixelDimension: 500), to: url(forRelativePath: thumbnailPath), quality: 0.82)
-        try writeJPEG(resized(image, maxPixelDimension: 1600), to: url(forRelativePath: mediumPreviewPath), quality: 0.86)
+        try writeJPEG(thumbnail, to: url(forRelativePath: thumbnailPath), quality: 0.82)
+        try writeJPEG(mediumPreview, to: url(forRelativePath: mediumPreviewPath), quality: 0.86)
+
+        Self.cache(thumbnail, for: url(forRelativePath: thumbnailPath))
+        Self.cache(mediumPreview, for: url(forRelativePath: mediumPreviewPath))
 
         return StoredImageSet(
             originalPath: originalPath,
@@ -39,7 +52,23 @@ final class ImagePipelineService: ObservableObject {
     }
 
     func image(forRelativePath path: String) -> UIImage? {
-        UIImage(contentsOfFile: url(forRelativePath: path).path)
+        Self.cachedImage(at: url(forRelativePath: path))
+    }
+
+    func preparedImage(forRelativePath path: String) async -> UIImage? {
+        let imageURL = url(forRelativePath: path)
+
+        if let cachedImage = Self.imageCache.object(forKey: imageURL.path as NSString) {
+            return cachedImage
+        }
+
+        guard let image = UIImage(contentsOfFile: imageURL.path) else {
+            return nil
+        }
+
+        let preparedImage = await image.byPreparingForDisplay() ?? image
+        Self.cache(preparedImage, for: imageURL)
+        return preparedImage
     }
 
     func url(forRelativePath path: String) -> URL {
@@ -48,7 +77,7 @@ final class ImagePipelineService: ObservableObject {
 
     static func image(forRelativePath path: String) -> UIImage? {
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return UIImage(contentsOfFile: documentsURL.appendingPathComponent(path).path)
+        return cachedImage(at: documentsURL.appendingPathComponent(path))
     }
 
     private var documentsURL: URL {
@@ -68,6 +97,37 @@ final class ImagePipelineService: ObservableObject {
         }
 
         try data.write(to: url, options: [.atomic])
+    }
+
+    private static func cachedImage(at url: URL) -> UIImage? {
+        let key = url.path as NSString
+        if let cachedImage = imageCache.object(forKey: key) {
+            return cachedImage
+        }
+
+        guard let image = UIImage(contentsOfFile: url.path) else {
+            return nil
+        }
+
+        cache(image, for: url)
+        return image
+    }
+
+    private static func cache(_ image: UIImage, for url: URL) {
+        let pixelCost: Int
+        if let cgImage = image.cgImage {
+            pixelCost = cgImage.bytesPerRow * cgImage.height
+        } else {
+            let pixelWidth = image.size.width * image.scale
+            let pixelHeight = image.size.height * image.scale
+            pixelCost = Int(pixelWidth * pixelHeight * 4)
+        }
+
+        imageCache.setObject(
+            image,
+            forKey: url.path as NSString,
+            cost: max(pixelCost, 1)
+        )
     }
 
     private func resized(_ image: UIImage, maxPixelDimension: CGFloat) -> UIImage {

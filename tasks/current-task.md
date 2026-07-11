@@ -1,266 +1,174 @@
-# Task W: Share image includes the memory photo
+# Task: App Store Rejection Fix — Guideline 5.1.1(v) Registration Gate
 
-**Date:** 2026-05-23
+**Date:** 2026-05-27
 **Phase:** Phase 3 — Monetization & Sync
-**Priority:** High
-**Estimated scope:** Small (2 files, surgical edits)
+**Priority:** Critical (blocking App Store submission)
+**Submission ID:** 75d79484-537e-4e04-864e-eec18557e4c9
+**Scope:** 1 file, ~6 surgical changes
 
 ---
 
 ## Context
 
-When a user taps the share button in `MemoryDetailView`, the app calls:
+Apple rejected build 1.0 (3) on an iPad Air 11-inch (M3) citing Guideline 5.1.1(v):
 
-```swift
-// MemoryDetailView.swift – shareCurrentMemory()
-let image = MemoryShareRenderer.render(
-    narrative: narrativeText(for: entry),
-    mood: entry.mood,
-    date: entry.createdAt
-)
-```
+> "The app requires users to register with personal information to purchase In-App Purchase products that are not account-based."
 
-`MemoryShareRenderer.render(narrative:mood:date:)` only draws a gradient background + AI narrative text. The memory photo is **never passed in and never drawn**. The friend who receives the shared image sees only a gradient with text — no photo.
-
-The fix is two-part:
-1. Add an optional `photo: UIImage?` parameter to `MemoryShareRenderer.render(...)` and draw the photo full-bleed when one is present.
-2. Pass `detailImage(for: entry)` from `shareCurrentMemory()` into the renderer.
+The reviewer tapped "Start" on a subscription plan and was blocked by an alert:
+**"Please create an account or sign in before subscribing to MemoryInk+."**
+The StoreKit purchase sheet never appeared.
 
 ---
 
-## Files to modify
+## Root Cause
+
+In `MemoryInk/Features/Subscription/SubscriptionView.swift`, the `planCard` function checks
+`isSignedIn` before allowing a purchase. If the user is not signed in, it fires `showAuthAlert = true`
+and returns — the purchase never reaches StoreKit.
+
+```swift
+// Current (violating) code — planCard action closure:
+Button {
+    guard !isDisabled else { return }
+    guard isSignedIn else { showAuthAlert = true; return }   // ← hard block
+    Task { await subscriptionManager.purchase(plan) }
+} label: { ... }
+```
+
+MemoryInk+ includes features that have no account requirement (more AI narratives per day,
+premium recap styles, voice journaling). Only metadata sync requires a Supabase account.
+Apple's rule: registration cannot gate the entire purchase even if one feature is account-based.
+
+---
+
+## Objective
+
+Any user — signed in or not — can reach the StoreKit payment sheet.
+After a successful purchase, a non-signed-in user sees a one-tap-dismissible prompt
+explaining they can sign in later to enable sync. Registration is never a blocker.
+
+---
+
+## Files to Modify
 
 | File | Action |
 |------|--------|
-| `MemoryInk/Common/Components/MemoryShareRenderer.swift` | Add `photo` param; draw photo layout when present |
-| `MemoryInk/Features/MemoryDetail/MemoryDetailView.swift` | Pass photo to renderer in `shareCurrentMemory()` |
+| `MemoryInk/Features/Subscription/SubscriptionView.swift` | See exact changes below |
 
-**Do NOT touch:** any other file. TimelineView, MemoryCreationView, Typography, ShareSheet, AppRouter — untouched.
+**Do NOT touch:** any other file. No pricing changes. No entitlement ID changes. No paywall trigger changes. No CoreData changes.
 
 ---
 
-## Implementation spec
+## Exact Changes to `SubscriptionView.swift`
 
-### Fix 1 — MemoryShareRenderer.swift
+### Change 1 — Remove `showAuthAlert` state property
 
-**Change the public signature from:**
+**Remove** this line (currently near line 9):
 ```swift
-static func render(narrative: String, mood: MoodType, date: Date) -> UIImage {
-```
-**To:**
-```swift
-static func render(narrative: String, mood: MoodType, date: Date, photo: UIImage? = nil) -> UIImage {
+@State private var showAuthAlert = false
 ```
 
-**Inside `renderer.image { context in ... }`, branch on `photo`:**
+### Change 2 — Remove `isSignedIn` computed property
 
+**Remove** this entire computed property (currently lines 13–16):
 ```swift
-return renderer.image { context in
-    let cgContext = context.cgContext
-    let rect = CGRect(origin: .zero, size: size)
+private var isSignedIn: Bool {
+    if case .signedIn = authService.state { return true }
+    return false
+}
+```
 
-    if let photo = photo {
-        drawPhoto(photo, in: rect)
-        drawPhotoOverlay(in: rect, context: cgContext)
-        drawBadgeWhite(mood: mood, in: rect)
-        drawNarrativeWhite(narrative, in: rect)
-        drawDateWhite(date, in: rect)
-        drawWatermarkWhite(in: rect)
-    } else {
-        drawBackground(in: rect, mood: mood, context: cgContext)
-        drawBadge(mood: mood, in: rect)
-        drawNarrative(narrative, in: rect)
-        drawDate(date, in: rect)
-        drawWatermark(in: rect)
+### Change 3 — Add new state property for post-purchase prompt
+
+**Add** this line alongside the remaining `@State` declarations at the top of the struct:
+```swift
+@State private var showPostPurchaseSyncPrompt = false
+```
+
+### Change 4 — Remove the "Sign in required" alert modifier
+
+**Remove** this entire `.alert` block from `body` (currently lines 43–47):
+```swift
+.alert("Sign in required", isPresented: $showAuthAlert) {
+    Button("OK", role: .cancel) {}
+} message: {
+    Text("Please create an account or sign in before subscribing to MemoryInk+.")
+}
+```
+
+### Change 5 — Add post-purchase sync prompt alert
+
+**Add** this new `.alert` modifier in the same position in `body` (after `.task { ... }`):
+```swift
+.alert("Sync Available", isPresented: $showPostPurchaseSyncPrompt) {
+    Button("Got it", role: .cancel) {}
+} message: {
+    Text("Sign in from Settings anytime to sync your memories across your devices.")
+}
+```
+
+### Change 6 — Remove the sign-in gate from `planCard`
+
+**Replace** the current `planCard` button action closure:
+
+Current:
+```swift
+Button {
+    guard !isDisabled else { return }
+    guard isSignedIn else { showAuthAlert = true; return }
+    Task { await subscriptionManager.purchase(plan) }
+} label: {
+```
+
+Replace with:
+```swift
+Button {
+    guard !isDisabled else { return }
+    Task {
+        let wasSubscribed = subscriptionManager.hasPremiumEntitlement
+        await subscriptionManager.purchase(plan)
+        guard !wasSubscribed, subscriptionManager.hasPremiumEntitlement else { return }
+        if case .signedIn = authService.state { return }
+        showPostPurchaseSyncPrompt = true
     }
-}
+} label: {
 ```
 
-**Add these four new private helpers (photo path only). Do NOT modify the existing five helpers — they must remain exactly as they are for the no-photo fallback.**
-
-```swift
-private static func drawPhoto(_ photo: UIImage, in rect: CGRect) {
-    let photoSize = photo.size
-    guard photoSize.width > 0, photoSize.height > 0 else { return }
-    let scale = max(rect.width / photoSize.width, rect.height / photoSize.height)
-    let scaledWidth = photoSize.width * scale
-    let scaledHeight = photoSize.height * scale
-    let drawRect = CGRect(
-        x: (rect.width - scaledWidth) / 2,
-        y: (rect.height - scaledHeight) / 2,
-        width: scaledWidth,
-        height: scaledHeight
-    )
-    photo.draw(in: drawRect)
-}
-
-private static func drawPhotoOverlay(in rect: CGRect, context: CGContext) {
-    let colors = [
-        UIColor.black.withAlphaComponent(0).cgColor,
-        UIColor.black.withAlphaComponent(0.72).cgColor
-    ] as CFArray
-    let colorSpace = CGColorSpaceCreateDeviceRGB()
-    guard let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0.25, 1.0]) else { return }
-    context.drawLinearGradient(
-        gradient,
-        start: CGPoint(x: rect.midX, y: rect.minY),
-        end: CGPoint(x: rect.midX, y: rect.maxY),
-        options: []
-    )
-}
-
-private static func drawBadgeWhite(mood: MoodType, in rect: CGRect) {
-    let badgeText = mood.title.uppercased()
-    let attributes: [NSAttributedString.Key: Any] = [
-        .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
-        .foregroundColor: UIColor.white.withAlphaComponent(0.90)
-    ]
-    let textSize = badgeText.size(withAttributes: attributes)
-    let badgeRect = CGRect(x: 92, y: 116, width: textSize.width + 42, height: 48)
-    UIColor.white.withAlphaComponent(0.18).setFill()
-    UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
-    badgeText.draw(at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11), withAttributes: attributes)
-}
-
-private static func drawNarrativeWhite(_ narrative: String, in rect: CGRect) {
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.lineSpacing = 8
-    paragraph.alignment = .left
-    let attributes: [NSAttributedString.Key: Any] = [
-        .font: UIFont.systemFont(ofSize: 42, weight: .medium),
-        .foregroundColor: UIColor.white,
-        .paragraphStyle: paragraph
-    ]
-    let attributed = NSAttributedString(string: narrative, attributes: attributes)
-    attributed.draw(
-        with: CGRect(x: 92, y: 560, width: rect.width - 184, height: 380),
-        options: [.usesLineFragmentOrigin, .usesFontLeading],
-        context: nil
-    )
-}
-
-private static func drawDateWhite(_ date: Date, in rect: CGRect) {
-    let dateText = date.formatted(date: .abbreviated, time: .omitted)
-    let attributes: [NSAttributedString.Key: Any] = [
-        .font: UIFont.systemFont(ofSize: 24, weight: .regular),
-        .foregroundColor: UIColor.white.withAlphaComponent(0.72)
-    ]
-    dateText.draw(at: CGPoint(x: 92, y: 940), withAttributes: attributes)
-}
-
-private static func drawWatermarkWhite(in rect: CGRect) {
-    let watermark = "MemoryInk"
-    let attributes: [NSAttributedString.Key: Any] = [
-        .font: UIFont.systemFont(ofSize: 22, weight: .medium),
-        .foregroundColor: UIColor.white.withAlphaComponent(0.55)
-    ]
-    let size = watermark.size(withAttributes: attributes)
-    watermark.draw(at: CGPoint(x: rect.maxX - size.width - 92, y: rect.maxY - 116), withAttributes: attributes)
-}
-```
-
-**Rules for Fix 1:**
-- The existing five helpers (`drawBackground`, `drawBadge`, `drawNarrative`, `drawDate`, `drawWatermark`) must be byte-for-byte identical to their current form.
-- The four new helpers are only called when `photo != nil`.
-- `photo` defaults to `nil` so all other call sites (if any) require no changes.
-- No new imports needed — `UIKit` is already imported.
-
----
-
-### Fix 2 — MemoryDetailView.swift
-
-**In `shareCurrentMemory()` (currently lines 396–404), change from:**
-```swift
-private func shareCurrentMemory() {
-    guard let entry = viewModel.entry else { return }
-
-    let image = MemoryShareRenderer.render(
-        narrative: narrativeText(for: entry),
-        mood: entry.mood,
-        date: entry.createdAt
-    )
-    shareItem = MemoryShareItem(image: image)
-}
-```
-
-**To:**
-```swift
-private func shareCurrentMemory() {
-    guard let entry = viewModel.entry else { return }
-
-    let image = MemoryShareRenderer.render(
-        narrative: narrativeText(for: entry),
-        mood: entry.mood,
-        date: entry.createdAt,
-        photo: detailImage(for: entry)
-    )
-    shareItem = MemoryShareItem(image: image)
-}
-```
-
-**Rules for Fix 2:**
-- Only the `MemoryShareRenderer.render(...)` call changes — one new argument `photo: detailImage(for: entry)`.
-- `detailImage(for:)` already exists at line 391–394; do not duplicate or move it.
-- `detailImage(for:)` returns `nil` for slideshow memories (video path) — the renderer's `photo = nil` fallback handles that correctly, showing the gradient layout.
-- No other code in `MemoryDetailView.swift` changes.
+**Logic explanation:**
+- `wasSubscribed` captures entitlement state before the purchase attempt.
+- After `purchase()` returns, if the user was NOT subscribed before AND IS subscribed now, the purchase succeeded.
+- If they are also not signed in, show the optional sync prompt.
+- If the purchase was cancelled or failed, `hasPremiumEntitlement` stays false → no prompt, no state change.
 
 ---
 
 ## Constraints
 
-- [ ] Existing five `drawBackground/Badge/Narrative/Date/Watermark` helpers — zero changes
-- [ ] No-photo path behavior is byte-for-byte identical to today
-- [ ] No new Swift Packages
-- [ ] No changes to `ShareSheet.swift`, `TimelineView.swift`, `MemoryCreationView.swift`, or any Model/Service file
-- [ ] Slideshow memories (video-backed, `detailImage` returns nil) fall through to the existing gradient layout — no crash
+- [ ] No new Swift packages
+- [ ] No changes to pricing ($5.99, $39.99)
+- [ ] No changes to entitlement ID (`"premium"`)
+- [ ] Paywall trigger logic (first emotional moment) untouched
+- [ ] `isSubscribed` display logic (header badge, plan cards, feature list) untouched
+- [ ] The `authService` `@EnvironmentObject` stays — it is still used for the post-purchase state check
+- [ ] No raw photo, GPS, or EXIF data sent anywhere
 
 ---
 
-## Success criteria
+## Success Criteria
 
-```bash
-# Renderer now accepts photo param
-grep -n "photo: UIImage?" MemoryInk/Common/Components/MemoryShareRenderer.swift
-# must return: 1 match (the function signature)
-
-# Four new helpers present
-grep -n "func drawPhoto\|func drawPhotoOverlay\|func drawBadgeWhite\|func drawNarrativeWhite\|func drawDateWhite\|func drawWatermarkWhite" MemoryInk/Common/Components/MemoryShareRenderer.swift
-# must return: 6 lines
-
-# Original five helpers still present (unchanged)
-grep -n "func drawBackground\|func drawBadge\b\|func drawNarrative\b\|func drawDate\b\|func drawWatermark\b" MemoryInk/Common/Components/MemoryShareRenderer.swift
-# must return: 5 lines
-
-# Call site passes photo
-grep -n "photo: detailImage" MemoryInk/Features/MemoryDetail/MemoryDetailView.swift
-# must return: 1 match
-
-# Typecheck — zero errors
-SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios17.0-simulator \
-  -parse-as-library -module-cache-path /private/tmp/MemoryInkMC \
-  $(find MemoryInk -name "*.swift") 2>&1 | grep "error:"
-# must produce no output
-
-# Package.resolved still present
-ls "MemoryInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-```
+- [ ] A user who has never created an account can tap "Start" on either plan and the native StoreKit purchase sheet appears immediately — no alert, no redirect, no block
+- [ ] After a successful purchase by a non-signed-in user, a dismissible alert appears: "Sign in from Settings anytime to sync your memories across your devices."
+- [ ] Tapping "Got it" (or swiping away) dismisses the alert and the user has full access to premium features without signing in
+- [ ] A user who is already signed in sees no post-purchase prompt (purchase proceeds silently as before)
+- [ ] If the purchase is cancelled or fails, no post-purchase prompt appears
+- [ ] Xcode compiles without errors or warnings introduced by these changes
+- [ ] No files modified beyond `SubscriptionView.swift`
 
 ---
 
-## Expected Codex response format
+## Out of Scope
 
-```
-### Planned Changes
-- MemoryShareRenderer.swift modify — add photo param + 6 new white-text helpers for photo layout
-- MemoryDetailView.swift modify — pass detailImage(for:) as photo argument in shareCurrentMemory()
-
-### Code
-[Code here]
-
-### Summary
-- Files changed: [list]
-- Behavior change: [1 sentence per fix]
-- Not verified: [list]
-- Needs human approval for next step: no
-```
+- Sign-in UX in SettingsView (already correct — sync is gated behind sign-in there)
+- RevenueCatService purchase flow (no auth dependency, already correct)
+- Supabase configuration changes (PM/user action)
+- Any CoreData or data model changes

@@ -15,6 +15,11 @@ struct TimelineMemory: Identifiable, Hashable {
     let voicePath: String?
 }
 
+struct TimelineInsight: Equatable {
+    let mood: MoodType
+    let message: String
+}
+
 extension TimelineMemory {
     static let preview = TimelineMemory(
         id: UUID(),
@@ -79,6 +84,38 @@ final class TimelineViewModel: ObservableObject {
         }
     }
 
+    func recentInsight(
+        from entries: [JournalEntry],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> TimelineInsight? {
+        guard let startDate = calendar.date(
+            byAdding: .day,
+            value: -6,
+            to: calendar.startOfDay(for: now)
+        ) else {
+            return nil
+        }
+
+        let recentEntries = entries.filter {
+            $0.createdAt >= startDate && $0.createdAt <= now
+        }
+        guard recentEntries.count >= 2 else { return nil }
+
+        let moodCounts = Dictionary(grouping: recentEntries, by: \JournalEntry.mood)
+            .mapValues(\.count)
+        guard let dominantMood = MoodType.allCases.max(by: {
+            moodCounts[$0, default: 0] < moodCounts[$1, default: 0]
+        }) else {
+            return nil
+        }
+
+        return TimelineInsight(
+            mood: dominantMood,
+            message: insightMessage(for: dominantMood)
+        )
+    }
+
     private func narrativeState(
         for entry: JournalEntry,
         generationStates: [UUID: NarrativeDisplayState]
@@ -104,6 +141,23 @@ final class TimelineViewModel: ObservableObject {
         }
 
         return "Narrative will appear shortly."
+    }
+
+    private func insightMessage(for mood: MoodType) -> String {
+        switch mood {
+        case .peaceful:
+            return "A quieter rhythm has been showing up lately."
+        case .nostalgic:
+            return "Familiar feelings have been gently resurfacing."
+        case .happy:
+            return "There has been a little more light lately."
+        case .proud:
+            return "A quiet sense of progress is coming through."
+        case .sad:
+            return "Some tender moments have been given space."
+        case .reflective:
+            return "Thoughtful moments have been gathering lately."
+        }
     }
 
     private func palette(for mood: MoodType) -> [Color] {

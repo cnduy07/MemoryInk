@@ -3,6 +3,9 @@ import UIKit
 import AVFoundation
 
 struct TimelineCard: View {
+    @EnvironmentObject private var imagePipeline: ImagePipelineService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let memory: TimelineMemory
     let namespace: Namespace.ID?
     let isExpanded: Bool
@@ -14,6 +17,8 @@ struct TimelineCard: View {
     let onTap: () -> Void
 
     @State private var dragX: CGFloat = 0
+    @State private var thumbnail: UIImage?
+    @State private var imageRevealed = false
     private let swipeThreshold: CGFloat = 100
 
     init(
@@ -79,7 +84,7 @@ struct TimelineCard: View {
             listCard
                 .offset(x: dragX)
                 .rotationEffect(
-                    .degrees(Double(dragX) / 24.0),
+                    reduceMotion ? .zero : .degrees(Double(dragX) / 24.0),
                     anchor: UnitPoint(x: 0.5, y: 1.1)
                 )
                 .simultaneousGesture(
@@ -105,7 +110,8 @@ struct TimelineCard: View {
                             } else {
                                 springBack()
                             }
-                        }
+                        },
+                    including: isExpanded ? .none : .all
                 )
         }
     }
@@ -248,7 +254,7 @@ struct TimelineCard: View {
 
     private func commitSwipe(right: Bool) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.62)) {
+        withAnimation(motionAnimation) {
             dragX = 0
         }
         if right {
@@ -259,9 +265,13 @@ struct TimelineCard: View {
     }
 
     private func springBack() {
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.80)) {
+        withAnimation(motionAnimation) {
             dragX = 0
         }
+    }
+
+    private var motionAnimation: Animation {
+        reduceMotion ? .linear(duration: 0.01) : .easeOut(duration: 0.24)
     }
 
     private var imageArea: some View {
@@ -316,15 +326,26 @@ struct TimelineCard: View {
                     lineWidth: 1
                 )
         }
+        .task(id: memory.thumbnailPath) {
+            thumbnail = nil
+            imageRevealed = false
+            guard let thumbnailPath = memory.thumbnailPath else { return }
+            let preparedThumbnail = await imagePipeline.preparedImage(forRelativePath: thumbnailPath)
+            thumbnail = preparedThumbnail
+            withAnimation(MemoryInkMotion.standard(reduceMotion: reduceMotion)) {
+                imageRevealed = preparedThumbnail != nil
+            }
+        }
     }
 
     private var placeholderImage: some View {
         ZStack {
-            if let thumbnailPath = memory.thumbnailPath,
-               let thumbnail = ImagePipelineService.image(forRelativePath: thumbnailPath) {
+            if let thumbnail {
                 Image(uiImage: thumbnail)
                     .resizable()
                     .scaledToFill()
+                    .opacity(imageRevealed || reduceMotion ? 1 : 0.72)
+                    .scaleEffect(imageRevealed || reduceMotion ? 1 : 1.035)
             } else {
                 LinearGradient(
                     colors: memory.palette,
@@ -341,6 +362,17 @@ struct TimelineCard: View {
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 190
+            )
+            .blendMode(.screen)
+
+            LinearGradient(
+                colors: [
+                    memory.mood.tint.opacity(0.12),
+                    Color.clear,
+                    memory.mood.secondaryTint.opacity(0.13)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
             .blendMode(.screen)
 
@@ -580,6 +612,7 @@ private struct SilentVideoPreview: UIViewRepresentable {
 struct TimelineCard_Previews: PreviewProvider {
     static var previews: some View {
         TimelineCard(memory: TimelineMemory.preview) {}
+            .environmentObject(ImagePipelineService())
             .padding()
             .background(MemoryInkColors.parchment)
     }

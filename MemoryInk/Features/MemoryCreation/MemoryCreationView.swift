@@ -36,14 +36,17 @@ struct MemoryCreationView: View {
                 let contentWidth = finiteDimension(min(availableWidth, viewportSize.width > 700 ? 560 : 430))
 
                 ZStack {
-                    background
+                    MemoryInkAmbientBackdrop(mood: viewModel.selectedMood, intensity: 1.05)
                         .ignoresSafeArea()
 
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: isCompact ? 18 : 22) {
                             photoPicker
+                                .memoryInkEntrance()
                             MoodPickerView(selectedMood: $viewModel.selectedMood)
+                                .memoryInkEntrance(delay: 0.04)
                             noteField(isCompact: isCompact)
+                                .memoryInkEntrance(delay: 0.08)
                         }
                         .frame(width: contentWidth, alignment: .leading)
                         .padding(.horizontal, horizontalPadding)
@@ -84,14 +87,27 @@ struct MemoryCreationView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 9)
                         .background(
-                            viewModel.canSave
-                                ? MemoryInkColors.amber
-                                : MemoryInkColors.tertiaryInk.opacity(0.35)
+                            LinearGradient(
+                                colors: viewModel.canSave
+                                    ? viewModel.selectedMood.gradientColors
+                                    : [
+                                        MemoryInkColors.tertiaryInk.opacity(0.35),
+                                        MemoryInkColors.tertiaryInk.opacity(0.24)
+                                    ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
                         .clipShape(Capsule())
+                        .shadow(
+                            color: viewModel.canSave ? viewModel.selectedMood.tint.opacity(0.24) : .clear,
+                            radius: 9,
+                            x: 0,
+                            y: 4
+                        )
                     }
                     .disabled(!viewModel.canSave)
-                    .buttonStyle(.plain)
+                    .buttonStyle(MemoryInkPressStyle())
                 }
             }
             .onChange(of: viewModel.selectedPhotoItem) { _ in
@@ -141,17 +157,6 @@ struct MemoryCreationView: View {
                 }
             }
         }
-    }
-
-    private var background: some View {
-        LinearGradient(
-            colors: [
-                MemoryInkColors.parchment,
-                MemoryInkColors.paperWarm
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
     }
 
     private var photoPicker: some View {
@@ -380,6 +385,7 @@ private struct MemorySavedSheet: View {
     let entry: JournalEntry
     let onDone: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var checkmarkScale: CGFloat = 0.4
     @State private var showShareSheet = false
     @State private var shareImage: UIImage?
@@ -394,9 +400,15 @@ private struct MemorySavedSheet: View {
 
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 72, weight: .light))
-                .foregroundStyle(MemoryInkColors.sage)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: entry.mood.gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .scaleEffect(checkmarkScale)
-                .animation(.spring(response: 0.5, dampingFraction: 0.60), value: checkmarkScale)
+                .animation(MemoryInkMotion.standard(reduceMotion: reduceMotion), value: checkmarkScale)
                 .padding(.bottom, 20)
 
             Text("Memory saved")
@@ -413,7 +425,13 @@ private struct MemorySavedSheet: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(entry.mood.tint)
+                .background(
+                    LinearGradient(
+                        colors: entry.mood.gradientColors,
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .clipShape(Capsule())
                 .padding(.top, 18)
 
@@ -445,15 +463,15 @@ private struct MemorySavedSheet: View {
                 .frame(height: 56)
                 .background(
                     LinearGradient(
-                        colors: [MemoryInkColors.amber, MemoryInkColors.sunlit],
+                        colors: entry.mood.gradientColors,
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: MemoryInkColors.amber.opacity(0.35), radius: 14, x: 0, y: 6)
+                .shadow(color: entry.mood.tint.opacity(0.28), radius: 14, x: 0, y: 6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
             .padding(.horizontal, 28)
 
             Button("Done") {
@@ -467,11 +485,7 @@ private struct MemorySavedSheet: View {
         }
         .frame(maxWidth: .infinity)
         .background(
-            LinearGradient(
-                colors: [MemoryInkColors.parchment, MemoryInkColors.paperWarm],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            MemoryInkAmbientBackdrop(mood: entry.mood, intensity: 1.05)
             .ignoresSafeArea()
         )
         .presentationDetents([.medium, .large])

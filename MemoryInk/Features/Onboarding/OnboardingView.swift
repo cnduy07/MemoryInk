@@ -10,20 +10,12 @@ struct OnboardingView: View {
             MoodIntroView(onComplete: onComplete)
         }
         .tabViewStyle(.page)
-        .background(MemoryInkColors.parchment.ignoresSafeArea())
+        .background(MemoryInkAmbientBackdrop(mood: .nostalgic).ignoresSafeArea())
     }
 
     private var welcome: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    MemoryInkColors.parchment,
-                    MemoryInkColors.paperWarm,
-                    MemoryInkColors.parchmentDeep
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            MemoryInkAmbientBackdrop(mood: .nostalgic, intensity: 1.12)
             .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
@@ -32,8 +24,15 @@ struct OnboardingView: View {
                 HStack(spacing: 8) {
                     ForEach(MoodType.allCases) { mood in
                         Circle()
-                            .fill(mood.tint.opacity(0.72))
-                            .frame(width: 10, height: 10)
+                            .fill(
+                                LinearGradient(
+                                    colors: mood.gradientColors,
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 12, height: 12)
+                            .shadow(color: mood.tint.opacity(0.28), radius: 5)
                     }
                 }
                 .padding(.bottom, 28)
@@ -64,6 +63,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
+            .memoryInkEntrance(delay: 0.04)
         }
     }
 }

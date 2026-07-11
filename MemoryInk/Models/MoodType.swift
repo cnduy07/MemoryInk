@@ -34,17 +34,49 @@ enum MoodType: String, CaseIterable, Identifiable {
     var tint: Color {
         switch self {
         case .peaceful:
-            return MemoryInkColors.sage
+            return MemoryInkColors.teal
         case .nostalgic:
-            return MemoryInkColors.amber
+            return MemoryInkColors.orchid
         case .happy:
-            return MemoryInkColors.sunlit
+            return MemoryInkColors.gold
         case .proud:
-            return MemoryInkColors.rosewood
+            return MemoryInkColors.coral
         case .sad:
-            return MemoryInkColors.mistBlue
+            return MemoryInkColors.ocean
         case .reflective:
-            return MemoryInkColors.taupe
+            return MemoryInkColors.twilight
+        }
+    }
+
+    var secondaryTint: Color {
+        switch self {
+        case .peaceful:
+            return MemoryInkColors.ocean
+        case .nostalgic:
+            return MemoryInkColors.coral
+        case .happy:
+            return MemoryInkColors.coral
+        case .proud:
+            return MemoryInkColors.gold
+        case .sad:
+            return MemoryInkColors.twilight
+        case .reflective:
+            return MemoryInkColors.orchid
+        }
+    }
+
+    var gradientColors: [Color] {
+        [tint, secondaryTint]
+    }
+
+    var symbolName: String {
+        switch self {
+        case .peaceful:   return "leaf.fill"
+        case .nostalgic:  return "moon.stars.fill"
+        case .happy:      return "sun.max.fill"
+        case .proud:      return "star.fill"
+        case .sad:        return "cloud.rain.fill"
+        case .reflective: return "sparkles"
         }
     }
 

@@ -142,6 +142,9 @@ final class AuthService: NSObject, ObservableObject, ASAuthorizationControllerDe
                 )
             )
             return .success
+        } catch let error as ASAuthorizationError where error.code == .canceled {
+            // User dismissed the sheet — no state change, no toast
+            return .failure("")
         } catch {
             let message = "Couldn't sign in with Apple. Try again."
             state = .error(message)
@@ -228,6 +231,36 @@ final class AuthService: NSObject, ObservableObject, ASAuthorizationControllerDe
     func signOut() {
         clearStoredSession()
         state = configuration.isConfigured ? .signedOut : .unavailableMissingConfig
+    }
+
+    func deleteAccount() async -> AuthResult {
+        let failureMessage = "Couldn't delete account. Try again."
+
+        guard configuration.isConfigured, let accessToken else {
+            return .failure(failureMessage)
+        }
+
+        do {
+            var req = try request(path: "functions/v1/delete-account", method: "DELETE")
+            req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            let (_, response) = try await session.data(for: req)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode) else {
+#if DEBUG
+                print("[MemoryInk][Auth] Delete account request failed with status \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+#endif
+                return .failure(failureMessage)
+            }
+
+            clearStoredSession()
+            state = .signedOut
+            return .success
+        } catch {
+#if DEBUG
+            print("[MemoryInk][Auth] Delete account request could not complete")
+#endif
+            return .failure(failureMessage)
+        }
     }
 
     func isValidEmail(_ email: String) -> Bool {
@@ -345,6 +378,9 @@ final class AuthService: NSObject, ObservableObject, ASAuthorizationControllerDe
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
+#if DEBUG
+            print("[MemoryInk][Auth] HTTP \(httpResponse.statusCode): \(String(data: data, encoding: .utf8) ?? "n/a")")
+#endif
             let authError = try? JSONDecoder().decode(SupabaseAuthErrorResponse.self, from: data)
             throw AuthServiceError.authRejected(authError?.userFacingMessage ?? "Couldn't sign in right now. Try again.")
         }

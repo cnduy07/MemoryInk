@@ -8,6 +8,7 @@ struct TimelineView: View {
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @EnvironmentObject private var syncService: SyncService
     @EnvironmentObject private var analyticsService: AnalyticsService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("paywall_auto_shown") private var paywallAutoShown: Bool = false
     @StateObject private var viewModel = TimelineViewModel()
     @Namespace private var cardNamespace
@@ -35,7 +36,10 @@ struct TimelineView: View {
                 )
 
                 ZStack {
-                    background
+                    MemoryInkAmbientBackdrop(
+                        mood: viewModel.recentInsight(from: repository.entries)?.mood,
+                        intensity: 1.0
+                    )
                         .ignoresSafeArea()
 
                     if repository.entries.isEmpty {
@@ -69,7 +73,7 @@ struct TimelineView: View {
                                                 retryAction: retryAction(for: memory),
                                                 onShare: { sharingMemory = memory },
                                                 onFavorite: {
-                                                    withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                                                    withAnimation(cinematicAnimation) {
                                                         repository.toggleFavorite(id: memory.id)
                                                     }
                                                 }
@@ -80,6 +84,7 @@ struct TimelineView: View {
                                                     router.path.append(.memoryViewer(entryId: memory.id))
                                                 }
                                             }
+                                            .modifier(CinematicScrollEffect(reduceMotion: reduceMotion))
                                             .opacity(appearedCards.contains(memory.id) ? 1 : 0)
                                             .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
                                             .blur(radius: appearedCards.contains(memory.id) ? 0 : 4)
@@ -98,7 +103,7 @@ struct TimelineView: View {
                                             retryAction: retryAction(for: memory),
                                             onShare: { sharingMemory = memory },
                                             onFavorite: {
-                                                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                                                withAnimation(cinematicAnimation) {
                                                     repository.toggleFavorite(id: memory.id)
                                                 }
                                             }
@@ -106,12 +111,13 @@ struct TimelineView: View {
                                             if memory.voicePath?.hasPrefix("slideshows/") == true {
                                                 router.path.append(.memoryDetail(id: memory.id))
                                             } else {
-                                                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                                                withAnimation(cinematicAnimation) {
                                                     selectedMemory = memory
                                                 }
                                             }
                                         }
                                         .frame(width: metrics.cardMaxWidth)
+                                        .modifier(CinematicScrollEffect(reduceMotion: reduceMotion))
                                         .opacity(appearedCards.contains(memory.id) ? 1 : 0)
                                         .scaleEffect(appearedCards.contains(memory.id) ? 1 : 0.985)
                                         .blur(radius: appearedCards.contains(memory.id) ? 0 : 4)
@@ -134,7 +140,7 @@ struct TimelineView: View {
                         .blur(radius: selectedMemory == nil ? 0 : 3.5)
                         .scaleEffect(selectedMemory == nil ? 1 : 0.992)
                         .allowsHitTesting(selectedMemory == nil)
-                        .animation(.spring(response: 0.38, dampingFraction: 0.72), value: selectedMemory)
+                        .animation(cinematicAnimation, value: selectedMemory)
                     }
 
                     if selectedMemory == nil {
@@ -143,7 +149,7 @@ struct TimelineView: View {
 
                     if let selectedMemory {
                         let currentMemory = memories.first { $0.id == selectedMemory.id } ?? selectedMemory
-                        detailOverlay(for: currentMemory, metrics: metrics, viewport: proxy.size)
+                        detailOverlay(for: currentMemory, memories: memories, metrics: metrics)
                     }
 
                     if let milestoneToast {
@@ -200,31 +206,6 @@ struct TimelineView: View {
                 date: memory.timestamp
             )
             ShareSheet(items: [image])
-        }
-    }
-
-    private var background: some View {
-        LinearGradient(
-            colors: [
-                MemoryInkColors.parchment,
-                MemoryInkColors.parchmentDeep,
-                MemoryInkColors.paperWarm
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .overlay(alignment: .topTrailing) {
-            RadialGradient(
-                colors: [
-                    Color.white.opacity(0.36),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 260
-            )
-            .frame(width: 260, height: 260)
-            .offset(x: 72, y: -64)
         }
     }
 
@@ -287,7 +268,7 @@ struct TimelineView: View {
                     }
 
                     Button {
-                        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                        withAnimation(cinematicAnimation) {
                             viewModel.isGridLayout.toggle()
                         }
                     } label: {
@@ -319,7 +300,7 @@ struct TimelineView: View {
                     .accessibilityLabel("Settings")
 
                     Button {
-                        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                        withAnimation(cinematicAnimation) {
                             viewModel.isSearching = true
                         }
                     } label: {
@@ -359,6 +340,12 @@ struct TimelineView: View {
                     }
                 }
                 .padding(.top, 3)
+            }
+
+            if let insight = viewModel.recentInsight(from: repository.entries) {
+                recentInsightCard(insight)
+                    .padding(.top, 6)
+                    .transition(.opacity.combined(with: .scale(scale: 0.99)))
             }
 
             if repository.entries.count >= 3 {
@@ -411,6 +398,53 @@ struct TimelineView: View {
         .padding(.bottom, isCompact ? 0 : 2)
     }
 
+    private func recentInsightCard(_ insight: TimelineInsight) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(insight.mood.tint)
+                    .frame(width: 7, height: 7)
+                    .shadow(color: insight.mood.tint.opacity(0.35), radius: 4)
+
+                Text("RECENT FEELING")
+                    .font(MemoryInkTypography.eyebrow)
+                    .kerning(0.8)
+                    .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+                Spacer(minLength: 8)
+
+                Text(insight.mood.title)
+                    .font(MemoryInkTypography.timestamp.weight(.medium))
+                    .foregroundStyle(insight.mood.tint)
+            }
+
+            Text(insight.message)
+                .font(MemoryInkTypography.subtitle)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .background(
+            LinearGradient(
+                colors: [
+                    insight.mood.tint.opacity(0.11),
+                    MemoryInkColors.paper.opacity(0.72)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(insight.mood.tint.opacity(0.22), lineWidth: 0.7)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Recent feeling: \(insight.mood.title). \(insight.message)")
+    }
+
     private var moodFilterStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -431,7 +465,7 @@ struct TimelineView: View {
 
     private func moodFilterPill(title: String, mood: MoodType?, isSelected: Bool) -> some View {
         Button {
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+            withAnimation(cinematicAnimation) {
                 viewModel.activeMoodFilter = mood
             }
         } label: {
@@ -470,24 +504,24 @@ struct TimelineView: View {
     private var featureCards: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                featurePill(icon: "chart.bar.fill", title: "Weekly Recap", tint: MemoryInkColors.sage) {
+                featurePill(icon: "chart.bar.fill", title: "Weekly Recap", tint: MemoryInkColors.teal) {
                     router.path.append(.recap)
                 }
-                featurePill(icon: "clock.arrow.circlepath", title: "On This Day", tint: MemoryInkColors.rosewood) {
+                featurePill(icon: "clock.arrow.circlepath", title: "On This Day", tint: MemoryInkColors.coral) {
                     router.path.append(.onThisDay)
                 }
                 featurePill(
                     icon: viewModel.showingFavoritesOnly ? "heart.fill" : "heart",
                     title: "Favorites",
-                    tint: MemoryInkColors.amber,
+                    tint: MemoryInkColors.gold,
                     isSelected: viewModel.showingFavoritesOnly
                 ) {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                    withAnimation(cinematicAnimation) {
                         viewModel.showingFavoritesOnly.toggle()
                     }
                 }
                 if repository.entries.count >= 5 {
-                    featurePill(icon: "shuffle", title: "Surprise Me", tint: MemoryInkColors.mistBlue) {
+                    featurePill(icon: "shuffle", title: "Surprise Me", tint: MemoryInkColors.ocean) {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         if let memory = repository.randomEntry() {
                             router.path.append(.memoryDetail(id: memory.id))
@@ -495,7 +529,7 @@ struct TimelineView: View {
                     }
                 }
                 if repository.entriesSince(oneYearAgo).count >= 10 {
-                    featurePill(icon: "star.fill", title: "Year in Memories", tint: MemoryInkColors.sunlit) {
+                    featurePill(icon: "star.fill", title: "Year in Memories", tint: MemoryInkColors.orchid) {
                         router.path.append(.yearlyReview)
                     }
                 }
@@ -520,24 +554,49 @@ struct TimelineView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isSelected ? .white : tint)
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [tint, tint.opacity(0.62)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 27, height: 27)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
                 Text(title)
                     .font(MemoryInkTypography.timestamp.weight(.medium))
-                    .foregroundStyle(isSelected ? .white : MemoryInkColors.secondaryInk)
+                    .foregroundStyle(MemoryInkColors.secondaryInk)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(isSelected ? tint : tint.opacity(0.12))
+            .padding(.leading, 6)
+            .padding(.trailing, 13)
+            .padding(.vertical, 6)
+            .background(.ultraThinMaterial)
+            .background(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(isSelected ? 0.30 : 0.15),
+                        MemoryInkColors.paper.opacity(0.72)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
             .clipShape(Capsule())
             .overlay {
                 Capsule()
-                    .stroke(isSelected ? tint.opacity(0.60) : tint.opacity(0.28), lineWidth: 0.7)
+                    .stroke(isSelected ? tint.opacity(0.66) : tint.opacity(0.30), lineWidth: 0.8)
             }
+            .shadow(color: tint.opacity(isSelected ? 0.18 : 0.08), radius: 8, x: 0, y: 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func timelinePill(
@@ -653,8 +712,16 @@ struct TimelineView: View {
         }
     }
 
-    private func detailOverlay(for memory: TimelineMemory, metrics: TimelineLayoutMetrics, viewport: CGSize) -> some View {
-        ZStack {
+    private func detailOverlay(
+        for memory: TimelineMemory,
+        memories: [TimelineMemory],
+        metrics: TimelineLayoutMetrics
+    ) -> some View {
+        let currentIndex = memories.firstIndex(where: { $0.id == memory.id })
+        let canShowNewer = currentIndex.map { $0 > memories.startIndex } ?? false
+        let canShowOlder = currentIndex.map { $0 + 1 < memories.count } ?? false
+
+        return ZStack {
             MemoryInkColors.ink.opacity(0.34)
                 .ignoresSafeArea()
                 .onTapGesture {
@@ -693,43 +760,132 @@ struct TimelineView: View {
                     closeDetail()
                 }
                 .frame(width: metrics.detailMaxWidth)
+                .id(memory.id)
+                .transition(.opacity.combined(with: .scale(scale: 0.985)))
 
-                Button {
-                    closeDetail()
-                    router.path.append(.memoryDetail(id: memory.id))
-                } label: {
-                    Text("View detail")
-                        .font(MemoryInkTypography.timestamp.weight(.medium))
-                        .foregroundStyle(MemoryInkColors.ink)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(MemoryInkColors.paper.opacity(0.72))
-                        .clipShape(Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                HStack(spacing: 12) {
+                    if memories.count > 1 {
+                        carouselButton(
+                            systemName: "chevron.left",
+                            accessibilityLabel: "Show newer memory",
+                            isEnabled: canShowNewer
+                        ) {
+                            showAdjacentMemory(to: -1, from: memory, in: memories)
                         }
+                    }
+
+                    Button {
+                        closeDetail()
+                        router.path.append(.memoryDetail(id: memory.id))
+                    } label: {
+                        Text("View detail")
+                            .font(MemoryInkTypography.timestamp.weight(.medium))
+                            .foregroundStyle(MemoryInkColors.ink)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(MemoryInkColors.paper.opacity(0.72))
+                            .clipShape(Capsule())
+                            .overlay {
+                                Capsule()
+                                    .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                            }
+                    }
+                    .buttonStyle(.plain)
+
+                    if memories.count > 1 {
+                        carouselButton(
+                            systemName: "chevron.right",
+                            accessibilityLabel: "Show older memory",
+                            isEnabled: canShowOlder
+                        ) {
+                            showAdjacentMemory(to: 1, from: memory, in: memories)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
             }
             .frame(width: metrics.detailMaxWidth)
             .padding(.horizontal, metrics.overlayPadding)
             .offset(y: metrics.isCompact ? -10 : -18)
             .transition(.opacity.combined(with: .scale(scale: 0.988)))
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 44, coordinateSpace: .local)
+                    .onEnded { value in
+                        handleDetailSwipe(value, from: memory, in: memories)
+                    }
+            )
         }
         .background(.regularMaterial.opacity(0.70))
+    }
+
+    private func carouselButton(
+        systemName: String,
+        accessibilityLabel: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .frame(width: 34, height: 34)
+                .background(.ultraThinMaterial)
+                .background(MemoryInkColors.paper.opacity(0.52))
+                .clipShape(Circle())
+                .overlay {
+                    Circle()
+                        .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.28)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func handleDetailSwipe(
+        _ value: DragGesture.Value,
+        from memory: TimelineMemory,
+        in memories: [TimelineMemory]
+    ) {
+        let horizontal = abs(value.translation.width)
+        let vertical = abs(value.translation.height)
+        guard horizontal > vertical * 1.2, horizontal >= 52 else { return }
+
+        showAdjacentMemory(
+            to: value.translation.width > 0 ? -1 : 1,
+            from: memory,
+            in: memories
+        )
+    }
+
+    private func showAdjacentMemory(
+        to offset: Int,
+        from memory: TimelineMemory,
+        in memories: [TimelineMemory]
+    ) {
+        guard let currentIndex = memories.firstIndex(where: { $0.id == memory.id }) else {
+            return
+        }
+
+        let targetIndex = currentIndex + offset
+        guard memories.indices.contains(targetIndex) else { return }
+
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(cinematicAnimation) {
+            selectedMemory = memories[targetIndex]
+        }
     }
 
     private func animateCardIn(_ id: UUID) {
         guard !appearedCards.contains(id) else { return }
 
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+        withAnimation(cinematicAnimation) {
             _ = appearedCards.insert(id)
         }
     }
 
     private func closeDetail() {
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+        withAnimation(cinematicAnimation) {
             selectedMemory = nil
         }
     }
@@ -740,7 +896,7 @@ struct TimelineView: View {
             return
         }
 
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+        withAnimation(cinematicAnimation) {
             viewModel.isSearching = false
             isSearchFocused = false
         }
@@ -758,12 +914,16 @@ struct TimelineView: View {
         Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date()
     }
 
+    private var cinematicAnimation: Animation {
+        reduceMotion ? .linear(duration: 0.01) : .easeInOut(duration: 0.26)
+    }
+
     private func showMilestoneIfNeeded(entryCount: Int) {
         guard let message = milestoneService.checkMilestone(entryCount: entryCount) else {
             return
         }
 
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+        withAnimation(cinematicAnimation) {
             milestoneToast = message
         }
 
@@ -773,7 +933,7 @@ struct TimelineView: View {
             await MainActor.run {
                 guard milestoneToast == message else { return }
 
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                withAnimation(cinematicAnimation) {
                     milestoneToast = nil
                 }
             }
@@ -820,6 +980,27 @@ private struct TimelineLayoutMetrics {
     let cardMaxWidth: CGFloat
     let detailMaxWidth: CGFloat
     let overlayPadding: CGFloat
+}
+
+private struct CinematicScrollEffect: ViewModifier {
+    let reduceMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *), !reduceMotion {
+            content
+                .scrollTransition(
+                    .animated(.easeInOut(duration: 0.26)),
+                    axis: .vertical
+                ) { view, phase in
+                    view
+                        .opacity(phase.isIdentity ? 1 : 0.84)
+                        .scaleEffect(phase.isIdentity ? 1 : 0.975)
+                }
+        } else {
+            content
+        }
+    }
 }
 
 struct TimelineView_Previews: PreviewProvider {

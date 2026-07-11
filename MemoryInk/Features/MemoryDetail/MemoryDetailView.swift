@@ -27,6 +27,7 @@ private struct MemoryDetailContentView: View {
     @EnvironmentObject private var repository: JournalEntryRepository
     @EnvironmentObject private var router: AppRouter
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isShowingDeleteConfirmation = false
     @State private var isShowingEditSheet = false
     @State private var shareItem: MemoryShareItem?
@@ -40,14 +41,19 @@ private struct MemoryDetailContentView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if let entry = viewModel.entry {
                     imageArea(for: entry)
+                        .memoryInkEntrance()
 
                     VStack(alignment: .leading, spacing: 18) {
                         metadataRow(for: entry)
+                            .memoryInkEntrance(delay: 0.04)
                         narrativeBlock(for: entry)
+                            .memoryInkEntrance(delay: 0.08)
                         if let note = entry.rawNote, !note.isEmpty {
                             noteCard(note: note, mood: entry.mood)
+                                .memoryInkEntrance(delay: 0.12)
                         }
                         similarMoments(for: entry)
+                            .memoryInkEntrance(delay: 0.16)
                     }
                     .padding(.horizontal, MemoryInkSpacing.screenHorizontal)
                     .padding(.top, 20)
@@ -62,7 +68,10 @@ private struct MemoryDetailContentView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(MemoryInkColors.parchment.ignoresSafeArea())
+        .background {
+            MemoryInkAmbientBackdrop(mood: viewModel.entry?.mood, intensity: 0.92)
+                .ignoresSafeArea()
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -205,7 +214,10 @@ private struct MemoryDetailContentView: View {
             Spacer()
 
             Button {
-                viewModel.toggleFavorite()
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(MemoryInkMotion.standard(reduceMotion: reduceMotion)) {
+                    viewModel.toggleFavorite()
+                }
             } label: {
                 Image(systemName: entry.isFavorite ? "heart.fill" : "heart")
                     .font(.system(size: 17, weight: .medium))
@@ -219,7 +231,7 @@ private struct MemoryDetailContentView: View {
                     }
                     .shadow(color: MemoryInkColors.filmShadow.opacity(0.08), radius: 8, x: 0, y: 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
             .accessibilityLabel(entry.isFavorite ? "Remove favorite" : "Mark favorite")
         }
     }
@@ -227,7 +239,13 @@ private struct MemoryDetailContentView: View {
     private func noteCard(note: String, mood: MoodType) -> some View {
         HStack(alignment: .top, spacing: 0) {
             RoundedRectangle(cornerRadius: 2)
-                .fill(MemoryInkColors.sage.opacity(0.55))
+                .fill(
+                    LinearGradient(
+                        colors: mood.gradientColors,
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .frame(width: 2)
 
             VStack(alignment: .leading, spacing: 10) {
@@ -246,7 +264,7 @@ private struct MemoryDetailContentView: View {
         }
         .background(
             LinearGradient(
-                colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
+                colors: [mood.tint.opacity(0.08), MemoryInkColors.paper, MemoryInkColors.paperWarm],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -254,14 +272,20 @@ private struct MemoryDetailContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.7)
+                .stroke(mood.tint.opacity(0.20), lineWidth: 0.8)
         }
     }
 
     private func narrativeBlock(for entry: JournalEntry) -> some View {
         HStack(spacing: 0) {
             Rectangle()
-                .fill(entry.mood.tint.opacity(0.45))
+                .fill(
+                    LinearGradient(
+                        colors: entry.mood.gradientColors,
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .frame(width: 2)
 
             VStack(alignment: .leading, spacing: 14) {
@@ -287,7 +311,7 @@ private struct MemoryDetailContentView: View {
                                     .stroke(MemoryInkColors.hairline.opacity(0.28), lineWidth: 0.7)
                             }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MemoryInkPressStyle())
                 }
             }
             .padding(MemoryInkSpacing.cardPadding)
@@ -295,7 +319,7 @@ private struct MemoryDetailContentView: View {
         }
         .background(
             LinearGradient(
-                colors: [MemoryInkColors.paper, MemoryInkColors.paperWarm],
+                colors: [entry.mood.tint.opacity(0.08), MemoryInkColors.paper, MemoryInkColors.paperWarm],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -303,7 +327,7 @@ private struct MemoryDetailContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                .stroke(MemoryInkColors.hairline.opacity(0.22), lineWidth: 0.7)
+                .stroke(entry.mood.tint.opacity(0.20), lineWidth: 0.8)
         }
     }
 
@@ -360,7 +384,7 @@ private struct MemoryDetailContentView: View {
                         .clipped()
                 } else {
                     LinearGradient(
-                        colors: [entry.mood.tint, entry.mood.tint.opacity(0.5)],
+                        colors: entry.mood.gradientColors,
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -377,7 +401,7 @@ private struct MemoryDetailContentView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
     }
 
     private func narrativeText(for entry: JournalEntry) -> String {
