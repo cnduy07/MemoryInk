@@ -1,23 +1,19 @@
-# Task: Milestone 1 (Visual Refresh) — Swipe-Gesture, Haptics, Chart Consolidation
+# Task: Milestone 1 (Visual Refresh) — A.4 Typography (Bundled Display Serif)
 
 **Date:** 2026-08-18
-**Plan:** MemoryInk v2 — Visual Refresh + Feature Upgrade, Milestone 1 / Part A items 6, 8, 9 (approved plan, implemented directly)
+**Plan:** MemoryInk v2 — Visual Refresh + Feature Upgrade, Milestone 1 / Part A item 4 (approved plan, implemented directly)
 **Priority:** Medium
-**Estimated scope:** Large (12 files + 3 new components)
+**Estimated scope:** Small (1 new font resource, 3 files)
 
 ---
 
 ## Context
 
-Continuing Milestone 1 after the hero-transition/spacing-scale/hero-header task. This batch closes out three more Part A items: the swipe-gesture duplication between Timeline and Browse, the missing haptics/press-feedback across 7 screens, and the two independent chart implementations.
-
----
+Last open item in Part A. User asked me to pick a free, license-clear font myself. Chose **Spectral** (Google Fonts, SIL Open Font License, by Production Type) — a warm, screen-optimized book serif designed for on-screen reading, fitting MemoryInk's "ink/parchment/journal" brand without the high-contrast drama of something like Playfair Display. Bundled as a static SemiBold weight only (matches the existing `.semibold` weight already used everywhere `MemoryInkTypography.title` appears — no variable-font axis handling needed).
 
 ## Objective
 
-1. `TimelineCard` and `CardBrowseView` share one gesture-recognition helper instead of two copies of the same drag/threshold math.
-2. Settings, Calendar, Slideshow Picker, Subscription, Recap, On This Day, and Yearly Review all give haptic + press feedback on their primary interactive elements, matching Timeline's already-alive feel.
-3. Recap's mood-distribution bar chart is a reusable component, and Yearly Review — which previously had zero animation anywhere in the file — now uses it too, with a real reveal moment.
+`MemoryInkTypography.title` (and Timeline's compact-header variant, which previously hardcoded a separate system-font literal) render in the bundled serif. Everything else — body text, labels, timestamps — stays `.system` for legibility, per the plan's explicit constraint.
 
 ---
 
@@ -25,62 +21,49 @@ Continuing Milestone 1 after the hero-transition/spacing-scale/hero-header task.
 
 | File | Action |
 |------|--------|
-| `MemoryInk/Common/Components/MemoryInkSwipeGesture.swift` | create — shared swipe-to-commit gesture logic |
-| `MemoryInk/Common/Components/MemoryInkHaptics.swift` | create — centralized haptic helpers |
-| `MemoryInk/Common/Components/MemoryInkMoodDistributionChart.swift` | create — reusable animated bar chart |
-| `MemoryInk/Features/Timeline/TimelineCard.swift` | modify — consume shared swipe gesture |
-| `MemoryInk/Features/Browse/CardBrowseView.swift` | modify — consume shared swipe gesture; removed now-redundant `FlyDirection` enum in favor of `MemoryInkSwipeDirection` |
-| `MemoryInk/Features/Settings/SettingsView.swift` | modify — haptics + `MemoryInkPressStyle` on all buttons/toggle (main screen + `EmailAuthSheet`) |
-| `MemoryInk/Features/Calendar/CalendarView.swift` | modify — haptics + press style on month nav, day cells, memory list rows |
-| `MemoryInk/Features/Slideshow/SlideshowPickerView.swift` | modify — haptics + press style on mood/style pickers, grid selection, create button |
-| `MemoryInk/Features/Subscription/SubscriptionView.swift` | modify — haptics + press style on plan purchase button, restore purchases |
-| `MemoryInk/Features/Recap/RecapView.swift` | modify — haptics + press style on generate button; mood chart now uses shared component |
-| `MemoryInk/Features/OnThisDay/OnThisDayView.swift` | modify — haptics + press style on entry card |
-| `MemoryInk/Features/YearlyReview/YearlyReviewView.swift` | modify — haptics + press style on 3 buttons; new mood-distribution section with its own reveal animation (`moodBarsVisible`) |
-| `MemoryInk.xcodeproj/project.pbxproj` | modify — registered the 3 new files (build file + file reference + group + sources phase, ×3) |
+| `MemoryInk/Fonts/Spectral-SemiBold.ttf` | create — font binary, downloaded from `google/fonts` GitHub repo (`ofl/spectral/`), SIL OFL 1.1 |
+| `MemoryInk/Fonts/Spectral-OFL.txt` | create — license file, kept alongside the font for compliance (not bundled as an app resource) |
+| `MemoryInk/Common/Theme/Typography.swift` | modify — `title` now uses `Font.custom("Spectral-SemiBold", ...)`; new `titleCompact` added |
+| `MemoryInk/Features/Timeline/TimelineView.swift` | modify — compact header title now uses `MemoryInkTypography.titleCompact` instead of a separate inline system-font literal, so the font family doesn't visibly swap mid-scroll |
+| `MemoryInk.xcodeproj/project.pbxproj` | modify — registered the font as a bundle *resource* (Copy Bundle Resources phase, not Sources) — new `Fonts` group mirroring the existing `Audio` group pattern |
+| `MemoryInk/Info.plist` | modify — added `UIAppFonts` array with `Spectral-SemiBold.ttf` (**this file is gitignored** — see caveat below) |
 
-**Do NOT touch:** `SubscriptionManager`/`RevenueCatService` purchase logic itself, entitlement IDs, pricing, paywall trigger timing — only added a haptic call and a press-feedback button style around the existing purchase flow.
+**Do NOT touch:** any other `MemoryInkTypography` style (`eyebrow`, `subtitle`, `narrative`, `narrativeCompact`, `timestamp`, `badge`) — those stay system per the plan's "body text stays system" rule.
 
 ---
 
-## Implementation spec (what was actually built)
+## Important caveat — Info.plist is not git-tracked
 
-### A.9 — Swipe-gesture consolidation
-New `memoryInkSwipeGesture(_:onChanged:onCommit:onCancel:)` builds the `DragGesture` (configurable minimum distance, global-vs-local coordinate space, optional horizontal-dominance gate, prediction weight, threshold) and reports outcomes via closures. `TimelineCard` and `CardBrowseView` now call it with their exact original parameter values (20/0.22/global/horizontal-gate for Timeline; 10/0.25/local/no-gate for Browse) — a pure refactor, not a behavior change. `CardBrowseView`'s private `FlyDirection` enum was redundant with the new `MemoryInkSwipeDirection` and was removed in favor of it.
-
-### A.6 — Haptics/press-feedback sweep
-New `MemoryInkHaptics` enum (`.light()`, `.medium()`, `.selection()`) wraps `UIImpactFeedbackGenerator`/`UISelectionFeedbackGenerator` consistently. Applied across all 7 previously-silent screens: navigation/opening taps get `.light()`, mode/date/mood selection gets `.selection()`, and consequential actions (sign out, delete account, purchase, generate recap/review, create slideshow) get `.medium()`. Every button that had `.buttonStyle(.plain)` (or no style at all) now uses the existing `MemoryInkPressStyle()` for consistent press-down feedback.
-
-### A.8 — Chart consolidation (scope note)
-`EmotionGraphView` (a chronological mood-valence line chart) and Recap's mood-distribution bars are genuinely different chart types with different math — merging them into one component wouldn't share meaningful code, just make both harder to read. Instead: extracted the bar-chart pattern itself into `MemoryInkMoodDistributionChart`, reused it in Recap (replacing its inline version, zero behavior change), and gave Yearly Review — which had **no animation anywhere in the file** per the original design audit — a new "YOUR YEAR IN MOODS" section built on the same component, with its own spring-based reveal (`moodBarsVisible`, same pattern as Recap's `barsVisible`). `EmotionGraphView` is intentionally left as-is.
+This repo deliberately excludes `MemoryInk/Info.plist` from git (commit `4cef949`, "contains Supabase anon key, RevenueCat key... keep a local backup"). The `UIAppFonts` addition is on disk and confirmed working in the built app bundle, but **it will not travel with any git commit/branch/clone** — it only exists on this machine's working copy. The user needs to add the same `UIAppFonts` key to wherever they keep their Info.plist backup (1Password/Notes per the original commit message) so it isn't lost.
 
 ---
 
 ## Constraints (from AGENTS.md)
 
-- [x] No new Swift Package or external dependency
+- [x] No new Swift Package or external dependency — this is a bundled resource file, not a package
 - [x] No Core Data changes
 - [x] No changes to subscription pricing, entitlement IDs, or paywall trigger logic
 - [x] No changes to files outside the list above
+- [x] Font is SIL OFL 1.1 licensed (free for commercial app use, no attribution required in-app) — license file kept in-repo
 
 ---
 
 ## Success criteria
 
-- [x] `TimelineCard.swift` and `CardBrowseView.swift` both call `memoryInkSwipeGesture` with their original threshold/prediction/space values preserved exactly
-- [x] All 7 target screens have at least one `MemoryInkHaptics.*()` call and no remaining bare `.buttonStyle(.plain)` on a primary interactive control
-- [x] `RecapView` and `YearlyReviewView` both render `MemoryInkMoodDistributionChart`; `EmotionGraphView` unmodified
-- [x] All 3 new files registered in `project.pbxproj` (build file, file reference, group membership, sources phase) — verified via `comm` diff of on-disk `.swift` files vs files referenced in the pbxproj (no orphans)
-- [x] `plutil -lint MemoryInk.xcodeproj/project.pbxproj` → OK
-- [x] Real `xcodebuild -project MemoryInk.xcodeproj -scheme MemoryInk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO` → **BUILD SUCCEEDED**, run 3 times (once per sub-item) as each was completed, zero errors each time
+- [x] `Spectral-SemiBold.ttf` present in `MemoryInk/Fonts/`, registered in `project.pbxproj` Resources phase (not Sources)
+- [x] `plutil -lint` on `project.pbxproj` → OK
+- [x] `UIAppFonts` present in Info.plist; confirmed present in the **built app bundle's** `Info.plist` after a real build (not just source)
+- [x] Confirmed `Spectral-SemiBold.ttf` physically copied into the built `.app` bundle
+- [x] Confirmed the font's real PostScript name (`Spectral-SemiBold`, via `fontTools`) matches exactly what `Font.custom(...)` references
+- [x] Real `xcodebuild ... build` → **BUILD SUCCEEDED**
+- [x] Only `title`/`titleCompact` changed; no other typography style touched
 
 ---
 
 ## Out of scope for this task
 
-- A.4 typography/custom font — still blocked on your font choice
-- A.7 redesign of Settings/Slideshow Picker/Subscription visuals beyond backdrop+haptics (structural changes like Slideshow Picker's `NavigationView`→`NavigationStack`, entrance animations) — not started
 - Any Part B feature work
+- Adding more weights (Bold, Medium, Italic) — not used anywhere today; can add later if a real use case appears
 
 ---
 

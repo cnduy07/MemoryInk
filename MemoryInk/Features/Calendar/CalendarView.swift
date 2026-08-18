@@ -12,9 +12,12 @@ struct CalendarView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
                 monthHeader
+                    .memoryInkEntrance()
                 dayLabelRow
                 monthGrid
+                    .memoryInkEntrance(delay: 0.06)
                 memoryList
+                    .memoryInkEntrance(delay: 0.12)
             }
             .padding(.horizontal, 22)
             .padding(.top, 18)

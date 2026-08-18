@@ -15,12 +15,17 @@ struct SubscriptionView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
                 header
+                    .memoryInkEntrance()
                 planSection
+                    .memoryInkEntrance(delay: 0.05)
                 featureList
+                    .memoryInkEntrance(delay: 0.10)
                 if !isSubscribed {
                     actionSection
+                        .memoryInkEntrance(delay: 0.15)
                 }
                 footerNote
+                    .memoryInkEntrance(delay: isSubscribed ? 0.15 : 0.20)
             }
             .padding(.horizontal, 22)
             .padding(.top, 24)

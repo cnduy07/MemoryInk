@@ -314,7 +314,7 @@ struct TimelineView: View {
             }
 
             Text("MemoryInk")
-                .font(isCompact ? .system(size: 31, weight: .semibold, design: .default) : MemoryInkTypography.title)
+                .font(isCompact ? MemoryInkTypography.titleCompact : MemoryInkTypography.title)
                 .foregroundStyle(MemoryInkColors.ink)
 
             Text("Small moments, held quietly.")

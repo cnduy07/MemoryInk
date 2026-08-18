@@ -23,13 +23,16 @@ struct SlideshowPickerView: View {
     ]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 selectionHeader
-                Divider()
+                    .memoryInkEntrance()
+                hairlineDivider
                 moodPicker
+                    .memoryInkEntrance(delay: 0.04)
                 stylePicker
-                Divider()
+                    .memoryInkEntrance(delay: 0.08)
+                hairlineDivider
                 ScrollView(showsIndicators: false) {
                     LazyVGrid(columns: columns, spacing: 3) {
                         ForEach(entries) { entry in
@@ -37,8 +40,10 @@ struct SlideshowPickerView: View {
                         }
                     }
                 }
-                Divider()
+                .memoryInkEntrance(delay: 0.12)
+                hairlineDivider
                 bottomBar
+                    .memoryInkEntrance(delay: 0.16)
             }
             .background(MemoryInkAmbientBackdrop(mood: selectedMood, intensity: 0.9).ignoresSafeArea())
             .navigationTitle("Create Slideshow")
@@ -76,6 +81,12 @@ struct SlideshowPickerView: View {
     }
 
     // MARK: - Subviews
+
+    private var hairlineDivider: some View {
+        Rectangle()
+            .fill(MemoryInkColors.hairline.opacity(0.3))
+            .frame(height: 0.8)
+    }
 
     private var selectionHeader: some View {
         HStack {

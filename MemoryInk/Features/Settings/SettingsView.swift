@@ -70,10 +70,12 @@ struct SettingsView: View {
                     .foregroundStyle(MemoryInkColors.ink)
                     .buttonStyle(MemoryInkPressStyle())
                 }
+                .memoryInkEntrance()
 
                 section("Account") {
                     accountSection
                 }
+                .memoryInkEntrance(delay: 0.05)
 
                 section("Sync") {
                     infoRow("Sync", syncDescription, icon: "arrow.triangle.2.circlepath")
@@ -88,10 +90,12 @@ struct SettingsView: View {
                     .buttonStyle(MemoryInkPressStyle())
                     .disabled(!canStartSync)
                 }
+                .memoryInkEntrance(delay: 0.10)
 
                 section("Daily Reminder") {
                     dailyReminderSection
                 }
+                .memoryInkEntrance(delay: 0.15)
             }
             .padding(22)
         }
