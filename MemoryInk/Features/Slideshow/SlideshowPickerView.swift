@@ -40,7 +40,7 @@ struct SlideshowPickerView: View {
                 Divider()
                 bottomBar
             }
-            .background(MemoryInkColors.parchment.ignoresSafeArea())
+            .background(MemoryInkAmbientBackdrop(mood: selectedMood, intensity: 0.9).ignoresSafeArea())
             .navigationTitle("Create Slideshow")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -111,6 +111,7 @@ struct SlideshowPickerView: View {
                     ForEach(MoodType.allCases) { mood in
                         let isSelected = selectedMood == mood
                         Button {
+                            MemoryInkHaptics.selection()
                             selectedMood = mood
                         } label: {
                             Text("\(mood.emoji) \(mood.title)")
@@ -121,7 +122,7 @@ struct SlideshowPickerView: View {
                                 .background(isSelected ? mood.tint : mood.tint.opacity(0.12))
                                 .clipShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(MemoryInkPressStyle())
                     }
                 }
                 .padding(.horizontal, 16)
@@ -144,6 +145,7 @@ struct SlideshowPickerView: View {
                     ForEach(SlideshowStyle.allCases) { style in
                         let isSelected = selectedStyle == style
                         Button {
+                            MemoryInkHaptics.selection()
                             selectedStyle = style
                         } label: {
                             Text(style.title)
@@ -154,7 +156,7 @@ struct SlideshowPickerView: View {
                                 .background(isSelected ? MemoryInkColors.amber : MemoryInkColors.amber.opacity(0.12))
                                 .clipShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(MemoryInkPressStyle())
                     }
                 }
                 .padding(.horizontal, 16)
@@ -202,6 +204,7 @@ struct SlideshowPickerView: View {
         .frame(width: tileSize, height: tileSize)
         .contentShape(Rectangle())
         .onTapGesture {
+            MemoryInkHaptics.selection()
             if let idx = selectedIds.firstIndex(of: entry.id) {
                 selectedIds.remove(at: idx)
             } else if selectedIds.count < maxSelectable {
@@ -224,6 +227,7 @@ struct SlideshowPickerView: View {
                     .foregroundStyle(MemoryInkColors.secondaryInk)
             } else {
                 Button {
+                    MemoryInkHaptics.medium()
                     guard selectedIds.count >= 2 else { return }
                     let orderedEntries = selectedIds.compactMap { id in
                         entries.first { $0.id == id }
@@ -272,7 +276,7 @@ struct SlideshowPickerView: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MemoryInkPressStyle())
                 .disabled(selectedIds.count < 2)
                 .padding(.horizontal, 22)
             }

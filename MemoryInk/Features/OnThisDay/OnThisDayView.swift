@@ -24,7 +24,7 @@ struct OnThisDayView: View {
             .padding(.top, 24)
             .padding(.bottom, 48)
         }
-        .background(MemoryInkColors.parchment.ignoresSafeArea())
+        .background(MemoryInkAmbientBackdrop(mood: service.entries.first?.mood, intensity: 1.0).ignoresSafeArea())
         .navigationTitle("On This Day")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -34,19 +34,11 @@ struct OnThisDayView: View {
     }
 
     private var heroHeader: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("ON THIS DAY")
-                .font(MemoryInkTypography.eyebrow)
-                .foregroundStyle(MemoryInkColors.tertiaryInk)
-
-            Spacer()
-
+        MemoryInkHeroHeader(eyebrow: "ON THIS DAY", tint: MemoryInkColors.rosewood, height: 140) {
             Text(Date().formatted(.dateTime.month(.wide).day()))
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(MemoryInkColors.ink)
-
-            Spacer()
-
+        } footer: {
             Text(memoryCountLabel)
                 .font(MemoryInkTypography.badge)
                 .foregroundStyle(MemoryInkColors.secondaryInk)
@@ -55,31 +47,11 @@ struct OnThisDayView: View {
                 .background(.ultraThinMaterial)
                 .clipShape(Capsule())
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 140)
-        .background(
-            LinearGradient(
-                colors: [
-                    MemoryInkColors.rosewood.opacity(0.55),
-                    MemoryInkColors.rosewood.opacity(0.18),
-                    MemoryInkColors.parchment
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
-                .stroke(MemoryInkColors.hairline.opacity(0.18), lineWidth: 0.7)
-        }
-        .shadow(color: MemoryInkColors.rosewood.opacity(0.16), radius: 22, x: 0, y: 10)
     }
 
     private func entryCard(_ entry: JournalEntry) -> some View {
         Button {
+            MemoryInkHaptics.light()
             router.path.append(.memoryDetail(id: entry.id))
         } label: {
             ZStack(alignment: .bottom) {
@@ -121,7 +93,7 @@ struct OnThisDayView: View {
             .shadow(color: Color.black.opacity(0.18), radius: 22, x: 0, y: 12)
             .contentShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
     }
 
     @ViewBuilder

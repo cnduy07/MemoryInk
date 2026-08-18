@@ -50,7 +50,7 @@ struct RecapView: View {
             .padding(.top, 24)
             .padding(.bottom, 48)
         }
-        .background(MemoryInkColors.parchment.ignoresSafeArea())
+        .background(MemoryInkAmbientBackdrop(mood: dominantMood, intensity: 1.0).ignoresSafeArea())
         .navigationTitle("Weekly Recap")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -64,60 +64,31 @@ struct RecapView: View {
     }
 
     private var heroHeader: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    dominantMoodTint.opacity(0.65),
-                    dominantMoodTint.opacity(0.18),
-                    MemoryInkColors.parchment
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text("WEEKLY REFLECTION")
-                    .font(MemoryInkTypography.eyebrow)
-                    .foregroundStyle(MemoryInkColors.tertiaryInk)
+        MemoryInkHeroHeader(eyebrow: "WEEKLY REFLECTION", tint: dominantMoodTint, height: 160) {
+            Text(weekRangeLabel)
+                .font(MemoryInkTypography.title)
+                .foregroundStyle(MemoryInkColors.ink)
+                .frame(maxWidth: .infinity, alignment: .center)
+        } footer: {
+            HStack {
+                Text("\(weekEntries.count) memories")
+                    .font(MemoryInkTypography.badge)
+                    .foregroundStyle(MemoryInkColors.secondaryInk)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.ultraThinMaterial, in: Capsule())
 
                 Spacer()
 
-                Text(weekRangeLabel)
-                    .font(MemoryInkTypography.title)
+                Text(dominantMood.title)
+                    .font(MemoryInkTypography.badge)
                     .foregroundStyle(MemoryInkColors.ink)
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                Spacer()
-
-                HStack {
-                    Text("\(weekEntries.count) memories")
-                        .font(MemoryInkTypography.badge)
-                        .foregroundStyle(MemoryInkColors.secondaryInk)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(.ultraThinMaterial, in: Capsule())
-
-                    Spacer()
-
-                    Text(dominantMood.title)
-                        .font(MemoryInkTypography.badge)
-                        .foregroundStyle(MemoryInkColors.ink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(dominantMood.tint.opacity(0.30), in: Capsule())
-                        .background(.ultraThinMaterial, in: Capsule())
-                }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(dominantMood.tint.opacity(0.30), in: Capsule())
+                    .background(.ultraThinMaterial, in: Capsule())
             }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 22)
         }
-        .frame(height: 160)
-        .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius + 4, style: .continuous)
-                .stroke(MemoryInkColors.hairline.opacity(0.18), lineWidth: 0.7)
-        }
-        .shadow(color: dominantMoodTint.opacity(0.18), radius: 24, x: 0, y: 12)
     }
 
     private var memoryStrip: some View {
@@ -172,41 +143,13 @@ struct RecapView: View {
                 .font(MemoryInkTypography.eyebrow)
                 .foregroundStyle(MemoryInkColors.tertiaryInk)
 
-            ForEach(Array(moodCounts.enumerated()), id: \.element.mood) { index, item in
-                moodBarRow(mood: item.mood, count: item.count, index: index)
-            }
+            MemoryInkMoodDistributionChart(
+                items: moodCounts.map { MemoryInkMoodDistributionChart.Item(mood: $0.mood, count: $0.count) },
+                total: weekEntries.count,
+                isVisible: barsVisible
+            )
         }
         .padding(.horizontal, 22)
-    }
-
-    private func moodBarRow(mood: MoodType, count: Int, index: Int) -> some View {
-        let fraction = Double(count) / Double(max(weekEntries.count, 1))
-
-        return HStack(spacing: 10) {
-            Text(mood.title)
-                .font(MemoryInkTypography.timestamp)
-                .foregroundStyle(MemoryInkColors.secondaryInk)
-                .frame(width: 80, alignment: .trailing)
-
-            GeometryReader { proxy in
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(mood.tint)
-                    .frame(
-                        width: max(8, proxy.size.width * fraction) * (barsVisible ? 1.0 : 0.0),
-                        height: 8
-                    )
-                    .animation(
-                        .spring(response: 0.6, dampingFraction: 0.75)
-                            .delay(Double(index) * 0.08),
-                        value: barsVisible
-                    )
-            }
-            .frame(height: 8)
-
-            Text("\(count)")
-                .font(MemoryInkTypography.timestamp)
-                .foregroundStyle(MemoryInkColors.tertiaryInk)
-        }
     }
 
     private func recapCard(_ recap: WeeklyRecap) -> some View {
@@ -279,6 +222,7 @@ struct RecapView: View {
 
     private var generateButton: some View {
         Button {
+            MemoryInkHaptics.medium()
             Task { await generateRecap() }
         } label: {
             HStack(spacing: 8) {
@@ -304,7 +248,7 @@ struct RecapView: View {
                     .stroke(MemoryInkColors.amber.opacity(0.35), lineWidth: 0.8)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
         .padding(.horizontal, 22)
     }
 

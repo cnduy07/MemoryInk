@@ -185,6 +185,7 @@ struct SubscriptionView: View {
     ) -> some View {
         Button {
             guard !isDisabled else { return }
+            MemoryInkHaptics.medium()
             Task {
                 let wasSubscribed = subscriptionManager.hasPremiumEntitlement
                 await subscriptionManager.purchase(plan)
@@ -229,7 +230,7 @@ struct SubscriptionView: View {
             .overlay { planStroke(isHighlighted: isHighlighted, isCurrentPlan: isCurrentPlan) }
             .opacity(isDisabled && !isCurrentPlan ? 0.40 : 1.0)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
         .disabled(isDisabled && !isCurrentPlan)
     }
 
@@ -272,13 +273,14 @@ struct SubscriptionView: View {
                 .foregroundStyle(MemoryInkColors.secondaryInk)
 
             Button {
+                MemoryInkHaptics.light()
                 Task { await subscriptionManager.restorePurchases() }
             } label: {
                 Text("Restore Purchases")
                     .font(MemoryInkTypography.timestamp.weight(.medium))
                     .foregroundStyle(MemoryInkColors.ink)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
         }
         .frame(maxWidth: .infinity)
         .multilineTextAlignment(.center)

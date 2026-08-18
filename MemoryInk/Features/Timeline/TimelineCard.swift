@@ -88,29 +88,18 @@ struct TimelineCard: View {
                     anchor: UnitPoint(x: 0.5, y: 1.1)
                 )
                 .simultaneousGesture(
-                    DragGesture(minimumDistance: 20, coordinateSpace: .global)
-                        .onChanged { value in
-                            let horizontal = abs(value.translation.width)
-                            let vertical = abs(value.translation.height)
-                            guard horizontal > vertical * 1.2 else { return }
-                            dragX = value.translation.width
-                        }
-                        .onEnded { value in
-                            let horizontal = abs(value.translation.width)
-                            let vertical = abs(value.translation.height)
-                            guard horizontal > vertical else {
-                                springBack()
-                                return
-                            }
-                            let projected = value.translation.width + value.predictedEndTranslation.width * 0.22
-                            if projected > swipeThreshold {
-                                commitSwipe(right: true)
-                            } else if projected < -swipeThreshold {
-                                commitSwipe(right: false)
-                            } else {
-                                springBack()
-                            }
-                        },
+                    memoryInkSwipeGesture(
+                        MemoryInkSwipeGestureConfig(
+                            minimumDistance: 20,
+                            useGlobalCoordinateSpace: true,
+                            requireHorizontalDominance: true,
+                            predictionWeight: 0.22,
+                            threshold: swipeThreshold
+                        ),
+                        onChanged: { translation in dragX = translation.width },
+                        onCommit: { direction in commitSwipe(right: direction == .right) },
+                        onCancel: springBack
+                    ),
                     including: isExpanded ? .none : .all
                 )
         }
@@ -336,6 +325,7 @@ struct TimelineCard: View {
                 imageRevealed = preparedThumbnail != nil
             }
         }
+        .timelineHeroEffect(id: memory.id, namespace: namespace, isSource: !isExpanded)
     }
 
     private var placeholderImage: some View {
@@ -572,6 +562,22 @@ struct TimelineCard: View {
         }
 
         return max(value, 0)
+    }
+}
+
+private extension View {
+    /// Applies `.matchedGeometryEffect` only when a namespace is available (absent in previews),
+    /// so a card's photo morphs between its grid/list position and the expanded detail position
+    /// instead of cross-fading. `isSource` marks the collapsed grid/list card as the geometry
+    /// anchor, since it stays put in the scroll view for the whole transition.
+    func timelineHeroEffect(id: UUID, namespace: Namespace.ID?, isSource: Bool) -> some View {
+        Group {
+            if let namespace {
+                self.matchedGeometryEffect(id: id, in: namespace, isSource: isSource)
+            } else {
+                self
+            }
+        }
     }
 }
 

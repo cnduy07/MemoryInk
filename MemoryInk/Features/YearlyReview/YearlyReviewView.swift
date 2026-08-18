@@ -10,10 +10,12 @@ struct YearlyReviewView: View {
     @EnvironmentObject private var yearlyReviewService: YearlyReviewService
     @State private var shareItem: YearlyReviewShareImage?
     @State private var sharePreviewImage: UIImage?
+    @State private var moodBarsVisible = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 26) {
+                heroHeader
                 collage
 
                 if subscriptionManager.hasPremiumEntitlement {
@@ -37,6 +39,11 @@ struct YearlyReviewView: View {
         .task {
             if subscriptionManager.hasPremiumEntitlement {
                 await yearlyReviewService.generateIfPossible()
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+                moodBarsVisible = true
             }
         }
     }
@@ -63,6 +70,7 @@ struct YearlyReviewView: View {
                     .lineSpacing(7)
 
                 Button {
+                    MemoryInkHaptics.medium()
                     Task {
                         await yearlyReviewService.generateIfPossible()
                     }
@@ -75,7 +83,7 @@ struct YearlyReviewView: View {
                         .background(MemoryInkColors.paper.opacity(0.82))
                         .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MemoryInkPressStyle())
             }
             .padding(18)
             .background(MemoryInkColors.paper.opacity(0.78))
@@ -97,7 +105,35 @@ struct YearlyReviewView: View {
             }
 
             narrativeCard(review.narrative)
+
+            if !yearMoodCounts.isEmpty {
+                moodDistributionSection
+            }
         }
+    }
+
+    private var moodDistributionSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("YOUR YEAR IN MOODS")
+                .font(MemoryInkTypography.eyebrow)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+            MemoryInkMoodDistributionChart(
+                items: yearMoodCounts.map { MemoryInkMoodDistributionChart.Item(mood: $0.mood, count: $0.count) },
+                total: repository.entriesSince(oneYearAgo).count,
+                isVisible: moodBarsVisible
+            )
+        }
+    }
+
+    private var yearMoodCounts: [(mood: MoodType, count: Int)] {
+        let counts = Dictionary(grouping: repository.entriesSince(oneYearAgo), by: \.mood).mapValues(\.count)
+        return MoodType.allCases
+            .compactMap { mood in
+                let count = counts[mood, default: 0]
+                return count > 0 ? (mood: mood, count: count) : nil
+            }
+            .sorted { $0.count > $1.count }
     }
 
     private var upgradePrompt: some View {
@@ -112,6 +148,7 @@ struct YearlyReviewView: View {
                 .lineSpacing(7)
 
             Button {
+                MemoryInkHaptics.light()
                 router.path.append(.subscriptionPreview)
             } label: {
                 Text("View MemoryInk+")
@@ -122,7 +159,7 @@ struct YearlyReviewView: View {
                     .background(MemoryInkColors.paper.opacity(0.86))
                     .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
         }
         .padding(18)
         .background(MemoryInkColors.paper.opacity(0.78))
@@ -206,11 +243,13 @@ struct YearlyReviewView: View {
             }
         } else {
             Button {
+                MemoryInkHaptics.light()
                 prepareShareImage()
             } label: {
                 Image(systemName: "square.and.arrow.up")
                     .foregroundStyle(MemoryInkColors.secondaryInk)
             }
+            .buttonStyle(MemoryInkPressStyle())
             .disabled(yearlyReviewService.review == nil)
         }
     }
@@ -240,6 +279,32 @@ struct YearlyReviewView: View {
 
     private var oneYearAgo: Date {
         Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date()
+    }
+
+    private var heroHeader: some View {
+        MemoryInkHeroHeader(eyebrow: "YEAR IN MEMORIES", tint: MemoryInkColors.amber, height: 150) {
+            Text(yearRangeLabel)
+                .font(MemoryInkTypography.title)
+                .foregroundStyle(MemoryInkColors.ink)
+        } footer: {
+            Text(memoryCountLabel)
+                .font(MemoryInkTypography.badge)
+                .foregroundStyle(MemoryInkColors.secondaryInk)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(.ultraThinMaterial, in: Capsule())
+        }
+    }
+
+    private var yearRangeLabel: String {
+        let start = oneYearAgo.formatted(.dateTime.month(.wide).year())
+        let end = Date().formatted(.dateTime.month(.wide).year())
+        return start == end ? start : "\(start) – \(end)"
+    }
+
+    private var memoryCountLabel: String {
+        let count = repository.entriesSince(oneYearAgo).count
+        return count == 1 ? "1 memory" : "\(count) memories"
     }
 
     private var background: some View {

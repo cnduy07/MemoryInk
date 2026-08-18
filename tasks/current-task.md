@@ -1,174 +1,102 @@
-# Task: App Store Rejection Fix — Guideline 5.1.1(v) Registration Gate
+# Task: Milestone 1 (Visual Refresh) — Swipe-Gesture, Haptics, Chart Consolidation
 
-**Date:** 2026-05-27
-**Phase:** Phase 3 — Monetization & Sync
-**Priority:** Critical (blocking App Store submission)
-**Submission ID:** 75d79484-537e-4e04-864e-eec18557e4c9
-**Scope:** 1 file, ~6 surgical changes
+**Date:** 2026-08-18
+**Plan:** MemoryInk v2 — Visual Refresh + Feature Upgrade, Milestone 1 / Part A items 6, 8, 9 (approved plan, implemented directly)
+**Priority:** Medium
+**Estimated scope:** Large (12 files + 3 new components)
 
 ---
 
 ## Context
 
-Apple rejected build 1.0 (3) on an iPad Air 11-inch (M3) citing Guideline 5.1.1(v):
-
-> "The app requires users to register with personal information to purchase In-App Purchase products that are not account-based."
-
-The reviewer tapped "Start" on a subscription plan and was blocked by an alert:
-**"Please create an account or sign in before subscribing to MemoryInk+."**
-The StoreKit purchase sheet never appeared.
-
----
-
-## Root Cause
-
-In `MemoryInk/Features/Subscription/SubscriptionView.swift`, the `planCard` function checks
-`isSignedIn` before allowing a purchase. If the user is not signed in, it fires `showAuthAlert = true`
-and returns — the purchase never reaches StoreKit.
-
-```swift
-// Current (violating) code — planCard action closure:
-Button {
-    guard !isDisabled else { return }
-    guard isSignedIn else { showAuthAlert = true; return }   // ← hard block
-    Task { await subscriptionManager.purchase(plan) }
-} label: { ... }
-```
-
-MemoryInk+ includes features that have no account requirement (more AI narratives per day,
-premium recap styles, voice journaling). Only metadata sync requires a Supabase account.
-Apple's rule: registration cannot gate the entire purchase even if one feature is account-based.
+Continuing Milestone 1 after the hero-transition/spacing-scale/hero-header task. This batch closes out three more Part A items: the swipe-gesture duplication between Timeline and Browse, the missing haptics/press-feedback across 7 screens, and the two independent chart implementations.
 
 ---
 
 ## Objective
 
-Any user — signed in or not — can reach the StoreKit payment sheet.
-After a successful purchase, a non-signed-in user sees a one-tap-dismissible prompt
-explaining they can sign in later to enable sync. Registration is never a blocker.
+1. `TimelineCard` and `CardBrowseView` share one gesture-recognition helper instead of two copies of the same drag/threshold math.
+2. Settings, Calendar, Slideshow Picker, Subscription, Recap, On This Day, and Yearly Review all give haptic + press feedback on their primary interactive elements, matching Timeline's already-alive feel.
+3. Recap's mood-distribution bar chart is a reusable component, and Yearly Review — which previously had zero animation anywhere in the file — now uses it too, with a real reveal moment.
 
 ---
 
-## Files to Modify
+## Files touched
 
 | File | Action |
 |------|--------|
-| `MemoryInk/Features/Subscription/SubscriptionView.swift` | See exact changes below |
+| `MemoryInk/Common/Components/MemoryInkSwipeGesture.swift` | create — shared swipe-to-commit gesture logic |
+| `MemoryInk/Common/Components/MemoryInkHaptics.swift` | create — centralized haptic helpers |
+| `MemoryInk/Common/Components/MemoryInkMoodDistributionChart.swift` | create — reusable animated bar chart |
+| `MemoryInk/Features/Timeline/TimelineCard.swift` | modify — consume shared swipe gesture |
+| `MemoryInk/Features/Browse/CardBrowseView.swift` | modify — consume shared swipe gesture; removed now-redundant `FlyDirection` enum in favor of `MemoryInkSwipeDirection` |
+| `MemoryInk/Features/Settings/SettingsView.swift` | modify — haptics + `MemoryInkPressStyle` on all buttons/toggle (main screen + `EmailAuthSheet`) |
+| `MemoryInk/Features/Calendar/CalendarView.swift` | modify — haptics + press style on month nav, day cells, memory list rows |
+| `MemoryInk/Features/Slideshow/SlideshowPickerView.swift` | modify — haptics + press style on mood/style pickers, grid selection, create button |
+| `MemoryInk/Features/Subscription/SubscriptionView.swift` | modify — haptics + press style on plan purchase button, restore purchases |
+| `MemoryInk/Features/Recap/RecapView.swift` | modify — haptics + press style on generate button; mood chart now uses shared component |
+| `MemoryInk/Features/OnThisDay/OnThisDayView.swift` | modify — haptics + press style on entry card |
+| `MemoryInk/Features/YearlyReview/YearlyReviewView.swift` | modify — haptics + press style on 3 buttons; new mood-distribution section with its own reveal animation (`moodBarsVisible`) |
+| `MemoryInk.xcodeproj/project.pbxproj` | modify — registered the 3 new files (build file + file reference + group + sources phase, ×3) |
 
-**Do NOT touch:** any other file. No pricing changes. No entitlement ID changes. No paywall trigger changes. No CoreData changes.
-
----
-
-## Exact Changes to `SubscriptionView.swift`
-
-### Change 1 — Remove `showAuthAlert` state property
-
-**Remove** this line (currently near line 9):
-```swift
-@State private var showAuthAlert = false
-```
-
-### Change 2 — Remove `isSignedIn` computed property
-
-**Remove** this entire computed property (currently lines 13–16):
-```swift
-private var isSignedIn: Bool {
-    if case .signedIn = authService.state { return true }
-    return false
-}
-```
-
-### Change 3 — Add new state property for post-purchase prompt
-
-**Add** this line alongside the remaining `@State` declarations at the top of the struct:
-```swift
-@State private var showPostPurchaseSyncPrompt = false
-```
-
-### Change 4 — Remove the "Sign in required" alert modifier
-
-**Remove** this entire `.alert` block from `body` (currently lines 43–47):
-```swift
-.alert("Sign in required", isPresented: $showAuthAlert) {
-    Button("OK", role: .cancel) {}
-} message: {
-    Text("Please create an account or sign in before subscribing to MemoryInk+.")
-}
-```
-
-### Change 5 — Add post-purchase sync prompt alert
-
-**Add** this new `.alert` modifier in the same position in `body` (after `.task { ... }`):
-```swift
-.alert("Sync Available", isPresented: $showPostPurchaseSyncPrompt) {
-    Button("Got it", role: .cancel) {}
-} message: {
-    Text("Sign in from Settings anytime to sync your memories across your devices.")
-}
-```
-
-### Change 6 — Remove the sign-in gate from `planCard`
-
-**Replace** the current `planCard` button action closure:
-
-Current:
-```swift
-Button {
-    guard !isDisabled else { return }
-    guard isSignedIn else { showAuthAlert = true; return }
-    Task { await subscriptionManager.purchase(plan) }
-} label: {
-```
-
-Replace with:
-```swift
-Button {
-    guard !isDisabled else { return }
-    Task {
-        let wasSubscribed = subscriptionManager.hasPremiumEntitlement
-        await subscriptionManager.purchase(plan)
-        guard !wasSubscribed, subscriptionManager.hasPremiumEntitlement else { return }
-        if case .signedIn = authService.state { return }
-        showPostPurchaseSyncPrompt = true
-    }
-} label: {
-```
-
-**Logic explanation:**
-- `wasSubscribed` captures entitlement state before the purchase attempt.
-- After `purchase()` returns, if the user was NOT subscribed before AND IS subscribed now, the purchase succeeded.
-- If they are also not signed in, show the optional sync prompt.
-- If the purchase was cancelled or failed, `hasPremiumEntitlement` stays false → no prompt, no state change.
+**Do NOT touch:** `SubscriptionManager`/`RevenueCatService` purchase logic itself, entitlement IDs, pricing, paywall trigger timing — only added a haptic call and a press-feedback button style around the existing purchase flow.
 
 ---
 
-## Constraints
+## Implementation spec (what was actually built)
 
-- [ ] No new Swift packages
-- [ ] No changes to pricing ($5.99, $39.99)
-- [ ] No changes to entitlement ID (`"premium"`)
-- [ ] Paywall trigger logic (first emotional moment) untouched
-- [ ] `isSubscribed` display logic (header badge, plan cards, feature list) untouched
-- [ ] The `authService` `@EnvironmentObject` stays — it is still used for the post-purchase state check
-- [ ] No raw photo, GPS, or EXIF data sent anywhere
+### A.9 — Swipe-gesture consolidation
+New `memoryInkSwipeGesture(_:onChanged:onCommit:onCancel:)` builds the `DragGesture` (configurable minimum distance, global-vs-local coordinate space, optional horizontal-dominance gate, prediction weight, threshold) and reports outcomes via closures. `TimelineCard` and `CardBrowseView` now call it with their exact original parameter values (20/0.22/global/horizontal-gate for Timeline; 10/0.25/local/no-gate for Browse) — a pure refactor, not a behavior change. `CardBrowseView`'s private `FlyDirection` enum was redundant with the new `MemoryInkSwipeDirection` and was removed in favor of it.
 
----
+### A.6 — Haptics/press-feedback sweep
+New `MemoryInkHaptics` enum (`.light()`, `.medium()`, `.selection()`) wraps `UIImpactFeedbackGenerator`/`UISelectionFeedbackGenerator` consistently. Applied across all 7 previously-silent screens: navigation/opening taps get `.light()`, mode/date/mood selection gets `.selection()`, and consequential actions (sign out, delete account, purchase, generate recap/review, create slideshow) get `.medium()`. Every button that had `.buttonStyle(.plain)` (or no style at all) now uses the existing `MemoryInkPressStyle()` for consistent press-down feedback.
 
-## Success Criteria
-
-- [ ] A user who has never created an account can tap "Start" on either plan and the native StoreKit purchase sheet appears immediately — no alert, no redirect, no block
-- [ ] After a successful purchase by a non-signed-in user, a dismissible alert appears: "Sign in from Settings anytime to sync your memories across your devices."
-- [ ] Tapping "Got it" (or swiping away) dismisses the alert and the user has full access to premium features without signing in
-- [ ] A user who is already signed in sees no post-purchase prompt (purchase proceeds silently as before)
-- [ ] If the purchase is cancelled or fails, no post-purchase prompt appears
-- [ ] Xcode compiles without errors or warnings introduced by these changes
-- [ ] No files modified beyond `SubscriptionView.swift`
+### A.8 — Chart consolidation (scope note)
+`EmotionGraphView` (a chronological mood-valence line chart) and Recap's mood-distribution bars are genuinely different chart types with different math — merging them into one component wouldn't share meaningful code, just make both harder to read. Instead: extracted the bar-chart pattern itself into `MemoryInkMoodDistributionChart`, reused it in Recap (replacing its inline version, zero behavior change), and gave Yearly Review — which had **no animation anywhere in the file** per the original design audit — a new "YOUR YEAR IN MOODS" section built on the same component, with its own spring-based reveal (`moodBarsVisible`, same pattern as Recap's `barsVisible`). `EmotionGraphView` is intentionally left as-is.
 
 ---
 
-## Out of Scope
+## Constraints (from AGENTS.md)
 
-- Sign-in UX in SettingsView (already correct — sync is gated behind sign-in there)
-- RevenueCatService purchase flow (no auth dependency, already correct)
-- Supabase configuration changes (PM/user action)
-- Any CoreData or data model changes
+- [x] No new Swift Package or external dependency
+- [x] No Core Data changes
+- [x] No changes to subscription pricing, entitlement IDs, or paywall trigger logic
+- [x] No changes to files outside the list above
+
+---
+
+## Success criteria
+
+- [x] `TimelineCard.swift` and `CardBrowseView.swift` both call `memoryInkSwipeGesture` with their original threshold/prediction/space values preserved exactly
+- [x] All 7 target screens have at least one `MemoryInkHaptics.*()` call and no remaining bare `.buttonStyle(.plain)` on a primary interactive control
+- [x] `RecapView` and `YearlyReviewView` both render `MemoryInkMoodDistributionChart`; `EmotionGraphView` unmodified
+- [x] All 3 new files registered in `project.pbxproj` (build file, file reference, group membership, sources phase) — verified via `comm` diff of on-disk `.swift` files vs files referenced in the pbxproj (no orphans)
+- [x] `plutil -lint MemoryInk.xcodeproj/project.pbxproj` → OK
+- [x] Real `xcodebuild -project MemoryInk.xcodeproj -scheme MemoryInk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO` → **BUILD SUCCEEDED**, run 3 times (once per sub-item) as each was completed, zero errors each time
+
+---
+
+## Out of scope for this task
+
+- A.4 typography/custom font — still blocked on your font choice
+- A.7 redesign of Settings/Slideshow Picker/Subscription visuals beyond backdrop+haptics (structural changes like Slideshow Picker's `NavigationView`→`NavigationStack`, entrance animations) — not started
+- Any Part B feature work
+
+---
+
+## Expected response format
+
+Per AGENTS.md:
+```
+### Planned Changes
+- [Filename] [create / modify / delete] — short reason
+
+### Code
+[Code here]
+
+### Summary
+- Files changed: [explicit list]
+- Behavior change: [1–2 sentence description]
+- Not verified: [anything not tested or confirmed]
+- Needs human approval for next step: [yes / no + reason if yes]
+```

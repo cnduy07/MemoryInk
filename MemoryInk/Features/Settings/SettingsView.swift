@@ -57,6 +57,7 @@ struct SettingsView: View {
                     infoRow("AI narratives/day", "\(subscriptionManager.dailyNarrativeLimit)", icon: "wand.and.sparkles")
 
                     Button {
+                        MemoryInkHaptics.light()
                         router.path.append(.subscriptionPreview)
                     } label: {
                         HStack(spacing: 6) {
@@ -67,7 +68,7 @@ struct SettingsView: View {
                     }
                     .font(MemoryInkTypography.narrativeCompact)
                     .foregroundStyle(MemoryInkColors.ink)
-                    .buttonStyle(.plain)
+                    .buttonStyle(MemoryInkPressStyle())
                 }
 
                 section("Account") {
@@ -77,12 +78,14 @@ struct SettingsView: View {
                 section("Sync") {
                     infoRow("Sync", syncDescription, icon: "arrow.triangle.2.circlepath")
                     Button(syncButtonTitle) {
+                        MemoryInkHaptics.light()
                         Task {
                             await syncService.syncMetadataIfAllowed()
                         }
                     }
                     .font(MemoryInkTypography.narrativeCompact)
                     .foregroundStyle(canStartSync ? MemoryInkColors.ink : MemoryInkColors.tertiaryInk)
+                    .buttonStyle(MemoryInkPressStyle())
                     .disabled(!canStartSync)
                 }
 
@@ -92,7 +95,7 @@ struct SettingsView: View {
             }
             .padding(22)
         }
-        .background(MemoryInkColors.parchment.ignoresSafeArea())
+        .background(MemoryInkAmbientBackdrop(mood: nil, intensity: 0.7).ignoresSafeArea())
         .navigationTitle("Account & Settings")
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .bottom) {
@@ -121,6 +124,7 @@ struct SettingsView: View {
             titleVisibility: .visible
         ) {
             Button("Delete Account", role: .destructive) {
+                MemoryInkHaptics.medium()
                 Task {
                     isDeletingAccount = true
                     let result = await authService.deleteAccount()
@@ -154,6 +158,7 @@ struct SettingsView: View {
                     appleSignInButton
 
                     Button {
+                        MemoryInkHaptics.light()
                         emailSheetMode = .signIn
                         isShowingEmailSheet = true
                     } label: {
@@ -174,7 +179,7 @@ struct SettingsView: View {
                                 .stroke(MemoryInkColors.hairline.opacity(0.24), lineWidth: 0.8)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MemoryInkPressStyle())
                 }
             }
 
@@ -182,10 +187,12 @@ struct SettingsView: View {
             infoRow("Signed in as", session.email ?? session.provider.title, icon: "person.circle.fill")
 
             Button("Sign out") {
+                MemoryInkHaptics.medium()
                 authService.signOut()
             }
             .font(MemoryInkTypography.narrativeCompact)
             .foregroundStyle(Color.red.opacity(0.75))
+            .buttonStyle(MemoryInkPressStyle())
 
             if isDeletingAccount {
                 ProgressView()
@@ -193,10 +200,12 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
             } else {
                 Button("Delete Account") {
+                    MemoryInkHaptics.light()
                     isShowingDeleteConfirmation = true
                 }
                 .font(MemoryInkTypography.narrativeCompact)
                 .foregroundStyle(Color.red.opacity(0.40))
+                .buttonStyle(MemoryInkPressStyle())
             }
         }
     }
@@ -216,6 +225,7 @@ struct SettingsView: View {
 
     private var appleSignInButton: some View {
         Button {
+            MemoryInkHaptics.light()
             authService.presentationAnchor = currentPresentationAnchor()
             isAuthLoading = true
             Task {
@@ -244,7 +254,7 @@ struct SettingsView: View {
             .background(Color.black)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
     }
 
     private var dailyReminderSection: some View {
@@ -262,6 +272,7 @@ struct SettingsView: View {
                     isOn: Binding(
                         get: { notificationService.isEnabled },
                         set: { isEnabled in
+                            MemoryInkHaptics.selection()
                             if isEnabled {
                                 Task {
                                     await notificationService.requestAndEnable()
@@ -508,6 +519,7 @@ private struct EmailAuthSheet: View {
                 Spacer(minLength: 0)
 
                 Button {
+                    MemoryInkHaptics.medium()
                     Task {
                         await submit()
                     }
@@ -531,7 +543,7 @@ private struct EmailAuthSheet: View {
                             .stroke(MemoryInkColors.hairline.opacity(0.24), lineWidth: 0.8)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MemoryInkPressStyle())
                 .disabled(isLoading)
             }
             .padding(22)
@@ -552,6 +564,7 @@ private struct EmailAuthSheet: View {
     private var authModeToggle: some View {
         HStack {
             authModeButton("Sign In", isSelected: isSignIn) {
+                MemoryInkHaptics.selection()
                 isSignIn = true
                 message = nil
             }
@@ -559,6 +572,7 @@ private struct EmailAuthSheet: View {
             Spacer()
 
             authModeButton("Create Account", isSelected: !isSignIn) {
+                MemoryInkHaptics.selection()
                 isSignIn = false
                 message = nil
             }
@@ -584,7 +598,7 @@ private struct EmailAuthSheet: View {
             }
             .fixedSize(horizontal: true, vertical: false)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoryInkPressStyle())
     }
 
     private func submit() async {

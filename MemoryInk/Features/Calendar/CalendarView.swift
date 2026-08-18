@@ -20,7 +20,7 @@ struct CalendarView: View {
             .padding(.top, 18)
             .padding(.bottom, 34)
         }
-        .background(MemoryInkColors.parchment.ignoresSafeArea())
+        .background(MemoryInkAmbientBackdrop(mood: nil, intensity: 0.85).ignoresSafeArea())
         .navigationTitle("Calendar")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -28,6 +28,7 @@ struct CalendarView: View {
     private var monthHeader: some View {
         HStack(spacing: 14) {
             Button {
+                MemoryInkHaptics.selection()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     viewModel.navigateMonth(by: -1)
                 }
@@ -39,9 +40,10 @@ struct CalendarView: View {
                     .background(MemoryInkColors.paper.opacity(0.72))
                     .clipShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
 
             Button {
+                MemoryInkHaptics.light()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     viewModel.selectedDate = nil
                 }
@@ -53,9 +55,10 @@ struct CalendarView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
 
             Button {
+                MemoryInkHaptics.selection()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     viewModel.navigateMonth(by: 1)
                 }
@@ -67,7 +70,7 @@ struct CalendarView: View {
                     .background(MemoryInkColors.paper.opacity(0.72))
                     .clipShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
         }
     }
 
@@ -102,6 +105,7 @@ struct CalendarView: View {
         if let date {
             let mood = viewModel.primaryMood(for: date, in: repository.entries)
             Button {
+                MemoryInkHaptics.selection()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     viewModel.selectedDate = date
                 }
@@ -119,7 +123,7 @@ struct CalendarView: View {
                 .background(isSelected(date) ? MemoryInkColors.sunlit.opacity(0.18) : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MemoryInkPressStyle())
         } else {
             Color.clear
                 .frame(minHeight: 42)
@@ -142,11 +146,12 @@ struct CalendarView: View {
             } else {
                 ForEach(entries) { entry in
                     Button {
+                        MemoryInkHaptics.light()
                         router.path.append(.memoryDetail(id: entry.id))
                     } label: {
                         compactMemoryCard(for: entry)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MemoryInkPressStyle())
                 }
             }
         }
