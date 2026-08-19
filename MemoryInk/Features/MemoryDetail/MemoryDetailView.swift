@@ -110,7 +110,12 @@ private struct MemoryDetailContentView: View {
             }
         }
         .sheet(item: $shareItem) { item in
-            ShareSheet(items: [item.image])
+            MemoryShareCardSheet(
+                narrative: item.narrative,
+                mood: item.mood,
+                date: item.date,
+                photo: item.photo
+            )
         }
         .confirmationDialog(
             "Delete this memory?",
@@ -420,19 +425,23 @@ private struct MemoryDetailContentView: View {
     private func shareCurrentMemory() {
         guard let entry = viewModel.entry else { return }
 
-        let image = MemoryShareRenderer.render(
+        // The card itself is rendered inside the share sheet, so the user can switch themes
+        // and see the result before sending anything.
+        shareItem = MemoryShareItem(
             narrative: narrativeText(for: entry),
             mood: entry.mood,
             date: entry.createdAt,
             photo: detailImage(for: entry)
         )
-        shareItem = MemoryShareItem(image: image)
     }
 }
 
 private struct MemoryShareItem: Identifiable {
     let id = UUID()
-    let image: UIImage
+    let narrative: String
+    let mood: MoodType
+    let date: Date
+    let photo: UIImage?
 }
 
 private struct SlideshowVideoPlayer: UIViewRepresentable {

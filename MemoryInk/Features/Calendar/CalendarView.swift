@@ -14,8 +14,11 @@ struct CalendarView: View {
                 monthHeader
                     .memoryInkEntrance()
                 dayLabelRow
-                monthGrid
-                    .memoryInkEntrance(delay: 0.06)
+                VStack(alignment: .leading, spacing: 12) {
+                    monthGrid
+                    heatmapLegend
+                }
+                .memoryInkEntrance(delay: 0.06)
                 memoryList
                     .memoryInkEntrance(delay: 0.12)
             }
@@ -107,29 +110,58 @@ struct CalendarView: View {
     private func dayCell(for date: Date?) -> some View {
         if let date {
             let mood = viewModel.primaryMood(for: date, in: repository.entries)
+            let intensity = viewModel.intensity(for: date, in: repository.entries)
+
             Button {
                 MemoryInkHaptics.selection()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     viewModel.selectedDate = date
                 }
             } label: {
-                VStack(spacing: 2) {
-                    Text(dayNumber(for: date))
-                        .font(MemoryInkTypography.narrativeCompact)
-                        .foregroundStyle(isSelected(date) ? MemoryInkColors.ink : MemoryInkColors.secondaryInk)
-
-                    Circle()
-                        .fill(mood?.tint ?? Color.clear)
-                        .frame(width: 6, height: 6)
-                }
-                .frame(maxWidth: .infinity, minHeight: 42)
-                .background(isSelected(date) ? MemoryInkColors.sunlit.opacity(0.18) : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Text(dayNumber(for: date))
+                    .font(MemoryInkTypography.narrativeCompact)
+                    .foregroundStyle(intensity > 0 ? MemoryInkColors.ink : MemoryInkColors.tertiaryInk)
+                    .frame(maxWidth: .infinity, minHeight: 42)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill((mood?.tint ?? MemoryInkColors.taupe).opacity(intensity))
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(
+                                isSelected(date) ? MemoryInkColors.ink.opacity(0.55) : Color.clear,
+                                lineWidth: 1.4
+                            )
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(MemoryInkPressStyle())
         } else {
             Color.clear
                 .frame(minHeight: 42)
+        }
+    }
+
+    /// Explains the colour ramp so the density reads as deliberate rather than decorative.
+    private var heatmapLegend: some View {
+        HStack(spacing: 8) {
+            Text("Quieter")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+            HStack(spacing: 4) {
+                ForEach([0.12, 0.20, 0.34, 0.48, 0.62], id: \.self) { level in
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(MemoryInkColors.taupe.opacity(level))
+                        .frame(width: 16, height: 10)
+                }
+            }
+
+            Text("Fuller")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+
+            Spacer()
         }
     }
 

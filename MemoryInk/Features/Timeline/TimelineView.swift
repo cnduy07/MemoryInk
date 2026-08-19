@@ -178,9 +178,12 @@ struct TimelineView: View {
             }
             .task {
                 analyticsService.track(.timelineSessionStarted)
+                // Day-count and anniversary milestones arrive with time passing, not with a
+                // new memory — so they'd never surface if this only ran on save.
+                showMilestoneIfNeeded()
             }
-            .onChange(of: repository.entries.count) { entryCount in
-                showMilestoneIfNeeded(entryCount: entryCount)
+            .onChange(of: repository.entries.count) { _ in
+                showMilestoneIfNeeded()
             }
             .onChange(of: repository.entries.count) { _ in
                 Task { await syncService.syncMetadataIfAllowed() }
@@ -200,12 +203,11 @@ struct TimelineView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $sharingMemory) { memory in
-            let image = MemoryShareRenderer.render(
+            MemoryShareCardSheet(
                 narrative: memory.narrative,
                 mood: memory.mood,
                 date: memory.timestamp
             )
-            ShareSheet(items: [image])
         }
     }
 
@@ -918,10 +920,13 @@ struct TimelineView: View {
         reduceMotion ? .linear(duration: 0.01) : .easeInOut(duration: 0.26)
     }
 
-    private func showMilestoneIfNeeded(entryCount: Int) {
-        guard let message = milestoneService.checkMilestone(entryCount: entryCount) else {
-            return
-        }
+    private func showMilestoneIfNeeded() {
+        let message = milestoneService.check(
+            entryCount: repository.entries.count,
+            firstEntryDate: repository.firstEntryDate
+        )
+
+        guard let message else { return }
 
         withAnimation(cinematicAnimation) {
             milestoneToast = message

@@ -7,6 +7,9 @@ struct SettingsView: View {
     @EnvironmentObject private var syncService: SyncService
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var notificationService: NotificationService
+    @EnvironmentObject private var repository: JournalEntryRepository
+    @EnvironmentObject private var appLockService: AppLockService
+    @State private var exportURL: ExportDocument?
     @State private var isShowingEmailSheet = false
     @State private var emailSheetMode: AuthMode = .signIn
     @State private var isAuthLoading = false
@@ -96,6 +99,16 @@ struct SettingsView: View {
                     dailyReminderSection
                 }
                 .memoryInkEntrance(delay: 0.15)
+
+                section("Privacy") {
+                    privacySection
+                }
+                .memoryInkEntrance(delay: 0.20)
+
+                section("Your Data") {
+                    yourDataSection
+                }
+                .memoryInkEntrance(delay: 0.25)
             }
             .padding(22)
         }
@@ -111,6 +124,9 @@ struct SettingsView: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: toastMessage)
+        .sheet(item: $exportURL) { document in
+            ShareSheet(items: [document.url])
+        }
         .sheet(isPresented: $isShowingEmailSheet) {
             EmailAuthSheet(authService: authService, mode: emailSheetMode) { result in
                 switch result {
@@ -144,6 +160,70 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your account will be permanently deleted. Your journal entries will stay on this device.")
+        }
+    }
+
+    @ViewBuilder
+    private var privacySection: some View {
+        if appLockService.isAvailable {
+            Toggle(isOn: Binding(
+                get: { appLockService.isEnabled },
+                set: { enabled in
+                    MemoryInkHaptics.light()
+                    appLockService.setEnabled(enabled)
+                }
+            )) {
+                Text("Require \(appLockService.biometryName)")
+                    .font(MemoryInkTypography.narrativeCompact)
+                    .foregroundStyle(MemoryInkColors.secondaryInk)
+            }
+            .tint(MemoryInkColors.sunlit)
+
+            Text("Your journal stays closed until you unlock it. Photos and entries never leave this device either way.")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text("Set a passcode on this device to lock your journal.")
+                .font(MemoryInkTypography.timestamp)
+                .foregroundStyle(MemoryInkColors.tertiaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var yourDataSection: some View {
+        infoRow("Memories", "\(repository.entries.count)", icon: "book.closed")
+
+        Text("Save a copy of your notes, moods, and narratives. Your photos stay on this device.")
+            .font(MemoryInkTypography.timestamp)
+            .foregroundStyle(MemoryInkColors.tertiaryInk)
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+
+        Button {
+            MemoryInkHaptics.light()
+            exportMemories()
+        } label: {
+            HStack(spacing: 6) {
+                Text("Export my memories")
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+        }
+        .font(MemoryInkTypography.narrativeCompact)
+        .foregroundStyle(repository.entries.isEmpty ? MemoryInkColors.tertiaryInk : MemoryInkColors.ink)
+        .buttonStyle(MemoryInkPressStyle())
+        .disabled(repository.entries.isEmpty)
+    }
+
+    private func exportMemories() {
+        do {
+            let url = try ExportService.exportMetadata(entries: repository.entries)
+            exportURL = ExportDocument(url: url)
+        } catch {
+            showToast("Couldn't prepare your export right now.", isError: true)
         }
     }
 
@@ -427,6 +507,12 @@ struct SettingsView: View {
             toastMessage = nil
         }
     }
+}
+
+/// Wraps the export file's location so it can drive an `item:`-based sheet.
+private struct ExportDocument: Identifiable {
+    let id = UUID()
+    let url: URL
 }
 
 private struct EmailAuthSheet: View {

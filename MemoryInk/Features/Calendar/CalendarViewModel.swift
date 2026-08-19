@@ -21,6 +21,18 @@ final class CalendarViewModel: ObservableObject {
         entriesForDay(date, in: entries).first?.mood
     }
 
+    /// How full a day was, 0…1, in gentle steps rather than a continuous ramp — a day with
+    /// one memory should still read as quiet, and a busy day shouldn't shout.
+    func intensity(for date: Date, in entries: [JournalEntry]) -> Double {
+        switch entriesForDay(date, in: entries).count {
+        case 0: return 0
+        case 1: return 0.20
+        case 2: return 0.34
+        case 3: return 0.48
+        default: return 0.62
+        }
+    }
+
     func entriesForVisibleRange(in entries: [JournalEntry]) -> [JournalEntry] {
         if let selectedDate {
             return entriesForDay(selectedDate, in: entries)

@@ -80,10 +80,20 @@
 		0E8000802FC2000000000001 /* EmotionGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E80007F2FC2000000000001 /* EmotionGraphView.swift */; };
 		0E8000822FC2000000000001 /* SlideshowStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000812FC2000000000001 /* SlideshowStyle.swift */; };
 		0E8000912FC3000000000001 /* CinematicVisualSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000902FC3000000000001 /* CinematicVisualSystem.swift */; };
+		0E8000B12FC5000000000011 /* MemoryShareCardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000B22FC5000000000012 /* MemoryShareCardSheet.swift */; };
+		0E8000B32FC5000000000013 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8000B42FC5000000000014 /* ExportService.swift */; };
 		57A6DFEA83E994B815177679 /* MemoryInkHeroHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5D43F9E0C0A30F8605ACFFE /* MemoryInkHeroHeader.swift */; };
 		301DD76400892AF5AE8F741D /* MemoryInkSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB276F985A2F60DF053363C /* MemoryInkSwipeGesture.swift */; };
 		754B4B0665B3CF2231DC4A33 /* MemoryInkHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0803E8150B1955854F876F83 /* MemoryInkHaptics.swift */; };
 		6DEC94F8AAA21194E3583B3F /* MemoryInkMoodDistributionChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD2E65BBEE941B9190408F7E /* MemoryInkMoodDistributionChart.swift */; };
+		AA0000000000000000000011 /* MemoryInkWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000010 /* MemoryInkWidget.swift */; };
+		AA0000000000000000000013 /* MemoryInkWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* MemoryInkWidgetBundle.swift */; };
+		AA0000000000000000000015 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000014 /* WidgetSnapshot.swift */; };
+		AA0000000000000000000016 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000014 /* WidgetSnapshot.swift */; };
+		AA0000000000000000000021 /* AppLockService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* AppLockService.swift */; };
+		AA0000000000000000000023 /* AppLockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* AppLockView.swift */; };
+		AA0000000000000000000025 /* WidgetSnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000024 /* WidgetSnapshotService.swift */; };
+		AA0000000000000000000019 /* MemoryInkWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000002 /* MemoryInkWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -161,12 +171,37 @@
 		0E80007F2FC2000000000001 /* EmotionGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmotionGraphView.swift; sourceTree = "<group>"; };
 		0E8000812FC2000000000001 /* SlideshowStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideshowStyle.swift; sourceTree = "<group>"; };
 		0E8000902FC3000000000001 /* CinematicVisualSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinematicVisualSystem.swift; sourceTree = "<group>"; };
+		0E8000B22FC5000000000012 /* MemoryShareCardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryShareCardSheet.swift; sourceTree = "<group>"; };
+		0E8000B42FC5000000000014 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		D5D43F9E0C0A30F8605ACFFE /* MemoryInkHeroHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInkHeroHeader.swift; sourceTree = "<group>"; };
 		2EB276F985A2F60DF053363C /* MemoryInkSwipeGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInkSwipeGesture.swift; sourceTree = "<group>"; };
 		0803E8150B1955854F876F83 /* MemoryInkHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInkHaptics.swift; sourceTree = "<group>"; };
 		FD2E65BBEE941B9190408F7E /* MemoryInkMoodDistributionChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInkMoodDistributionChart.swift; sourceTree = "<group>"; };
 		0EBE26E72FC59DA00097F97A /* MemoryInk.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MemoryInk.entitlements; sourceTree = "<group>"; };
+		AA0000000000000000000002 /* MemoryInkWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MemoryInkWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000010 /* MemoryInkWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInkWidget.swift; sourceTree = "<group>"; };
+		AA0000000000000000000012 /* MemoryInkWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInkWidgetBundle.swift; sourceTree = "<group>"; };
+		AA0000000000000000000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA0000000000000000000018 /* MemoryInkWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MemoryInkWidget.entitlements; sourceTree = "<group>"; };
+		AA0000000000000000000014 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
+		AA0000000000000000000020 /* AppLockService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockService.swift; sourceTree = "<group>"; };
+		AA0000000000000000000022 /* AppLockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000024 /* WidgetSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AA000000000000000000000A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AA0000000000000000000019 /* MemoryInkWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		0E79FB122FBAD5A4009A6E8E /* Frameworks */ = {
@@ -174,6 +209,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E79FF012FBE0001009A6E8E /* RevenueCat in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -204,6 +246,7 @@
 		0E79FB0C2FBAD5A4009A6E8E = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000000000003 /* MemoryInkWidget */,
 				0E76CE092FBF3A6B00381EC8 /* StoreKit.storekit */,
 				0E79FB172FBAD5A4009A6E8E /* MemoryInk */,
 				0E79FB162FBAD5A4009A6E8E /* Products */,
@@ -213,6 +256,7 @@
 		0E79FB162FBAD5A4009A6E8E /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000000000002 /* MemoryInkWidget.appex */,
 				0E79FB152FBAD5A4009A6E8E /* MemoryInk.app */,
 			);
 			name = Products;
@@ -257,6 +301,7 @@
 		0E79FB3B2FBAD8A0009A6E8E /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000000000026 /* AppLock */,
 				0E79FB3C2FBAD8A0009A6E8E /* Timeline */,
 				0E80003F2FC1000000000001 /* Browse */,
 				0E79FC0C2FBB0001009A6E8E /* MemoryCreation */,
@@ -288,6 +333,7 @@
 		0E79FB3D2FBAD8A0009A6E8E /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000000000014 /* WidgetSnapshot.swift */,
 				0E79FC002FBB0001009A6E8E /* JournalEntry.swift */,
 				0E79FD002FBC0001009A6E8E /* AIContracts.swift */,
 				0E79FD012FBC0001009A6E8E /* WeeklyRecap.swift */,
@@ -324,6 +370,8 @@
 		0E79FC0A2FBB0001009A6E8E /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				AA0000000000000000000020 /* AppLockService.swift */,
+				AA0000000000000000000024 /* WidgetSnapshotService.swift */,
 				0E79FD022FBC0001009A6E8E /* AIService.swift */,
 				0E79FD032FBC0001009A6E8E /* AIUsageTracker.swift */,
 				0E79FD042FBC0001009A6E8E /* NarrativeGenerationService.swift */,
@@ -336,6 +384,7 @@
 				0E79FE072FBD0001009A6E8E /* AnalyticsService.swift */,
 				0E8000202FC1000000000001 /* NotificationService.swift */,
 				0E8000242FC1000000000001 /* MilestoneService.swift */,
+				0E8000B42FC5000000000014 /* ExportService.swift */,
 				0E8000272FC1000000000001 /* YearlyReviewService.swift */,
 				0E79FC052FBB0001009A6E8E /* ImagePipelineService.swift */,
 				0E8000702FC1000000000001 /* SlideshowService.swift */,
@@ -419,6 +468,7 @@
 			children = (
 				0E8000902FC3000000000001 /* CinematicVisualSystem.swift */,
 				D5D43F9E0C0A30F8605ACFFE /* MemoryInkHeroHeader.swift */,
+				0E8000B22FC5000000000012 /* MemoryShareCardSheet.swift */,
 				2EB276F985A2F60DF053363C /* MemoryInkSwipeGesture.swift */,
 				0803E8150B1955854F876F83 /* MemoryInkHaptics.swift */,
 				FD2E65BBEE941B9190408F7E /* MemoryInkMoodDistributionChart.swift */,
@@ -473,6 +523,25 @@
 			path = Slideshow;
 			sourceTree = "<group>";
 		};
+		AA0000000000000000000003 /* MemoryInkWidget */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000018 /* MemoryInkWidget.entitlements */,
+				AA0000000000000000000017 /* Info.plist */,
+				AA0000000000000000000012 /* MemoryInkWidgetBundle.swift */,
+				AA0000000000000000000010 /* MemoryInkWidget.swift */,
+			);
+			path = MemoryInkWidget;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000026 /* AppLock */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000022 /* AppLockView.swift */,
+			);
+			path = AppLock;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -483,10 +552,12 @@
 				0E79FB112FBAD5A4009A6E8E /* Sources */,
 				0E79FB122FBAD5A4009A6E8E /* Frameworks */,
 				0E79FB132FBAD5A4009A6E8E /* Resources */,
+				AA000000000000000000000A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AA000000000000000000000B /* PBXTargetDependency */,
 			);
 			name = MemoryInk;
 			packageProductDependencies = (
@@ -496,7 +567,34 @@
 			productReference = 0E79FB152FBAD5A4009A6E8E /* MemoryInk.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA0000000000000000000001 /* MemoryInkWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000009 /* Build configuration list for PBXNativeTarget "MemoryInkWidget" */;
+			buildPhases = (
+				AA0000000000000000000004 /* Sources */,
+				AA0000000000000000000005 /* Frameworks */,
+				AA0000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MemoryInkWidget;
+			productName = MemoryInkWidget;
+			productReference = AA0000000000000000000002 /* MemoryInkWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		AA000000000000000000000C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0E79FB0D2FBAD5A4009A6E8E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA0000000000000000000001;
+			remoteInfo = MemoryInkWidget;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		0E79FB0D2FBAD5A4009A6E8E /* Project object */ = {
@@ -507,6 +605,9 @@
 				LastUpgradeCheck = 1540;
 				TargetAttributes = {
 					0E79FB142FBAD5A4009A6E8E = {
+						CreatedOnToolsVersion = 15.4;
+					};
+					AA0000000000000000000001 = {
 						CreatedOnToolsVersion = 15.4;
 					};
 				};
@@ -528,9 +629,18 @@
 			projectRoot = "";
 			targets = (
 				0E79FB142FBAD5A4009A6E8E /* MemoryInk */,
+				AA0000000000000000000001 /* MemoryInkWidget */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXTargetDependency section */
+		AA000000000000000000000B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA0000000000000000000001 /* MemoryInkWidget */;
+			targetProxy = AA000000000000000000000C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		0E79FB132FBAD5A4009A6E8E /* Resources */ = {
@@ -550,6 +660,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA0000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -557,9 +674,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0000000000000000000021 /* AppLockService.swift in Sources */,
+				AA0000000000000000000023 /* AppLockView.swift in Sources */,
+				AA0000000000000000000025 /* WidgetSnapshotService.swift in Sources */,
+				AA0000000000000000000015 /* WidgetSnapshot.swift in Sources */,
 				0E79FB352FBAD8A0009A6E8E /* MoodType.swift in Sources */,
 				0E8000912FC3000000000001 /* CinematicVisualSystem.swift in Sources */,
 				57A6DFEA83E994B815177679 /* MemoryInkHeroHeader.swift in Sources */,
+				0E8000B32FC5000000000013 /* ExportService.swift in Sources */,
+				0E8000B12FC5000000000011 /* MemoryShareCardSheet.swift in Sources */,
 				301DD76400892AF5AE8F741D /* MemoryInkSwipeGesture.swift in Sources */,
 				754B4B0665B3CF2231DC4A33 /* MemoryInkHaptics.swift in Sources */,
 				6DEC94F8AAA21194E3583B3F /* MemoryInkMoodDistributionChart.swift in Sources */,
@@ -623,6 +746,16 @@
 				0E8000252FC1000000000001 /* MilestoneService.swift in Sources */,
 				0E79FC192FBB0001009A6E8E /* MoodPickerView.swift in Sources */,
 				0E79FB322FBAD8A0009A6E8E /* TimelineView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000011 /* MemoryInkWidget.swift in Sources */,
+				AA0000000000000000000013 /* MemoryInkWidgetBundle.swift in Sources */,
+				AA0000000000000000000016 /* WidgetSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -832,6 +965,62 @@
 			};
 			name = Release;
 		};
+		AA0000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MemoryInkWidget/MemoryInkWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = SBVW5779XF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MemoryInkWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MemoryInk;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memoryink.app.MemoryInkWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AA0000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MemoryInkWidget/MemoryInkWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = SBVW5779XF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MemoryInkWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MemoryInk;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memoryink.app.MemoryInkWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -849,6 +1038,15 @@
 			buildConfigurations = (
 				0E79FB242FBAD5A5009A6E8E /* Debug */,
 				0E79FB252FBAD5A5009A6E8E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000009 /* Build configuration list for PBXNativeTarget "MemoryInkWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000007 /* Debug */,
+				AA0000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

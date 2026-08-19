@@ -1,8 +1,44 @@
 import SwiftUI
 import UIKit
 
+/// A look for the exported share card. `classic` is the card MemoryInk has always produced;
+/// the rest reuse the hand-tuned `BackgroundScene` gradients that until now only the slideshow
+/// exporter could show.
+struct MemoryShareTheme: Identifiable, Equatable {
+    let id: String
+    let name: String
+    /// `nil` for `classic`, which is mood-tinted rather than scene-backed.
+    let sceneId: String?
+    /// Whether text sits on a dark ground and should be drawn light.
+    let usesLightInk: Bool
+
+    var scene: BackgroundScene? {
+        guard let sceneId else { return nil }
+        return BackgroundScene.all.first { $0.id == sceneId }
+    }
+
+    static let classic = MemoryShareTheme(id: "classic", name: "Classic", sceneId: nil, usesLightInk: false)
+
+    static let all: [MemoryShareTheme] = [
+        classic,
+        MemoryShareTheme(id: "golden_hour", name: "Golden Hour", sceneId: "golden_hour", usesLightInk: true),
+        MemoryShareTheme(id: "night_ink", name: "Night Ink", sceneId: "night_ink", usesLightInk: true),
+        MemoryShareTheme(id: "warm_parchment", name: "Parchment", sceneId: "warm_parchment", usesLightInk: false)
+    ]
+
+    static func theme(id: String) -> MemoryShareTheme {
+        all.first { $0.id == id } ?? .classic
+    }
+}
+
 struct MemoryShareRenderer {
-    static func render(narrative: String, mood: MoodType, date: Date, photo: UIImage? = nil) -> UIImage {
+    static func render(
+        narrative: String,
+        mood: MoodType,
+        date: Date,
+        photo: UIImage? = nil,
+        theme: MemoryShareTheme = .classic
+    ) -> UIImage {
         let size = CGSize(width: 1080, height: 1080)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 2
@@ -13,7 +49,17 @@ struct MemoryShareRenderer {
             let cgContext = context.cgContext
             let rect = CGRect(origin: .zero, size: size)
 
-            if let photo = photo {
+            if let scene = theme.scene {
+                drawFramed(
+                    narrative: narrative,
+                    mood: mood,
+                    date: date,
+                    photo: photo,
+                    scene: scene,
+                    usesLightInk: theme.usesLightInk,
+                    in: rect
+                )
+            } else if let photo = photo {
                 drawPhoto(photo, in: rect)
                 drawPhotoOverlay(in: rect, context: cgContext)
                 drawBadgeWhite(mood: mood, in: rect)
@@ -28,6 +74,107 @@ struct MemoryShareRenderer {
                 drawWatermark(in: rect)
             }
         }
+    }
+
+    // MARK: - Themed "framed" layout
+
+    /// Scene gradient behind a framed photo, rather than the classic full-bleed treatment —
+    /// this is what makes a theme actually visible on a card that has a photo.
+    private static func drawFramed(
+        narrative: String,
+        mood: MoodType,
+        date: Date,
+        photo: UIImage?,
+        scene: BackgroundScene,
+        usesLightInk: Bool,
+        in rect: CGRect
+    ) {
+        scene.render(size: rect.size).draw(in: rect)
+
+        let ink: UIColor = usesLightInk ? .white : UIColor(MemoryInkColors.ink)
+        let margin: CGFloat = 92
+        var cursorY: CGFloat = margin
+
+        if let photo {
+            let frame = CGRect(x: margin, y: margin, width: rect.width - margin * 2, height: 520)
+            drawFramedPhoto(photo, in: frame)
+            cursorY = frame.maxY + 56
+        } else {
+            cursorY = 260
+        }
+
+        cursorY = drawFramedBadge(mood: mood, at: CGPoint(x: margin, y: cursorY), ink: ink, usesLightInk: usesLightInk)
+        cursorY += 26
+
+        let narrativeHeight = rect.maxY - 180 - cursorY
+        if narrativeHeight > 0 {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.lineSpacing = 8
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: photo == nil ? 42 : 36, weight: .medium),
+                .foregroundColor: ink,
+                .paragraphStyle: paragraph
+            ]
+            NSAttributedString(string: narrative, attributes: attributes).draw(
+                with: CGRect(x: margin, y: cursorY, width: rect.width - margin * 2, height: narrativeHeight),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                context: nil
+            )
+        }
+
+        let footnote: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 24, weight: .regular),
+            .foregroundColor: ink.withAlphaComponent(0.72)
+        ]
+        date.formatted(date: .abbreviated, time: .omitted)
+            .draw(at: CGPoint(x: margin, y: rect.maxY - 116), withAttributes: footnote)
+
+        let watermark = "MemoryInk"
+        let watermarkAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 22, weight: .medium),
+            .foregroundColor: ink.withAlphaComponent(0.55)
+        ]
+        let watermarkSize = watermark.size(withAttributes: watermarkAttributes)
+        watermark.draw(
+            at: CGPoint(x: rect.maxX - watermarkSize.width - margin, y: rect.maxY - 114),
+            withAttributes: watermarkAttributes
+        )
+    }
+
+    private static func drawFramedPhoto(_ photo: UIImage, in frame: CGRect) {
+        let path = UIBezierPath(roundedRect: frame, cornerRadius: 32)
+
+        let context = UIGraphicsGetCurrentContext()
+        context?.saveGState()
+        context?.setShadow(offset: CGSize(width: 0, height: 14), blur: 34, color: UIColor.black.withAlphaComponent(0.28).cgColor)
+        UIColor.black.withAlphaComponent(0.001).setFill()
+        path.fill()
+        context?.restoreGState()
+
+        context?.saveGState()
+        path.addClip()
+        drawPhoto(photo, in: frame)
+        context?.restoreGState()
+    }
+
+    /// Draws the mood pill and returns the y position just below it.
+    private static func drawFramedBadge(mood: MoodType, at origin: CGPoint, ink: UIColor, usesLightInk: Bool) -> CGFloat {
+        let text = mood.title.uppercased()
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
+            .foregroundColor: ink.withAlphaComponent(0.92)
+        ]
+        let textSize = text.size(withAttributes: attributes)
+        let badgeRect = CGRect(x: origin.x, y: origin.y, width: textSize.width + 42, height: 48)
+
+        let fill = usesLightInk
+            ? UIColor.white.withAlphaComponent(0.20)
+            : UIColor(mood.tint).withAlphaComponent(0.26)
+        fill.setFill()
+        UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
+        text.draw(at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11), withAttributes: attributes)
+
+        return badgeRect.maxY
     }
 
     private static func drawPhoto(_ photo: UIImage, in rect: CGRect) {

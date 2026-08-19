@@ -388,7 +388,6 @@ private struct MemorySavedSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var checkmarkScale: CGFloat = 0.4
     @State private var showShareSheet = false
-    @State private var shareImage: UIImage?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -444,12 +443,7 @@ private struct MemorySavedSheet: View {
                 .padding(.bottom, 12)
 
             Button {
-                let image = MemoryShareRenderer.render(
-                    narrative: entry.aiNarrative ?? entry.mood.title,
-                    mood: entry.mood,
-                    date: entry.createdAt
-                )
-                shareImage = image
+                MemoryInkHaptics.light()
                 showShareSheet = true
             } label: {
                 HStack(spacing: 10) {
@@ -491,12 +485,12 @@ private struct MemorySavedSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .sheet(isPresented: $showShareSheet) {
-            if let image = shareImage {
-                ShareSheet(items: [
-                    image,
-                    "I captured this moment with MemoryInk ✨"
-                ])
-            }
+            MemoryShareCardSheet(
+                narrative: entry.aiNarrative ?? entry.mood.title,
+                mood: entry.mood,
+                date: entry.createdAt,
+                caption: "I captured this moment with MemoryInk ✨"
+            )
         }
         .onAppear {
             checkmarkScale = 1.0

@@ -59,13 +59,11 @@ struct CardBrowseView: View {
         .sheet(isPresented: $showShareSheet) {
             if currentIndex < entries.count {
                 let entry = entries[currentIndex]
-                let narrative = entry.aiNarrative ?? "\(entry.mood.title) memory"
-                let image = MemoryShareRenderer.render(
-                    narrative: narrative,
+                MemoryShareCardSheet(
+                    narrative: entry.aiNarrative ?? "\(entry.mood.title) memory",
                     mood: entry.mood,
                     date: entry.createdAt
                 )
-                ShareSheet(items: [image])
             }
         }
         .navigationBarHidden(true)
