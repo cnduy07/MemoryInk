@@ -11,7 +11,6 @@ struct TimelineView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("paywall_auto_shown") private var paywallAutoShown: Bool = false
     @StateObject private var viewModel = TimelineViewModel()
-    @Namespace private var cardNamespace
     @State private var appearedCards: Set<UUID> = []
     @State private var selectedMemory: TimelineMemory?
     @State private var isShowingCreation = false
@@ -67,7 +66,6 @@ struct TimelineView: View {
                                         ForEach(memories) { memory in
                                             TimelineCard(
                                                 memory: memory,
-                                                namespace: cardNamespace,
                                                 isCompact: metrics.isCompact,
                                                 isGridCompact: true,
                                                 retryAction: retryAction(for: memory),
@@ -98,7 +96,6 @@ struct TimelineView: View {
                                     ForEach(memories) { memory in
                                         TimelineCard(
                                             memory: memory,
-                                            namespace: cardNamespace,
                                             isCompact: metrics.isCompact,
                                             retryAction: retryAction(for: memory),
                                             onShare: { sharingMemory = memory },
@@ -754,7 +751,6 @@ struct TimelineView: View {
 
                 TimelineCard(
                     memory: memory,
-                    namespace: cardNamespace,
                     isExpanded: true,
                     isCompact: metrics.isCompact,
                     retryAction: retryAction(for: memory)

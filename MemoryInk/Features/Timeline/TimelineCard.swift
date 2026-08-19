@@ -7,7 +7,6 @@ struct TimelineCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let memory: TimelineMemory
-    let namespace: Namespace.ID?
     let isExpanded: Bool
     let isCompact: Bool
     let isGridCompact: Bool
@@ -23,7 +22,6 @@ struct TimelineCard: View {
 
     init(
         memory: TimelineMemory,
-        namespace: Namespace.ID? = nil,
         isExpanded: Bool = false,
         isCompact: Bool = false,
         isGridCompact: Bool = false,
@@ -33,7 +31,6 @@ struct TimelineCard: View {
         onTap: @escaping () -> Void
     ) {
         self.memory = memory
-        self.namespace = namespace
         self.isExpanded = isExpanded
         self.isCompact = isCompact
         self.isGridCompact = isGridCompact
@@ -325,7 +322,6 @@ struct TimelineCard: View {
                 imageRevealed = preparedThumbnail != nil
             }
         }
-        .timelineHeroEffect(id: memory.id, namespace: namespace, isSource: !isExpanded)
     }
 
     private var placeholderImage: some View {
@@ -562,22 +558,6 @@ struct TimelineCard: View {
         }
 
         return max(value, 0)
-    }
-}
-
-private extension View {
-    /// Applies `.matchedGeometryEffect` only when a namespace is available (absent in previews),
-    /// so a card's photo morphs between its grid/list position and the expanded detail position
-    /// instead of cross-fading. `isSource` marks the collapsed grid/list card as the geometry
-    /// anchor, since it stays put in the scroll view for the whole transition.
-    func timelineHeroEffect(id: UUID, namespace: Namespace.ID?, isSource: Bool) -> some View {
-        Group {
-            if let namespace {
-                self.matchedGeometryEffect(id: id, in: namespace, isSource: isSource)
-            } else {
-                self
-            }
-        }
     }
 }
 

@@ -18,7 +18,7 @@
 > **How to tell Claude something is done:** just say so ("I added the App Group", "font looks fine") and it'll move the item to the archive.
 > ***Cách báo Claude là đã xong:** chỉ cần nói ra ("tôi thêm App Group rồi", "font nhìn ổn") là nó sẽ chuyển mục đó xuống lưu trữ.*
 
-**Last updated:** 2026-08-19 (session 5 — Part B complete) · *Cập nhật lần cuối: 19/08/2026 (phiên 5 — hoàn thành Phần B)*
+**Last updated:** 2026-08-19 (session 6 — hero-transition fix + Part B device pass cleared) · *Cập nhật lần cuối: 19/08/2026 (phiên 6 — sửa hiệu ứng chuyển cảnh + kiểm tra xong Phần B trên máy thật)*
 
 ---
 
@@ -63,16 +63,6 @@ A build passing proves it compiles, links, and bundles — not that it looks or 
 Roughly in order of how likely something is wrong:
 *Xếp gần đúng theo mức độ dễ có lỗi:*
 
-- [ ] **Themed share cards** (B2) — highest risk in the whole v2 batch. The themed layout is hand-placed drawing code (margins, a 520pt photo frame, narrative wrapping). Check each of the four themes, with a photo and without, and with a long narrative. Classic should look exactly as it always has.
-      ***Thiệp chia sẻ có chủ đề** (B2) — rủi ro cao nhất trong cả đợt v2. Layout theo chủ đề là code vẽ đặt toạ độ bằng tay (lề, khung ảnh 520pt, cách xuống dòng của narrative). Kiểm tra cả bốn chủ đề, có ảnh và không ảnh, và với narrative dài. Chủ đề Classic phải trông y hệt như trước giờ.*
-- [ ] **Face ID lock flow** (B4) — enable in Settings → Privacy, background the app, reopen. Also: cancel the prompt (should be silent, no error text), and check the lock screen doesn't end up underneath an already-open sheet.
-      ***Luồng khoá Face ID** (B4) — bật ở Settings → Privacy, đưa app xuống nền, mở lại. Ngoài ra: thử bấm huỷ khi hiện hộp thoại (phải im lặng, không hiện chữ lỗi), và kiểm tra màn hình khoá không bị nằm dưới một sheet đang mở.*
-- [ ] **On This Day+ year sections** (B1) — ideally against a journal with the same date in 3+ different years, which no test data here can produce.
-      ***Phần chia theo năm của Ngày này năm xưa+** (B1) — lý tưởng là thử với nhật ký có cùng một ngày ở 3 năm khác nhau trở lên, thứ mà dữ liệu test ở đây không tạo ra được.*
-- [ ] **Calendar heatmap in dark mode** (B5) — the colour ramp was only reasoned about, not seen.
-      ***Bản đồ nhiệt của Lịch ở chế độ tối** (B5) — dải màu mới chỉ được suy luận, chưa được nhìn thấy.*
-- [ ] **Part A motion work** (A.5, A.6, A.7, A.9) — the matched-geometry hero transition, the haptics sweep, the four redesigned screens, and the shared swipe gesture.
-      ***Phần chuyển động của Phần A** (A.5, A.6, A.7, A.9) — hiệu ứng chuyển cảnh matched-geometry, đợt rà soát phản hồi rung, bốn màn hình thiết kế lại, và cử chỉ vuốt dùng chung.*
 - [ ] **The Spectral serif on screen** (A.4) — kerning and weight at title sizes, on device.
       ***Font serif Spectral trên màn hình** (A.4) — khoảng cách chữ và độ đậm ở cỡ tiêu đề, xem trên máy thật.*
 
@@ -86,6 +76,69 @@ Roughly in order of how likely something is wrong:
 ---
 
 ## ✅ Archive — done / ✅ Lưu trữ — đã xong
+
+### Part B device pass cleared — you confirmed 2026-08-19
+### Đã kiểm tra xong Phần B trên máy thật — bạn xác nhận ngày 19/08/2026
+
+You ran the app and confirmed each of these working:
+*Bạn đã chạy app và xác nhận từng mục sau chạy được:*
+
+- ✅ **Face ID lock flow** (B4)
+      *Luồng khoá Face ID (B4)*
+- ✅ **Themed share cards** (B2) — the riskiest code in the whole v2 batch, hand-placed drawing
+      *Thiệp chia sẻ có chủ đề (B2) — phần code rủi ro nhất của cả đợt v2, vẽ bằng toạ độ đặt tay*
+- ✅ **Sharing overall** — the share sheet and the post-creation share card
+      *Chức năng chia sẻ nói chung — share sheet và thiệp chia sẻ sau khi tạo kỷ niệm*
+- ✅ **On This Day+** (B1) — see the caveat below
+      *Ngày này năm xưa+ (B1) — xem lưu ý bên dưới*
+- ✅ **Dark mode**, including the calendar heatmap colour ramp (B5)
+      *Chế độ tối, gồm cả dải màu của bản đồ nhiệt trên lịch (B5)*
+- ✅ **The memory detail overlay** (A.5, after the §9.4 fix)
+      *Lớp phủ chi tiết kỷ niệm (A.5, sau bản sửa §9.4)*
+
+**Caveat on B1 — not your problem to solve, mine.** "On This Day+ works" confirms the screen
+renders and behaves. It cannot confirm the multi-year *sectioning*, because that needs a journal
+holding the same calendar date in 3+ different years, and the app has only existed since May 2026.
+That path stays unproven by device testing by definition, so it is being covered by a unit test
+instead rather than left as a checkbox you can never truthfully tick.
+***Lưu ý về B1 — phần này là việc của tôi, không phải của bạn.** "Ngày này năm xưa+ chạy được"
+xác nhận màn hình hiển thị và hoạt động đúng. Nhưng nó không thể xác nhận phần **chia nhóm theo
+nhiều năm**, vì muốn vậy cần nhật ký có cùng một ngày ở 3 năm khác nhau trở lên, mà app mới tồn tại
+từ tháng 5/2026. Nhánh code đó về bản chất không thể kiểm chứng bằng máy thật, nên nó sẽ được phủ
+bằng unit test thay vì để lại một ô tick mà bạn không bao giờ tick thật lòng được.*
+
+
+### Timeline → detail transition re-verified — you confirmed 2026-08-19
+### Đã kiểm chứng lại hiệu ứng chuyển cảnh Timeline → chi tiết — bạn xác nhận ngày 19/08/2026
+
+You ran the app after the fix and confirmed it behaves correctly. The overlay now lays out on its
+own instead of being pinned to the source card's on-screen position (`matchedGeometryEffect`
+removed — [`docs/BUGS_AND_FIXES.md`](../docs/BUGS_AND_FIXES.md) §9.4).
+*Bạn đã chạy app sau khi sửa và xác nhận nó chạy đúng. Lớp phủ giờ tự bố trí layout của chính nó
+thay vì bị ghim vào vị trí của thẻ nguồn trên màn hình (đã bỏ `matchedGeometryEffect` —
+[`docs/BUGS_AND_FIXES.md`](../docs/BUGS_AND_FIXES.md) §9.4).*
+
+
+### Part A motion work checked on device — you confirmed 2026-08-19
+### Đã kiểm tra phần chuyển động của Phần A trên máy thật — bạn xác nhận ngày 19/08/2026
+
+You went through the Part A motion work (A.5 hero transition, A.6 haptics sweep, A.7 four
+redesigned screens, A.9 shared swipe gesture) and asked for this item to be ticked.
+*Bạn đã xem qua phần chuyển động của Phần A (A.5 hiệu ứng chuyển cảnh, A.6 rà soát phản hồi rung,
+A.7 bốn màn hình thiết kế lại, A.9 cử chỉ vuốt dùng chung) và yêu cầu tick mục này.*
+
+That check earned its keep: it caught the one real bug in the batch — the Timeline → detail
+transition pinned the overlay's photo to wherever the source card sat on screen. Fixed the same
+day by dropping `matchedGeometryEffect` (full write-up in [`docs/BUGS_AND_FIXES.md`](../docs/BUGS_AND_FIXES.md) §9.4).
+*Lần kiểm tra đó rất đáng giá: nó bắt được đúng một lỗi thật trong cả đợt — hiệu ứng chuyển cảnh
+Timeline → chi tiết ghim ảnh của lớp phủ vào đúng vị trí thẻ nguồn đang đứng trên màn hình. Đã sửa
+ngay trong ngày bằng cách bỏ `matchedGeometryEffect` (chi tiết ở [`docs/BUGS_AND_FIXES.md`](../docs/BUGS_AND_FIXES.md) §9.4).*
+
+**Still open above:** the re-verification of that rewritten transition — the fix itself has only
+been built, never seen running.
+***Vẫn còn mở ở trên:** kiểm chứng lại hiệu ứng vừa viết lại — bản sửa mới chỉ được build, chưa ai
+nhìn thấy nó chạy.*
+
 
 ### App Group + widget App ID registered — confirmed by you 2026-08-19
 ### Đã đăng ký App Group + App ID cho widget — bạn xác nhận ngày 19/08/2026

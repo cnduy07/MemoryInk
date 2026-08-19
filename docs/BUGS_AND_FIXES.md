@@ -27,7 +27,9 @@ The strongest stories here, in order:
    ***Lỗi tràn ngang trong SwiftUI** (§1) — cho thấy bạn hiểu cơ chế layout, chứ không chỉ biết gọi API.*
 3. **Account deletion** (§7) — trust, server authority, and never lying to the user about success.
    ***Xoá tài khoản** (§7) — nói về niềm tin, thẩm quyền phía server, và việc không bao giờ báo "thành công" giả với người dùng.*
-4. **The build system lied to me** (§9.1) — shows you notice when your *verification* is wrong, which is rarer than noticing when your code is wrong.
+4. **The hero transition that never animated** (§9.4) — reading an animation API's *contract* rather than its signature; the diagnosis is the whole story.
+   ***Hiệu ứng hero không hề chuyển động** (§9.4) — đọc **hợp đồng** của một API hoạt ảnh chứ không chỉ đọc chữ ký hàm; giá trị nằm ở phần chẩn đoán.*
+5. **The build system lied to me** (§9.1) — shows you notice when your *verification* is wrong, which is rarer than noticing when your code is wrong.
    ***Hệ thống build đã "nói dối"** (§9.1) — cho thấy bạn phát hiện được khi chính **cách kiểm thử** của mình sai, điều này hiếm hơn nhiều so với việc phát hiện code sai.*
 
 ---
@@ -311,6 +313,35 @@ The first build caught it; the fix anchored on the definition line (`\n\t\t<UUID
 **Lesson.** When generating code or config with string matching, anchor on something structurally unique. And build immediately — the fastest way to find out a mechanical edit went wrong.
 ***Bài học.** Khi sinh code hoặc cấu hình bằng cách so khớp chuỗi, hãy neo vào thứ gì đó độc nhất về mặt cấu trúc. Và build ngay — đó là cách nhanh nhất để biết một thao tác sửa máy móc đã sai.*
 
+### 9.4 ⭐ The hero transition pinned the photo wherever the card happened to be / Hiệu ứng hero ghim ảnh đúng chỗ thẻ đang đứng (2026-08-19)
+
+**Symptom.** Tapping a memory in the Timeline opened the detail overlay with the photo stuck at the source card's position on screen: card scrolled to the top → the image sat at the top of the overlay; card near the bottom → the image sat at the bottom. It was wrong the instant the overlay appeared, and nothing animated.
+***Biểu hiện.** Chạm vào một kỷ niệm ở Timeline thì lớp phủ chi tiết mở ra với tấm ảnh dính đúng vị trí của thẻ nguồn trên màn hình: thẻ đang ở trên đầu → ảnh nằm trên đầu lớp phủ; thẻ ở gần cuối → ảnh nằm dưới đáy. Nó sai ngay từ khoảnh khắc lớp phủ hiện ra, và không có chuyển động nào cả.*
+
+The "no animation" part was the tell. A hero transition that merely *ends* in the wrong place still animates; this one never moved.
+*Chi tiết "không có chuyển động" chính là manh mối. Một hiệu ứng hero chỉ **kết thúc** sai chỗ thì vẫn phải có chuyển động; cái này thì đứng yên hoàn toàn.*
+
+**Root cause.** `matchedGeometryEffect` is a hand-off API, not a "copy the frame once" API. It assumes exactly one source view is alive at a time: the source publishes its frame, the non-source view is laid out at that frame for as long as the source exists, and the effect only *reads* as a morph because the source disappears and the non-source view then relaxes into its own layout.
+***Nguyên nhân gốc.** `matchedGeometryEffect` là API **bàn giao** hình học, không phải API "chép khung một lần". Nó giả định tại mỗi thời điểm chỉ có đúng một view nguồn còn sống: view nguồn công bố khung của nó, view không-nguồn bị bố trí **tại** khung đó suốt thời gian view nguồn còn tồn tại, và ta **thấy** nó như một hiệu ứng biến hình chỉ vì view nguồn biến mất, rồi view không-nguồn mới giãn về layout của chính nó.*
+
+MemoryInk's overlay breaks that assumption. `selectedMemory` does not replace the Timeline — it adds a layer on top of it inside the same `ZStack`, and the scroll view stays mounted the whole time, merely blurred and `.allowsHitTesting(false)`. So the collapsed card (`isSource: true`) never leaves. The overlay card (`isSource: false`) was therefore not animating *from* the card's frame; it was being laid out *at* it, permanently, its own centred layout overridden for as long as the overlay was open.
+*Lớp phủ của MemoryInk phá vỡ giả định đó. `selectedMemory` không thay thế Timeline — nó chồng thêm một lớp lên trên, trong cùng một `ZStack`, còn scroll view vẫn nằm nguyên đó suốt thời gian ấy, chỉ bị làm mờ và `.allowsHitTesting(false)`. Nghĩa là thẻ thu gọn (`isSource: true`) không bao giờ rời đi. Vì vậy thẻ trong lớp phủ (`isSource: false`) không hề chuyển động **từ** khung của thẻ nguồn; nó bị bố trí **tại** khung đó, vĩnh viễn, layout căn giữa của chính nó bị ghi đè suốt thời gian lớp phủ còn mở.*
+
+That is also why it looked instant: there was no transition to watch, only a geometry override applied on the first frame.
+*Đó cũng là lý do nó trông như "nhảy" tức thì: không có transition nào để xem, chỉ có một lệnh ghi đè hình học áp dụng ngay ở khung hình đầu tiên.*
+
+**Fix.** Drop `matchedGeometryEffect` for this overlay entirely — the `timelineHeroEffect` helper, the `@Namespace`, the `namespace` parameter on `TimelineCard`, and all three call sites (list, grid, overlay). The overlay already carried `.transition(.opacity.combined(with: .scale(scale: 0.985)))` driven by `withAnimation(cinematicAnimation)`, which is the calm 260ms scale + fade the design system asks for; with the geometry override gone, that transition is simply free to run and the card lays out where its own layout puts it.
+***Cách sửa.** Bỏ hẳn `matchedGeometryEffect` cho lớp phủ này — bỏ helper `timelineHeroEffect`, bỏ `@Namespace`, bỏ tham số `namespace` của `TimelineCard`, và bỏ ở cả ba chỗ gọi (danh sách, lưới, lớp phủ). Bản thân lớp phủ vốn đã có sẵn `.transition(.opacity.combined(with: .scale(scale: 0.985)))` chạy bằng `withAnimation(cinematicAnimation)`, đúng kiểu phóng to + mờ dần 260ms êm ái mà hệ thống thiết kế yêu cầu; khi lệnh ghi đè hình học biến mất, transition đó được tự do chạy và thẻ nằm đúng chỗ layout của nó quy định.*
+
+The right shape for a real matched-geometry hero here would be a `fullScreenCover`-style presentation where the Timeline card is genuinely removed while the detail is up. That is a bigger change to the overlay's whole presentation model than the effect was worth.
+*Muốn có hiệu ứng matched-geometry thật sự đúng nghĩa ở đây thì phải trình bày kiểu `fullScreenCover`, nơi thẻ ở Timeline thực sự bị gỡ đi trong lúc màn chi tiết đang mở. Đó là thay đổi lớn về toàn bộ mô hình hiển thị của lớp phủ, không đáng so với giá trị mà hiệu ứng mang lại.*
+
+**Lesson.** Before reaching for an animation API, check whether your view hierarchy satisfies the assumption it is built on. `matchedGeometryEffect` needs the source to *go away*; an overlay that keeps everything mounted underneath can never give it that. And when a transition shows no motion at all, stop looking for a wrong destination and start asking whether a transition is running in the first place.
+***Bài học.** Trước khi dùng một API hoạt ảnh, hãy kiểm tra xem cây view của bạn có thoả mãn giả định mà API đó dựa vào hay không. `matchedGeometryEffect` cần view nguồn **biến mất**; một lớp phủ giữ nguyên mọi thứ bên dưới thì không bao giờ đáp ứng được điều đó. Và khi một transition hoàn toàn không có chuyển động, đừng đi tìm "điểm đến sai" — hãy hỏi trước xem có transition nào đang chạy hay không.*
+
+**Caught by:** device testing by the user, on the app's most-used interaction. A build and a typecheck both passed happily — the code was valid, the assumption was not.
+***Phát hiện bởi:** người dùng test trên máy thật, ngay ở thao tác được dùng nhiều nhất của app. Cả build lẫn kiểm tra kiểu dữ liệu đều qua ngon lành — code hợp lệ, chỉ có giả định là sai.*
+
 ---
 
 ## Patterns across all of these / Các mô-típ lặp lại
@@ -322,6 +353,7 @@ The first build caught it; the fix anchored on the definition line (`\n\t\t<UUID
 | **Framework boundaries are where bugs live**<br>***Lỗi hay nằm ở ranh giới giữa các framework*** | Video Y-flip (§4), gesture conflicts (§5), GoTrue client limits (§7)<br>*Lật trục Y video (§4), xung đột cử chỉ (§5), giới hạn client của GoTrue (§7)* |
 | **Config bugs surface late and cost the most time**<br>***Lỗi cấu hình lộ ra muộn và tốn thời gian nhất*** | App Store rejections (§3), pbxproj registration (§9.1, §9.3)<br>*Bị App Store từ chối (§3), đăng ký file trong pbxproj (§9.1, §9.3)* |
 | **Changing a presentation API moves the interaction**<br>***Đổi API hiển thị là dời luôn chỗ chứa tương tác*** | Dialog → Menu regression (§2)<br>*Lỗi hồi quy khi đổi Dialog → Menu (§2)* |
+| **An API's contract assumes a view hierarchy — check you provide it**<br>***Mỗi API đều giả định một cấu trúc view — hãy kiểm tra bạn có đáp ứng không*** | `matchedGeometryEffect` needing the source to unmount (§9.4)<br>*`matchedGeometryEffect` cần view nguồn bị gỡ bỏ (§9.4)* |
 | **Verify the real artifact, not a proxy for it**<br>***Hãy kiểm tra sản phẩm thật, đừng kiểm tra thứ thay thế nó*** | §9.1, and why every v2 task ends in a real `xcodebuild`<br>*§9.1, và đó là lý do mọi task v2 đều kết thúc bằng `xcodebuild` thật* |
 
 ## How bugs actually got caught / Lỗi thực sự được phát hiện bằng cách nào

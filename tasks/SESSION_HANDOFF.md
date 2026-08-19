@@ -4,7 +4,7 @@
 > Claude Code keeps this current at all times and updates the "Ready to open a new session?"
 > section whenever a full Part/Phase completes. Starting a new session on this plan? Read this first.
 
-**Last updated:** 2026-08-19 (session 5 — `memoryink-v2-part-b`)
+**Last updated:** 2026-08-19 (session 6 — device-pass fixes on `memoryink-v2-part-b`)
 
 ---
 
@@ -13,10 +13,13 @@
 | Part / Phase | Status |
 |---|---|
 | Milestone 1 / Part A — Visual Refresh | ✅ **Complete — 9 of 9, committed `1ffa9eb`** |
-| Milestone 2 / Part B — New Features | ✅ **Complete — 6 of 6, build-verified, uncommitted** |
+| Milestone 2 / Part B — New Features | ✅ **Complete — 6 of 6, committed `cf4c952`** |
+| Device-pass fixes (rolling) | ✅ **Pass cleared 2026-08-19 — 1 bug found and fixed (BUGS §9.4), uncommitted** |
+| Release of v2 | ⬜ **Not started — `main` is 7 commits behind; version still `1.0` (4)** |
 
-**The v2 plan's feature backlog is now fully implemented.** What remains is verification you have
-to do yourself (a simulator/device pass), two manual config steps, and committing.
+**The v2 plan is implemented and the device pass is done.** One bug was found (the Timeline hero
+transition) and fixed. The remaining work is not feature work — it is **releasing v2**: the whole
+upgrade currently exists only on this branch, while the App Store still serves `1.0`.
 
 ---
 
@@ -28,8 +31,9 @@ sessions, with checkboxes, why each matters, and how to verify it worked. Curren
 - ✅ ~~Enable App Group `group.com.memoryink.app`~~ — **done, confirmed 2026-08-19.** The widget
   App ID was auto-created by Xcode's automatic signing; the group is registered and ticked.
 - 🔴 Back up the two gitignored Info.plist keys (`UIAppFonts`, `NSFaceIDUsageDescription`)
-- 🟡 A simulator/device pass — **nothing in Part B has been seen running**, the themed share cards
-  most of all. The widget is now unblocked and should show real data.
+- 🟡 The Spectral serif at title sizes (A.4) — the one visual item not yet confirmed
+- ✅ ~~Device pass on Part B~~ — **done 2026-08-19.** Face ID, themed share cards, sharing,
+  On This Day+, dark mode incl. the calendar heatmap, and the detail overlay all confirmed working.
 
 ---
 
@@ -81,23 +85,31 @@ are untouched, which was the whole point of choosing this over relocating the st
 
 ## Work not yet committed
 
-**All of Part B (B1–B6)** is implemented and verified but uncommitted, on branch
-`memoryink-v2-part-a`, per "commit only when asked." Worth committing on a fresh
-`memoryink-v2-part-b` branch to keep Part A's commit boundary clean. Say the word.
+**The hero-transition fix** (2 Swift files + 3 docs) on `memoryink-v2-part-b`, per "commit only
+when asked." Part A and Part B are both already committed (`1ffa9eb`, `cf4c952`, `9eadfab`).
 
 ---
 
 ## ▶ Ready to open a new session?
 
-**Yes — the plan's implementation is done.** Both milestones are complete; nothing is waiting on
-another code task. A fresh session makes sense once you've done a simulator pass, to fix whatever
-that pass turns up.
+**Yes — this is a clean boundary.** Implementation is done, the device pass is done, and the next
+body of work is a different kind of thing: releasing v2 (version bump, merge, screenshots, App
+Store submission) plus the unit tests for logic no device pass can reach.
 
-Suggested label: `memoryink-v2-polish`. Kickoff prompt:
+Suggested label: `memoryink-v2-release`. Kickoff prompt:
 
-> "MemoryInk v2 Parts A and B are implemented per tasks/SESSION_HANDOFF.md. I ran it in the
-> simulator — here's what needs fixing: …"
+> "MemoryInk v2 is implemented and device-verified per tasks/SESSION_HANDOFF.md, on branch
+> memoryink-v2-part-b (uncommitted hero-transition fix). Nothing is released — main is 7 commits
+> behind and MARKETING_VERSION is still 1.0 build 4 while the App Store serves 1.0. Take me
+> through shipping v2, and write the unit tests for the year grouping, calendar intensity, and
+> widget snapshot logic."
 
-If you'd rather keep going here, the most useful next things are: commit the work, or have me write
-unit tests for the pieces that currently have none (the year grouping, calendar intensity, snapshot
-building).
+Staying in this session is also fine — the remaining work is well-defined and I have the context.
+
+**Fixed this session:**
+- Timeline → detail overlay hero transition — `matchedGeometryEffect` pinned the overlay photo to
+  the source card's on-screen position, because the Timeline stays mounted behind the overlay so
+  the geometry source never went away. Replaced with the plain scale + fade transition the overlay
+  already had. Verified by a real `xcodebuild` (**BUILD SUCCEEDED**) and by `grep` confirming zero
+  `matchedGeometryEffect`/`Namespace` references remain. **Not verified on device** — that's in
+  `MANUAL_TODO.md` under 🟡.
