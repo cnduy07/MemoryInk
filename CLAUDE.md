@@ -114,6 +114,27 @@ If everything is correct → tell the user what the next logical task is.
 
 ---
 
+## MANUAL TODO PROTOCOL
+
+Some things only the user can do: anything needing the Xcode GUI, a simulator or device, their
+Apple Developer account, or a file that lives outside git (`MemoryInk/Info.plist` is gitignored).
+These are easy to lose in chat scrollback, so they get a durable home.
+
+`tasks/MANUAL_TODO.md` is the single running list across **all parts and all sessions**.
+
+1. **Whenever a task or Part finishes and anything is left for the user, append it there AND say it
+   in the chat reply.** Never only one of the two — the file is the record, the message is the
+   notification.
+2. Each item states: what to do, why it matters (what breaks without it), how to verify it worked,
+   and which task/date it came from.
+3. Group by urgency: 🔴 blocking (a shipped feature is broken without it), 🟡 verification (built
+   but never seen running), 🟢 decisions waiting on the user.
+4. **Never tick a box on the user's behalf.** When they say something is done, move it to the
+   archive at the bottom rather than deleting it.
+5. Never let an item silently vanish because a session ended or a Part was marked complete.
+
+---
+
 ## SESSION HANDOFF PROTOCOL
 
 Multi-session plans (like the MemoryInk v2 upgrade) span more sessions than one context window comfortably holds. The user manages this by opening a new session at natural boundaries — but only you know when a boundary has actually been reached, so:
@@ -145,6 +166,8 @@ This is what lets the user open a new session at the right time, with the right 
 | Where are full specs? | memoryink_blueprint_v8_finalized.md |
 | Where do I write tasks? | tasks/current-task.md |
 | Where's multi-session plan progress? | tasks/SESSION_HANDOFF.md |
+| Where do the user's manual steps go? | tasks/MANUAL_TODO.md (all parts, all sessions) |
+| Where's the project explained end-to-end? | docs/FEATURES_AND_TASKS.md + docs/BUGS_AND_FIXES.md — keep both current when shipping a feature or fixing a real bug. **Both are bilingual: every English line is followed by its Vietnamese meaning in italics. Match that format for anything added.** |
 | What phase are we in? | Phase 3 — Monetization & Sync |
 | Who writes the code? | You (Claude Code) — no Codex anymore |
 | Who reviews the code? | You (Claude Code) — self-review before reporting done |
