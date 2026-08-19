@@ -176,7 +176,7 @@ final class NarrativeGenerationService: ObservableObject {
     private func request(for entry: JournalEntry) -> NarrativeGenerationRequest {
         NarrativeGenerationRequest(
             entryId: entry.id,
-            sceneLabels: semanticLabels(for: entry),
+            sceneLabels: Self.semanticLabels(for: entry),
             mood: entry.mood.rawValue,
             note: entry.rawNote,
             narrativeStyle: entry.narrativeStyle.rawValue,
@@ -184,8 +184,15 @@ final class NarrativeGenerationService: ObservableObject {
         )
     }
 
-    private func semanticLabels(for entry: JournalEntry) -> [String] {
-        var labels = [entry.mood.rawValue, entry.narrativeStyle.rawValue]
+    /// Pure and `static` so it can be tested without standing up the whole service — this is
+    /// the payload that decides what the AI is told, so it's worth pinning down.
+    nonisolated static func semanticLabels(for entry: JournalEntry) -> [String] {
+        // Only observed facts belong here. The narrative style is a *tone* directive and is
+        // sent separately as `narrative_style` — including it here made the model treat
+        // "warm" as something it had observed about the scene, so nearly every narrative
+        // came back mentioning warmth. The server prompt even bans the word, but a banned
+        // word that arrives as a fact wins over an instruction not to say it.
+        var labels = [entry.mood.rawValue]
 
         if let note = entry.rawNote {
             let noteLabels = note

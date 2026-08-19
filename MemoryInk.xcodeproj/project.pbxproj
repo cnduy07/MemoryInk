@@ -94,6 +94,9 @@
 		AA0000000000000000000023 /* AppLockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* AppLockView.swift */; };
 		AA0000000000000000000025 /* WidgetSnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000024 /* WidgetSnapshotService.swift */; };
 		AA0000000000000000000019 /* MemoryInkWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000002 /* MemoryInkWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB0000000000000000000011 /* MilestoneServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* MilestoneServiceTests.swift */; };
+		BB0000000000000000000013 /* ExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000012 /* ExportServiceTests.swift */; };
+		BB0000000000000000000015 /* NarrativePayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000014 /* NarrativePayloadTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -187,6 +190,10 @@
 		AA0000000000000000000020 /* AppLockService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockService.swift; sourceTree = "<group>"; };
 		AA0000000000000000000022 /* AppLockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000024 /* WidgetSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotService.swift; sourceTree = "<group>"; };
+		BB0000000000000000000002 /* MemoryInkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemoryInkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000010 /* MilestoneServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneServiceTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000012 /* ExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportServiceTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000014 /* NarrativePayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrativePayloadTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -213,6 +220,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -246,6 +260,7 @@
 		0E79FB0C2FBAD5A4009A6E8E = {
 			isa = PBXGroup;
 			children = (
+				BB0000000000000000000003 /* MemoryInkTests */,
 				AA0000000000000000000003 /* MemoryInkWidget */,
 				0E76CE092FBF3A6B00381EC8 /* StoreKit.storekit */,
 				0E79FB172FBAD5A4009A6E8E /* MemoryInk */,
@@ -256,6 +271,7 @@
 		0E79FB162FBAD5A4009A6E8E /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				BB0000000000000000000002 /* MemoryInkTests.xctest */,
 				AA0000000000000000000002 /* MemoryInkWidget.appex */,
 				0E79FB152FBAD5A4009A6E8E /* MemoryInk.app */,
 			);
@@ -542,6 +558,16 @@
 			path = AppLock;
 			sourceTree = "<group>";
 		};
+		BB0000000000000000000003 /* MemoryInkTests */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000010 /* MilestoneServiceTests.swift */,
+				BB0000000000000000000012 /* ExportServiceTests.swift */,
+				BB0000000000000000000014 /* NarrativePayloadTests.swift */,
+			);
+			path = MemoryInkTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -584,6 +610,24 @@
 			productReference = AA0000000000000000000002 /* MemoryInkWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		BB0000000000000000000001 /* MemoryInkTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000009 /* Build configuration list for PBXNativeTarget "MemoryInkTests" */;
+			buildPhases = (
+				BB0000000000000000000004 /* Sources */,
+				BB0000000000000000000005 /* Frameworks */,
+				BB0000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BB000000000000000000000A /* PBXTargetDependency */,
+			);
+			name = MemoryInkTests;
+			productName = MemoryInkTests;
+			productReference = BB0000000000000000000002 /* MemoryInkTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXContainerItemProxy section */
@@ -593,6 +637,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = AA0000000000000000000001;
 			remoteInfo = MemoryInkWidget;
+		};
+		BB000000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0E79FB0D2FBAD5A4009A6E8E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0E79FB142FBAD5A4009A6E8E;
+			remoteInfo = MemoryInk;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -609,6 +660,10 @@
 					};
 					AA0000000000000000000001 = {
 						CreatedOnToolsVersion = 15.4;
+					};
+					BB0000000000000000000001 = {
+						CreatedOnToolsVersion = 15.4;
+						TestTargetID = 0E79FB142FBAD5A4009A6E8E;
 					};
 				};
 			};
@@ -630,6 +685,7 @@
 			targets = (
 				0E79FB142FBAD5A4009A6E8E /* MemoryInk */,
 				AA0000000000000000000001 /* MemoryInkWidget */,
+				BB0000000000000000000001 /* MemoryInkTests */,
 			);
 		};
 /* End PBXProject section */
@@ -639,6 +695,11 @@
 			isa = PBXTargetDependency;
 			target = AA0000000000000000000001 /* MemoryInkWidget */;
 			targetProxy = AA000000000000000000000C /* PBXContainerItemProxy */;
+		};
+		BB000000000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0E79FB142FBAD5A4009A6E8E /* MemoryInk */;
+			targetProxy = BB000000000000000000000B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -661,6 +722,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -756,6 +824,16 @@
 				AA0000000000000000000011 /* MemoryInkWidget.swift in Sources */,
 				AA0000000000000000000013 /* MemoryInkWidgetBundle.swift in Sources */,
 				AA0000000000000000000016 /* WidgetSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB0000000000000000000011 /* MilestoneServiceTests.swift in Sources */,
+				BB0000000000000000000013 /* ExportServiceTests.swift in Sources */,
+				BB0000000000000000000015 /* NarrativePayloadTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1021,6 +1099,48 @@
 			};
 			name = Release;
 		};
+		BB0000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = SBVW5779XF;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memoryink.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MemoryInk.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MemoryInk";
+			};
+			name = Debug;
+		};
+		BB0000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = SBVW5779XF;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memoryink.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MemoryInk.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MemoryInk";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1047,6 +1167,15 @@
 			buildConfigurations = (
 				AA0000000000000000000007 /* Debug */,
 				AA0000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB0000000000000000000009 /* Build configuration list for PBXNativeTarget "MemoryInkTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB0000000000000000000007 /* Debug */,
+				BB0000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
