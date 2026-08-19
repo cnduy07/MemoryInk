@@ -1,6 +1,6 @@
 # Part C — Cinematic Dark: UI/UX Rebuild
 
-> **Status:** planned, not started · **Branch:** `memoryink-v2-part-c` (to be created off `main`)
+> **Status:** in progress — C.1 done · **Branch:** `memoryink-v3-part-c`
 > **Direction chosen by you, 2026-08-19:** Cinematic dark
 > **Ships as:** v3. v2 (2.0, build 5) is on `main` and goes to the App Store first.
 
@@ -42,15 +42,37 @@ That long tail of nine barely-used accents is most of why the current UI reads a
 Each item is independently buildable and verifiable. Do them in order — later items depend on
 the palette existing.
 
-### C.1 — Dark-first palette
-Rewrite `Common/Theme/Colors.swift`. Design the **dark** values first and derive light from them
-(today it is the reverse, which is why dark mode reads as "light mode dimmed").
-- Ground: true near-black `#0B0B0C`-ish, one elevated surface, one raised surface
-- Text: near-white primary → two grey steps, hitting WCAG AA on the ground colour
-- One accent (amber, retuned so it doesn't glow against black)
-- Delete the nine long-tail accents from the public API
-- **Files:** `Colors.swift` only. Nothing else changes yet; the app should still build and run,
-  just darker and flatter.
+### C.1 — Dark-first palette ✅ **done 2026-08-20**
+Rewrote `Common/Theme/Colors.swift` dark-first: a four-step ground ramp that actually steps (the
+old one spanned 0.89–0.99 lightness, which is why cards never separated from the background), three
+text roles, and role-named aliases (`accent`, `success`, `destructive`, `accentBright`,
+`neutralMark`) so screens stop picking colours by hue name.
+
+**Three things the plan got wrong, corrected during the work:**
+
+1. *"Delete the nine long-tail accents."* They are the **mood system** — `MoodType.tint` maps
+   teal→peaceful, orchid→nostalgic, gold→happy, coral→proud, ocean→sad, twilight→reflective, with
+   sage/rosewood/mistBlue carrying `SlideshowStyle`, plus `rosewood` = destructive and `sage` =
+   success. Deleting them would have deleted the mood system C.3 exists to keep. The real defect
+   was never the count: it was that tokens are **named by hue instead of by role**, so the same
+   colour meant "mood: proud" on one screen and "vintage slideshow" on another. Hence the aliases.
+2. *"Hues stay fixed so exports stay deterministic."* Impossible. For a colour to clear AA (4.5:1)
+   on near-black it needs luminance ≥ 0.195; on white, ≤ 0.161. Those windows do not overlap, so
+   **no fixed colour is accessible in both appearances** — arithmetic, not taste. Dropping to the
+   3:1 graphical floor does admit fixed values, but only muddy ones (amber lands on a brown). So
+   every hue adapts, and export determinism is solved where it belongs, by pinning the renderer.
+3. *"Files: `Colors.swift` only."* Two companions were mandatory: `MemoryShareRenderer` (pinning)
+   and `MemoryInkWidget` (its own hardcoded palette copy, no compiler link to the app's).
+
+**Also fixed:** `UIColor(someColor)` silently flattens a dynamic colour, which made the first
+version of the export pinning a no-op. The dynamic `UIColor` is now the source of truth
+(`MemoryInkColors.Raw`) and `Color` values wrap it.
+
+**Files:** `Colors.swift`, `MemoryShareRenderer.swift`, `MoodType.swift` (`tintRaw`),
+`MemoryInkWidget.swift`, `MemoryInkTests/PaletteContrastTests.swift` (new, 5 tests).
+
+**Verified:** 28 tests pass incl. contrast floors on every text role × every surface × both
+appearances; Release `xcodebuild` → BUILD SUCCEEDED. **Not seen on screen.**
 
 ### C.2 — Strip the photo effect stack
 `TimelineCard.imageArea` / `placeholderImage` currently layer: radial light leak, mood tint

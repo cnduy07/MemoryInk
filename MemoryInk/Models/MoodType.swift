@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum MoodType: String, CaseIterable, Identifiable {
     case peaceful
@@ -67,6 +68,28 @@ enum MoodType: String, CaseIterable, Identifiable {
 
     var gradientColors: [Color] {
         [tint, secondaryTint]
+    }
+
+    /// UIKit-side tint, for code that renders to an image rather than to a view.
+    ///
+    /// Not `UIColor(tint)` — that round-trip flattens the dynamic colour to whatever appearance is
+    /// current and makes `resolvedColor(with:)` a no-op, which silently defeats pinning an export
+    /// to a fixed appearance. See the note on `MemoryInkColors.Raw`.
+    var tintRaw: UIColor {
+        switch self {
+        case .peaceful:
+            return MemoryInkColors.Raw.teal
+        case .nostalgic:
+            return MemoryInkColors.Raw.orchid
+        case .happy:
+            return MemoryInkColors.Raw.gold
+        case .proud:
+            return MemoryInkColors.Raw.coral
+        case .sad:
+            return MemoryInkColors.Raw.ocean
+        case .reflective:
+            return MemoryInkColors.Raw.twilight
+        }
     }
 
     var symbolName: String {

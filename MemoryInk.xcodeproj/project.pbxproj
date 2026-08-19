@@ -97,6 +97,7 @@
 		BB0000000000000000000011 /* MilestoneServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* MilestoneServiceTests.swift */; };
 		BB0000000000000000000013 /* ExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000012 /* ExportServiceTests.swift */; };
 		BB0000000000000000000015 /* NarrativePayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000014 /* NarrativePayloadTests.swift */; };
+		BB0000000000000000000017 /* PaletteContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000016 /* PaletteContrastTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -194,6 +195,7 @@
 		BB0000000000000000000010 /* MilestoneServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneServiceTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000012 /* ExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportServiceTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000014 /* NarrativePayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrativePayloadTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000016 /* PaletteContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteContrastTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -564,6 +566,7 @@
 				BB0000000000000000000010 /* MilestoneServiceTests.swift */,
 				BB0000000000000000000012 /* ExportServiceTests.swift */,
 				BB0000000000000000000014 /* NarrativePayloadTests.swift */,
+				BB0000000000000000000016 /* PaletteContrastTests.swift */,
 			);
 			path = MemoryInkTests;
 			sourceTree = "<group>";
@@ -834,6 +837,7 @@
 				BB0000000000000000000011 /* MilestoneServiceTests.swift in Sources */,
 				BB0000000000000000000013 /* ExportServiceTests.swift in Sources */,
 				BB0000000000000000000015 /* NarrativePayloadTests.swift in Sources */,
+				BB0000000000000000000017 /* PaletteContrastTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

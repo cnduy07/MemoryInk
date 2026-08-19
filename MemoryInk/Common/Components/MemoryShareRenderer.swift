@@ -91,7 +91,7 @@ struct MemoryShareRenderer {
     ) {
         scene.render(size: rect.size).draw(in: rect)
 
-        let ink: UIColor = usesLightInk ? .white : UIColor(MemoryInkColors.ink)
+        let ink: UIColor = usesLightInk ? .white : exportColor(MemoryInkColors.Raw.ink)
         let margin: CGFloat = 92
         var cursorY: CGFloat = margin
 
@@ -169,7 +169,7 @@ struct MemoryShareRenderer {
 
         let fill = usesLightInk
             ? UIColor.white.withAlphaComponent(0.20)
-            : UIColor(mood.tint).withAlphaComponent(0.26)
+            : exportColor(mood.tintRaw).withAlphaComponent(0.26)
         fill.setFill()
         UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
         text.draw(at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11), withAttributes: attributes)
@@ -258,8 +258,8 @@ struct MemoryShareRenderer {
 
     private static func drawBackground(in rect: CGRect, mood: MoodType, context: CGContext) {
         let colors = [
-            UIColor(mood.tint).withAlphaComponent(0.18).cgColor,
-            UIColor(MemoryInkColors.parchment).cgColor
+            exportColor(mood.tintRaw).withAlphaComponent(0.18).cgColor,
+            exportColor(MemoryInkColors.Raw.parchment).cgColor
         ] as CFArray
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0, 1])
@@ -278,7 +278,7 @@ struct MemoryShareRenderer {
         let badgeText = mood.title.uppercased()
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
-            .foregroundColor: UIColor(MemoryInkColors.ink).withAlphaComponent(0.78)
+            .foregroundColor: exportColor(MemoryInkColors.Raw.ink).withAlphaComponent(0.78)
         ]
         let textSize = badgeText.size(withAttributes: attributes)
         let badgeRect = CGRect(
@@ -288,7 +288,7 @@ struct MemoryShareRenderer {
             height: 48
         )
 
-        UIColor(mood.tint).withAlphaComponent(0.22).setFill()
+        exportColor(mood.tintRaw).withAlphaComponent(0.22).setFill()
         UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
         badgeText.draw(
             at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11),
@@ -303,7 +303,7 @@ struct MemoryShareRenderer {
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 42, weight: .medium),
-            .foregroundColor: UIColor(MemoryInkColors.ink),
+            .foregroundColor: exportColor(MemoryInkColors.Raw.ink),
             .paragraphStyle: paragraph
         ]
         let attributed = NSAttributedString(string: narrative, attributes: attributes)
@@ -318,7 +318,7 @@ struct MemoryShareRenderer {
         let dateText = date.formatted(date: .abbreviated, time: .omitted)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 24, weight: .regular),
-            .foregroundColor: UIColor(MemoryInkColors.tertiaryInk)
+            .foregroundColor: exportColor(MemoryInkColors.Raw.tertiaryInk)
         ]
 
         dateText.draw(at: CGPoint(x: 92, y: 842), withAttributes: attributes)
@@ -328,7 +328,7 @@ struct MemoryShareRenderer {
         let watermark = "MemoryInk"
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 22, weight: .medium),
-            .foregroundColor: UIColor(MemoryInkColors.tertiaryInk)
+            .foregroundColor: exportColor(MemoryInkColors.Raw.tertiaryInk)
         ]
         let size = watermark.size(withAttributes: attributes)
         watermark.draw(
@@ -336,4 +336,16 @@ struct MemoryShareRenderer {
             withAttributes: attributes
         )
     }
+
+    /// Resolves an adaptive colour against a **pinned** appearance.
+    ///
+    /// Part C made every palette colour adapt to light/dark (it has to — no fixed colour can meet
+    /// contrast against both a near-black and a white ground). Rendered output must not inherit
+    /// that: a card exported from a phone in light mode would otherwise carry different colours
+    /// than the same memory exported from a phone in dark mode, and the recipient sees whichever
+    /// the sender happened to be in. Pinning makes a shared card look the same for everyone.
+    private static func exportColor(_ color: UIColor) -> UIColor {
+        color.resolvedColor(with: MemoryInkColors.exportTraits)
+    }
+
 }

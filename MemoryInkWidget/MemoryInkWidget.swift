@@ -185,24 +185,43 @@ struct MemoryInkWidgetView: View {
 }
 
 /// The widget target can't see the app's `MemoryInkColors` (that lives in the app target), so
-/// the handful of colours a widget needs are restated here, matching the app's palette.
+/// the handful of colours a widget needs are restated here.
+///
+/// **Keep these in step with `Common/Theme/Colors.swift` by hand.** There is no compiler link
+/// between the two, so a palette change in the app silently leaves the widget on the old look —
+/// the widget sits on the Home Screen next to the app icon, where a stale palette is obvious.
+///
+/// Values mirror the Part C *Cinematic Dark* palette, including its light/dark pairs: a widget
+/// adopts the system appearance like any other view, so fixed colours would misread in one of them.
 private enum WidgetPalette {
-    static let ink = Color(red: 0.135, green: 0.116, blue: 0.098)
-    static let secondaryInk = Color(red: 0.396, green: 0.350, blue: 0.294)
+    static let ink = adaptive(light: rgb(0.090, 0.086, 0.102), dark: rgb(0.957, 0.949, 0.937))
+    static let secondaryInk = adaptive(light: rgb(0.333, 0.325, 0.310), dark: rgb(0.639, 0.631, 0.620))
 
     static func gradient(for moodRawValue: String?) -> [Color] {
         let tint: Color
         switch moodRawValue {
-        case "peaceful": tint = Color(red: 0.25, green: 0.60, blue: 0.54)
-        case "nostalgic": tint = Color(red: 0.58, green: 0.38, blue: 0.70)
-        case "happy": tint = Color(red: 0.88, green: 0.62, blue: 0.24)
-        case "proud": tint = Color(red: 0.78, green: 0.39, blue: 0.42)
-        case "sad": tint = Color(red: 0.28, green: 0.52, blue: 0.72)
-        case "reflective": tint = Color(red: 0.38, green: 0.40, blue: 0.68)
-        default: tint = Color(red: 0.56, green: 0.50, blue: 0.44)
+        case "peaceful": tint = adaptive(light: rgb(0.223, 0.499, 0.453), dark: rgb(0.340, 0.760, 0.690))
+        case "nostalgic": tint = adaptive(light: rgb(0.530, 0.399, 0.646), dark: rgb(0.730, 0.550, 0.890))
+        case "happy": tint = adaptive(light: rgb(0.543, 0.440, 0.206), dark: rgb(0.950, 0.770, 0.360))
+        case "proud": tint = adaptive(light: rgb(0.659, 0.374, 0.354), dark: rgb(0.950, 0.540, 0.510))
+        case "sad": tint = adaptive(light: rgb(0.306, 0.466, 0.633), dark: rgb(0.440, 0.670, 0.910))
+        case "reflective": tint = adaptive(light: rgb(0.419, 0.434, 0.669), dark: rgb(0.570, 0.590, 0.910))
+        default: tint = adaptive(light: rgb(0.472, 0.449, 0.434), dark: rgb(0.620, 0.590, 0.570))
         }
 
         return [tint.opacity(0.85), tint.opacity(0.35)]
+    }
+
+    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
+        Color(
+            UIColor { traitCollection in
+                traitCollection.userInterfaceStyle == .dark ? dark : light
+            }
+        )
+    }
+
+    private static func rgb(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat) -> UIColor {
+        UIColor(red: red, green: green, blue: blue, alpha: 1)
     }
 }
 
