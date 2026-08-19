@@ -4,7 +4,7 @@
 > Claude Code keeps this current at all times and updates the "Ready to open a new session?"
 > section whenever a full Part/Phase completes. Starting a new session on this plan? Read this first.
 
-**Last updated:** 2026-08-19 (session 6 — device-pass fixes on `memoryink-v2-part-b`)
+**Last updated:** 2026-08-19 (session 6 — v2 merged to `main` as 2.0; Part C planned)
 
 ---
 
@@ -14,12 +14,16 @@
 |---|---|
 | Milestone 1 / Part A — Visual Refresh | ✅ **Complete — 9 of 9, committed `1ffa9eb`** |
 | Milestone 2 / Part B — New Features | ✅ **Complete — 6 of 6, committed `cf4c952`** |
-| Device-pass fixes (rolling) | ✅ **Pass cleared 2026-08-19 — 1 bug found and fixed (BUGS §9.4), uncommitted** |
-| Release of v2 | ⬜ **Not started — `main` is 7 commits behind; version still `1.0` (4)** |
+| Device-pass fixes | ✅ **Pass cleared 2026-08-19 — 1 bug found and fixed (BUGS §9.4)** |
+| Release of v2 | 🟡 **Merged to `main` as 2.0 build 5, pushed. App Store submission is yours.** |
+| Milestone 3 / Part C — Cinematic Dark rebuild | 📋 **Planned, not started — [`PART_C_PLAN.md`](PART_C_PLAN.md)** |
 
-**The v2 plan is implemented and the device pass is done.** One bug was found (the Timeline hero
-transition) and fixed. The remaining work is not feature work — it is **releasing v2**: the whole
-upgrade currently exists only on this branch, while the App Store still serves `1.0`.
+**v2 is done and merged.** `main` carries the full v2 upgrade at version 2.0 (build 5), pushed to
+GitHub. What remains for v2 is App Store submission, which only you can do.
+
+**Next milestone is Part C — a Cinematic Dark UI/UX rebuild**, planned in
+[`PART_C_PLAN.md`](PART_C_PLAN.md) and shipping separately as v3. It does not block the v2
+submission and should not delay it.
 
 ---
 
@@ -92,19 +96,18 @@ when asked." Part A and Part B are both already committed (`1ffa9eb`, `cf4c952`,
 
 ## ▶ Ready to open a new session?
 
-**Yes — this is a clean boundary.** Implementation is done, the device pass is done, and the next
-body of work is a different kind of thing: releasing v2 (version bump, merge, screenshots, App
-Store submission) plus the unit tests for logic no device pass can reach.
+**Yes — v2 is closed out and Part C is a fresh body of work with its own plan.** This session
+carried the v2 device pass and release; Part C is a full milestone that will want its own context.
 
-Suggested label: `memoryink-v2-release`. Kickoff prompt:
+Suggested label: `memoryink-v3-part-c`. Kickoff prompt:
 
-> "MemoryInk v2 is implemented and device-verified per tasks/SESSION_HANDOFF.md, on branch
-> memoryink-v2-part-b (uncommitted hero-transition fix). Nothing is released — main is 7 commits
-> behind and MARKETING_VERSION is still 1.0 build 4 while the App Store serves 1.0. Take me
-> through shipping v2, and write the unit tests for the year grouping, calendar intensity, and
-> widget snapshot logic."
+> "Start Part C of MemoryInk per tasks/PART_C_PLAN.md — the Cinematic Dark UI/UX rebuild, shipping
+> as v3. v2 is already merged to main as 2.0 build 5. Branch off main as memoryink-v2-part-c and
+> begin with C.1, the dark-first palette rewrite in Colors.swift."
 
-Staying in this session is also fine — the remaining work is well-defined and I have the context.
+Two things in the plan need your answer before C.1 lands — whether light mode stays (I assume yes)
+and whether `AGENTS.md`'s "warm neutrals, film tones" identity line may be rewritten. Both are
+written up under **Decisions** in the plan.
 
 **Fixed this session:**
 - Timeline → detail overlay hero transition — `matchedGeometryEffect` pinned the overlay photo to
