@@ -63,10 +63,6 @@ A build passing proves it compiles, links, and bundles — not that it looks or 
 Roughly in order of how likely something is wrong:
 *Xếp gần đúng theo mức độ dễ có lỗi:*
 
-- [ ] **Widget on a real Home Screen** (B6) — small, medium, and both Lock Screen sizes. Now unblocked: the App Group is configured (see archive), so it should show real data, not the placeholder.
-      ***Widget trên màn hình chính thật** (B6) — cỡ nhỏ, vừa và cả hai cỡ màn hình khoá. Giờ đã hết vướng: App Group đã cấu hình xong (xem mục lưu trữ), nên widget phải hiện dữ liệu thật chứ không phải nội dung mẫu.*
-      **If it still shows the placeholder,** the likely causes in order are: Xcode hasn't regenerated the provisioning profiles, the App Groups capability is ticked on only one of the two App IDs, or the app hasn't been opened once since install (the snapshot is written by the app, not the widget).
-      ***Nếu vẫn hiện nội dung mẫu,** nguyên nhân khả dĩ theo thứ tự: Xcode chưa tạo lại provisioning profile, capability App Groups mới tick ở một trong hai App ID, hoặc app chưa được mở lần nào sau khi cài (file snapshot do app ghi ra, không phải widget).*
 - [ ] **Themed share cards** (B2) — highest risk in the whole v2 batch. The themed layout is hand-placed drawing code (margins, a 520pt photo frame, narrative wrapping). Check each of the four themes, with a photo and without, and with a long narrative. Classic should look exactly as it always has.
       ***Thiệp chia sẻ có chủ đề** (B2) — rủi ro cao nhất trong cả đợt v2. Layout theo chủ đề là code vẽ đặt toạ độ bằng tay (lề, khung ảnh 520pt, cách xuống dòng của narrative). Kiểm tra cả bốn chủ đề, có ảnh và không ảnh, và với narrative dài. Chủ đề Classic phải trông y hệt như trước giờ.*
 - [ ] **Face ID lock flow** (B4) — enable in Settings → Privacy, background the app, reopen. Also: cancel the prompt (should be silent, no error text), and check the lock screen doesn't end up underneath an already-open sheet.
@@ -106,3 +102,21 @@ Confirmed from your Developer portal screenshots:
 
 **Note for next time:** with automatic signing, Xcode registers App IDs for new targets by itself. What it does *not* do on its own is create the App Group or decide which identifiers it applies to — that part was genuinely yours.
 ***Ghi chú cho lần sau:** với chế độ ký tự động, Xcode tự đăng ký App ID cho target mới. Thứ nó **không** tự làm là tạo App Group và quyết định gán group đó cho identifier nào — phần đó đúng là việc của bạn.*
+
+### Widget verified working on a physical device — 2026-08-19
+### Đã xác nhận widget chạy được trên máy thật — 19/08/2026
+
+You confirmed both App IDs have `group.com.memoryink.app` ticked, ran the app on a device, added the widget, and it displays a real memory.
+*Bạn đã xác nhận cả hai App ID đều tick `group.com.memoryink.app`, chạy app trên máy thật, thêm widget, và widget hiển thị đúng một kỷ niệm thật.*
+
+That proves the whole B6 chain end to end: entitlement → App Group container → the app writing the snapshot → the widget process reading it.
+*Điều đó chứng minh toàn bộ chuỗi B6 hoạt động từ đầu đến cuối: entitlement → container App Group → app ghi file snapshot → tiến trình widget đọc được nó.*
+
+### Committed and pushed to GitHub — 2026-08-19
+### Đã commit và đẩy lên GitHub — 19/08/2026
+
+Branches `memoryink-v2-part-a` and `memoryink-v2-part-b` pushed to `github.com/cnduy07/MemoryInk`. `main` is untouched and still holds the shipped App Store code.
+*Đã đẩy nhánh `memoryink-v2-part-a` và `memoryink-v2-part-b` lên `github.com/cnduy07/MemoryInk`. Nhánh `main` giữ nguyên, vẫn là code đang phát hành trên App Store.*
+
+Secret scan before pushing: no keys, tokens or JWTs in any of the 45 files; `MemoryInk/Info.plist` confirmed ignored and never tracked.
+*Đã quét bí mật trước khi đẩy: không có key, token hay JWT nào trong cả 45 file; `MemoryInk/Info.plist` được xác nhận là bị ignore và chưa từng bị theo dõi bởi git.*
