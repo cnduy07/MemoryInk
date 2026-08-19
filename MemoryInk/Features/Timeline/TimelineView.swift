@@ -11,7 +11,6 @@ struct TimelineView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("paywall_auto_shown") private var paywallAutoShown: Bool = false
     @StateObject private var viewModel = TimelineViewModel()
-    @Namespace private var cardNamespace
     @State private var appearedCards: Set<UUID> = []
     @State private var selectedMemory: TimelineMemory?
     @State private var isShowingCreation = false
@@ -67,7 +66,6 @@ struct TimelineView: View {
                                         ForEach(memories) { memory in
                                             TimelineCard(
                                                 memory: memory,
-                                                namespace: cardNamespace,
                                                 isCompact: metrics.isCompact,
                                                 isGridCompact: true,
                                                 retryAction: retryAction(for: memory),
@@ -98,7 +96,6 @@ struct TimelineView: View {
                                     ForEach(memories) { memory in
                                         TimelineCard(
                                             memory: memory,
-                                            namespace: cardNamespace,
                                             isCompact: metrics.isCompact,
                                             retryAction: retryAction(for: memory),
                                             onShare: { sharingMemory = memory },
@@ -178,9 +175,12 @@ struct TimelineView: View {
             }
             .task {
                 analyticsService.track(.timelineSessionStarted)
+                // Day-count and anniversary milestones arrive with time passing, not with a
+                // new memory — so they'd never surface if this only ran on save.
+                showMilestoneIfNeeded()
             }
-            .onChange(of: repository.entries.count) { entryCount in
-                showMilestoneIfNeeded(entryCount: entryCount)
+            .onChange(of: repository.entries.count) { _ in
+                showMilestoneIfNeeded()
             }
             .onChange(of: repository.entries.count) { _ in
                 Task { await syncService.syncMetadataIfAllowed() }
@@ -200,12 +200,11 @@ struct TimelineView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $sharingMemory) { memory in
-            let image = MemoryShareRenderer.render(
+            MemoryShareCardSheet(
                 narrative: memory.narrative,
                 mood: memory.mood,
                 date: memory.timestamp
             )
-            ShareSheet(items: [image])
         }
     }
 
@@ -314,7 +313,7 @@ struct TimelineView: View {
             }
 
             Text("MemoryInk")
-                .font(isCompact ? .system(size: 31, weight: .semibold, design: .default) : MemoryInkTypography.title)
+                .font(isCompact ? MemoryInkTypography.titleCompact : MemoryInkTypography.title)
                 .foregroundStyle(MemoryInkColors.ink)
 
             Text("Small moments, held quietly.")
@@ -752,7 +751,6 @@ struct TimelineView: View {
 
                 TimelineCard(
                     memory: memory,
-                    namespace: cardNamespace,
                     isExpanded: true,
                     isCompact: metrics.isCompact,
                     retryAction: retryAction(for: memory)
@@ -918,10 +916,13 @@ struct TimelineView: View {
         reduceMotion ? .linear(duration: 0.01) : .easeInOut(duration: 0.26)
     }
 
-    private func showMilestoneIfNeeded(entryCount: Int) {
-        guard let message = milestoneService.checkMilestone(entryCount: entryCount) else {
-            return
-        }
+    private func showMilestoneIfNeeded() {
+        let message = milestoneService.check(
+            entryCount: repository.entries.count,
+            firstEntryDate: repository.firstEntryDate
+        )
+
+        guard let message else { return }
 
         withAnimation(cinematicAnimation) {
             milestoneToast = message

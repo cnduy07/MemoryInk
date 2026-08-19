@@ -18,6 +18,7 @@ struct MemoryInkApp: App {
     @StateObject private var onThisDayService: OnThisDayService
     @StateObject private var yearlyReviewService: YearlyReviewService
     @StateObject private var notificationService = NotificationService()
+    @StateObject private var appLockService = AppLockService()
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("onboarding_completed") private var onboardingCompleted = false
 
@@ -101,16 +102,40 @@ struct MemoryInkApp: App {
             .environmentObject(yearlyReviewService)
             .environmentObject(notificationService)
             .environmentObject(analyticsService)
+            .environmentObject(appLockService)
+            .overlay {
+                if appLockService.isLocked {
+                    AppLockView(service: appLockService)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: appLockService.isLocked)
             .task {
                 await authService.restoreSession()
                 await subscriptionManager.refreshEntitlements()
                 await syncService.syncMetadataIfAllowed()
                 onThisDayService.refresh()
                 await notificationService.scheduleOnThisDayIfNeeded(entryCount: onThisDayService.entries.count)
+                WidgetSnapshotService.update(entries: repository.entries)
+            }
+            .onChange(of: repository.entries.count) { count in
+                // The widget reads a snapshot the app leaves in the App Group container;
+                // the Core Data store itself is never shared with the widget process.
+                if count == 0 {
+                    WidgetSnapshotService.clear()
+                } else {
+                    WidgetSnapshotService.update(entries: repository.entries)
+                }
             }
             .onChange(of: scenePhase) { phase in
-                if phase == .active {
+                switch phase {
+                case .active:
                     Task { await syncService.syncMetadataIfAllowed() }
+                case .background:
+                    appLockService.lockIfNeeded()
+                    WidgetSnapshotService.update(entries: repository.entries)
+                default:
+                    break
                 }
             }
         }

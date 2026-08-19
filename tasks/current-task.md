@@ -1,174 +1,69 @@
-# Task: App Store Rejection Fix — Guideline 5.1.1(v) Registration Gate
+# Task: Fix the Timeline → detail overlay hero transition (drop matchedGeometryEffect)
 
-**Date:** 2026-05-27
-**Phase:** Phase 3 — Monetization & Sync
-**Priority:** Critical (blocking App Store submission)
-**Submission ID:** 75d79484-537e-4e04-864e-eec18557e4c9
-**Scope:** 1 file, ~6 surgical changes
+**Date:** 2026-08-19
+**Phase:** Phase 3 — Monetization & Sync (bug fix on v2 Part A work)
+**Priority:** High — user-visible breakage on the app's most-used interaction
+**Estimated scope:** Small (2 Swift files + 2 docs)
 
 ---
 
 ## Context
 
-Apple rejected build 1.0 (3) on an iPad Air 11-inch (M3) citing Guideline 5.1.1(v):
+Part A item A.5 wired a `matchedGeometryEffect` hero transition between a Timeline card's photo
+and the same photo in the tap-to-expand detail overlay. On device it is wrong the instant it
+appears: the overlay's photo is pinned to wherever the source card happened to be on screen
+(card near the top → image at the top of the overlay; card near the bottom → image at the
+bottom), with no animation at all.
 
-> "The app requires users to register with personal information to purchase In-App Purchase products that are not account-based."
-
-The reviewer tapped "Start" on a subscription plan and was blocked by an alert:
-**"Please create an account or sign in before subscribing to MemoryInk+."**
-The StoreKit purchase sheet never appeared.
-
----
-
-## Root Cause
-
-In `MemoryInk/Features/Subscription/SubscriptionView.swift`, the `planCard` function checks
-`isSignedIn` before allowing a purchase. If the user is not signed in, it fires `showAuthAlert = true`
-and returns — the purchase never reaches StoreKit.
-
-```swift
-// Current (violating) code — planCard action closure:
-Button {
-    guard !isDisabled else { return }
-    guard isSignedIn else { showAuthAlert = true; return }   // ← hard block
-    Task { await subscriptionManager.purchase(plan) }
-} label: { ... }
-```
-
-MemoryInk+ includes features that have no account requirement (more AI narratives per day,
-premium recap styles, voice journaling). Only metadata sync requires a Supabase account.
-Apple's rule: registration cannot gate the entire purchase even if one feature is account-based.
-
----
+Root cause: `matchedGeometryEffect` is a *hand-off* API. It expects exactly one source view to
+exist at a time — the source's frame is handed to the non-source view, then the source goes away.
+Here the Timeline is never unmounted: when `selectedMemory` is set, the scroll view stays in the
+`ZStack` behind the overlay, only blurred and `.allowsHitTesting(false)`. So the collapsed card
+(`isSource: true`) remains alive for the whole presentation, and the overlay card
+(`isSource: false`) does not merely animate *from* that frame — it is permanently laid out *at*
+that frame, overriding its own layout. That also explains the missing animation: there is no
+transition happening, just an immediate geometry override.
 
 ## Objective
 
-Any user — signed in or not — can reach the StoreKit payment sheet.
-After a successful purchase, a non-signed-in user sees a one-tap-dismissible prompt
-explaining they can sign in later to enable sync. Registration is never a blocker.
+Tapping a Timeline card opens the detail overlay centred where the overlay's own layout puts it,
+regardless of where the source card sat on screen, with the existing calm scale + opacity
+transition (220–280ms, no bounce) playing on open and close.
 
 ---
 
-## Files to Modify
+## Files to modify
 
-| File | Action |
-|------|--------|
-| `MemoryInk/Features/Subscription/SubscriptionView.swift` | See exact changes below |
+- `MemoryInk/Features/Timeline/TimelineCard.swift` — modify
+  - Remove `.timelineHeroEffect(...)` from `imageArea` (used by **both** `listCard` and `gridBody`)
+  - Remove the `timelineHeroEffect` private `View` extension
+  - Remove the now-unused `namespace` stored property and its `init` parameter
+- `MemoryInk/Features/Timeline/TimelineView.swift` — modify
+  - Remove `@Namespace private var cardNamespace`
+  - Remove `namespace:` from all three `TimelineCard(...)` call sites (list, grid, detail overlay)
+- `docs/BUGS_AND_FIXES.md` — modify: add §9.4, bilingual (English line, Vietnamese in italics)
+- `tasks/MANUAL_TODO.md` — modify: split the A.5 hero transition out of the Part A motion item so
+  it is re-verified specifically after this fix
 
-**Do NOT touch:** any other file. No pricing changes. No entitlement ID changes. No paywall trigger changes. No CoreData changes.
+## Out of scope
 
----
-
-## Exact Changes to `SubscriptionView.swift`
-
-### Change 1 — Remove `showAuthAlert` state property
-
-**Remove** this line (currently near line 9):
-```swift
-@State private var showAuthAlert = false
-```
-
-### Change 2 — Remove `isSignedIn` computed property
-
-**Remove** this entire computed property (currently lines 13–16):
-```swift
-private var isSignedIn: Bool {
-    if case .signedIn = authService.state { return true }
-    return false
-}
-```
-
-### Change 3 — Add new state property for post-purchase prompt
-
-**Add** this line alongside the remaining `@State` declarations at the top of the struct:
-```swift
-@State private var showPostPurchaseSyncPrompt = false
-```
-
-### Change 4 — Remove the "Sign in required" alert modifier
-
-**Remove** this entire `.alert` block from `body` (currently lines 43–47):
-```swift
-.alert("Sign in required", isPresented: $showAuthAlert) {
-    Button("OK", role: .cancel) {}
-} message: {
-    Text("Please create an account or sign in before subscribing to MemoryInk+.")
-}
-```
-
-### Change 5 — Add post-purchase sync prompt alert
-
-**Add** this new `.alert` modifier in the same position in `body` (after `.task { ... }`):
-```swift
-.alert("Sync Available", isPresented: $showPostPurchaseSyncPrompt) {
-    Button("Got it", role: .cancel) {}
-} message: {
-    Text("Sign in from Settings anytime to sync your memories across your devices.")
-}
-```
-
-### Change 6 — Remove the sign-in gate from `planCard`
-
-**Replace** the current `planCard` button action closure:
-
-Current:
-```swift
-Button {
-    guard !isDisabled else { return }
-    guard isSignedIn else { showAuthAlert = true; return }
-    Task { await subscriptionManager.purchase(plan) }
-} label: {
-```
-
-Replace with:
-```swift
-Button {
-    guard !isDisabled else { return }
-    Task {
-        let wasSubscribed = subscriptionManager.hasPremiumEntitlement
-        await subscriptionManager.purchase(plan)
-        guard !wasSubscribed, subscriptionManager.hasPremiumEntitlement else { return }
-        if case .signedIn = authService.state { return }
-        showPostPurchaseSyncPrompt = true
-    }
-} label: {
-```
-
-**Logic explanation:**
-- `wasSubscribed` captures entitlement state before the purchase attempt.
-- After `purchase()` returns, if the user was NOT subscribed before AND IS subscribed now, the purchase succeeded.
-- If they are also not signed in, show the optional sync prompt.
-- If the purchase was cancelled or failed, `hasPremiumEntitlement` stays false → no prompt, no state change.
+- The grid path's tap target (grid cards push `.memoryViewer` / `.memoryDetail` routes, they never
+  open this overlay) — not changed, only the unused `namespace` argument is dropped
+- The overlay's layout, sizing, carousel buttons, swipe gesture, backdrop blur
+- Any other `matchedGeometryEffect` in the app — there are none
 
 ---
 
-## Constraints
+## Success criteria (binary)
 
-- [ ] No new Swift packages
-- [ ] No changes to pricing ($5.99, $39.99)
-- [ ] No changes to entitlement ID (`"premium"`)
-- [ ] Paywall trigger logic (first emotional moment) untouched
-- [ ] `isSubscribed` display logic (header badge, plan cards, feature list) untouched
-- [ ] The `authService` `@EnvironmentObject` stays — it is still used for the post-purchase state check
-- [ ] No raw photo, GPS, or EXIF data sent anywhere
+- [x] `grep -rn "matchedGeometryEffect\|Namespace" --include="*.swift" .` returns **zero** hits
+- [x] The overlay `TimelineCard` still carries `.transition(.opacity.combined(with: .scale(...)))`
+      and is still driven by `withAnimation(cinematicAnimation)` in `selectedMemory` set/clear
+- [x] `xcodebuild ... build CODE_SIGNING_ALLOWED=NO` → **BUILD SUCCEEDED** (real build, not typecheck)
+- [x] `docs/BUGS_AND_FIXES.md` has a §9.4 entry in the established bilingual format
+- [x] `tasks/MANUAL_TODO.md` lists the reopened hero-transition check under 🟡 verification
 
----
+## Needs human approval
 
-## Success Criteria
-
-- [ ] A user who has never created an account can tap "Start" on either plan and the native StoreKit purchase sheet appears immediately — no alert, no redirect, no block
-- [ ] After a successful purchase by a non-signed-in user, a dismissible alert appears: "Sign in from Settings anytime to sync your memories across your devices."
-- [ ] Tapping "Got it" (or swiping away) dismisses the alert and the user has full access to premium features without signing in
-- [ ] A user who is already signed in sees no post-purchase prompt (purchase proceeds silently as before)
-- [ ] If the purchase is cancelled or fails, no post-purchase prompt appears
-- [ ] Xcode compiles without errors or warnings introduced by these changes
-- [ ] No files modified beyond `SubscriptionView.swift`
-
----
-
-## Out of Scope
-
-- Sign-in UX in SettingsView (already correct — sync is gated behind sign-in there)
-- RevenueCatService purchase flow (no auth dependency, already correct)
-- Supabase configuration changes (PM/user action)
-- Any CoreData or data model changes
+No — no dependency, no Core Data change, no subscription/paywall/entitlement change, no new file.
+Device verification of the result is the user's (added to MANUAL_TODO).

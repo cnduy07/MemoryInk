@@ -6,6 +6,12 @@ import Foundation
 final class JournalEntryRepository: ObservableObject {
     @Published private(set) var entries: [JournalEntry] = []
 
+    /// When this journal began — the single source for anything measuring the journey's
+    /// length (milestones, the On This Day day counter). `entries` is sorted newest first.
+    var firstEntryDate: Date? {
+        entries.last?.createdAt
+    }
+
     var currentStreak: Int {
         guard !entries.isEmpty else { return 0 }
         let calendar = Calendar.current

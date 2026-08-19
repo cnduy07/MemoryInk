@@ -7,7 +7,6 @@ struct TimelineCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let memory: TimelineMemory
-    let namespace: Namespace.ID?
     let isExpanded: Bool
     let isCompact: Bool
     let isGridCompact: Bool
@@ -23,7 +22,6 @@ struct TimelineCard: View {
 
     init(
         memory: TimelineMemory,
-        namespace: Namespace.ID? = nil,
         isExpanded: Bool = false,
         isCompact: Bool = false,
         isGridCompact: Bool = false,
@@ -33,7 +31,6 @@ struct TimelineCard: View {
         onTap: @escaping () -> Void
     ) {
         self.memory = memory
-        self.namespace = namespace
         self.isExpanded = isExpanded
         self.isCompact = isCompact
         self.isGridCompact = isGridCompact
@@ -88,29 +85,18 @@ struct TimelineCard: View {
                     anchor: UnitPoint(x: 0.5, y: 1.1)
                 )
                 .simultaneousGesture(
-                    DragGesture(minimumDistance: 20, coordinateSpace: .global)
-                        .onChanged { value in
-                            let horizontal = abs(value.translation.width)
-                            let vertical = abs(value.translation.height)
-                            guard horizontal > vertical * 1.2 else { return }
-                            dragX = value.translation.width
-                        }
-                        .onEnded { value in
-                            let horizontal = abs(value.translation.width)
-                            let vertical = abs(value.translation.height)
-                            guard horizontal > vertical else {
-                                springBack()
-                                return
-                            }
-                            let projected = value.translation.width + value.predictedEndTranslation.width * 0.22
-                            if projected > swipeThreshold {
-                                commitSwipe(right: true)
-                            } else if projected < -swipeThreshold {
-                                commitSwipe(right: false)
-                            } else {
-                                springBack()
-                            }
-                        },
+                    memoryInkSwipeGesture(
+                        MemoryInkSwipeGestureConfig(
+                            minimumDistance: 20,
+                            useGlobalCoordinateSpace: true,
+                            requireHorizontalDominance: true,
+                            predictionWeight: 0.22,
+                            threshold: swipeThreshold
+                        ),
+                        onChanged: { translation in dragX = translation.width },
+                        onCommit: { direction in commitSwipe(right: direction == .right) },
+                        onCancel: springBack
+                    ),
                     including: isExpanded ? .none : .all
                 )
         }

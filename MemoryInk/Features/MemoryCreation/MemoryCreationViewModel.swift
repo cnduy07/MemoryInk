@@ -21,7 +21,9 @@ final class MemoryCreationViewModel: ObservableObject {
     @Published var savedEntry: JournalEntry?
     @Published var isBackdropSelected: Bool = false
 
-    private let repository: JournalEntryRepository
+    /// Exposed so the post-save sheet can follow the entry as it changes — the AI narrative
+    /// lands seconds *after* the save, so a snapshot taken at save time is always empty.
+    let repository: JournalEntryRepository
     private let imagePipeline: ImagePipelineService
     private let narrativeGenerationService: NarrativeGenerationService
     private let analyticsService: AnalyticsService?

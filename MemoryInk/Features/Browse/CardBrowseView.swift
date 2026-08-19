@@ -16,11 +16,6 @@ struct CardBrowseView: View {
     private let swipeThreshold: CGFloat = 100
     private let rotationFactor: Double = 12.0
 
-    private enum FlyDirection {
-        case left
-        case right
-    }
-
     var body: some View {
         ZStack {
             LinearGradient(
@@ -64,13 +59,11 @@ struct CardBrowseView: View {
         .sheet(isPresented: $showShareSheet) {
             if currentIndex < entries.count {
                 let entry = entries[currentIndex]
-                let narrative = entry.aiNarrative ?? "\(entry.mood.title) memory"
-                let image = MemoryShareRenderer.render(
-                    narrative: narrative,
+                MemoryShareCardSheet(
+                    narrative: entry.aiNarrative ?? "\(entry.mood.title) memory",
                     mood: entry.mood,
                     date: entry.createdAt
                 )
-                ShareSheet(items: [image])
             }
         }
         .navigationBarHidden(true)
@@ -198,25 +191,30 @@ struct CardBrowseView: View {
     }
 
     private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 10)
-            .onChanged { value in
+        memoryInkSwipeGesture(
+            MemoryInkSwipeGestureConfig(
+                minimumDistance: 10,
+                useGlobalCoordinateSpace: false,
+                requireHorizontalDominance: false,
+                predictionWeight: 0.25,
+                threshold: swipeThreshold
+            ),
+            onChanged: { translation in
                 isDragging = true
-                dragOffset = value.translation
-            }
-            .onEnded { value in
+                dragOffset = translation
+            },
+            onCommit: { direction in
                 isDragging = false
-                let projected = value.translation.width + value.predictedEndTranslation.width * 0.25
-                if projected > swipeThreshold {
-                    flyCard(direction: .right)
-                } else if projected < -swipeThreshold {
-                    flyCard(direction: .left)
-                } else {
-                    snapBack()
-                }
+                flyCard(direction: direction)
+            },
+            onCancel: {
+                isDragging = false
+                snapBack()
             }
+        )
     }
 
-    private func flyCard(direction: FlyDirection) {
+    private func flyCard(direction: MemoryInkSwipeDirection) {
         guard currentIndex < entries.count else { return }
 
         let targetX: CGFloat = direction == .right ? 500 : -500

@@ -150,7 +150,7 @@ struct MemoryCreationView: View {
             }
             .sheet(isPresented: $showingSuccessSheet) {
                 if let entry = viewModel.savedEntry {
-                    MemorySavedSheet(entry: entry) {
+                    MemorySavedSheet(entry: entry, repository: viewModel.repository) {
                         showingSuccessSheet = false
                         dismiss()
                     }
@@ -383,12 +383,32 @@ private struct ScenePickerSheet: View {
 
 private struct MemorySavedSheet: View {
     let entry: JournalEntry
+    @ObservedObject var repository: JournalEntryRepository
     let onDone: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var checkmarkScale: CGFloat = 0.4
     @State private var showShareSheet = false
-    @State private var shareImage: UIImage?
+
+    /// The saved entry as it stands *now*. `entry` is a snapshot from the moment of saving,
+    /// taken before the AI narrative exists — reading through the repository means the share
+    /// card picks up the narrative as soon as it arrives.
+    private var liveEntry: JournalEntry {
+        repository.entries.first { $0.id == entry.id } ?? entry
+    }
+
+    /// The user's own words are the best thing to share; the narrative is better still once
+    /// it lands. Never leave the card with nothing on it.
+    private var shareNarrative: String {
+        if let narrative = liveEntry.aiNarrative, !narrative.isEmpty { return narrative }
+        if let note = liveEntry.rawNote, !note.isEmpty { return note }
+        return "A \(liveEntry.mood.title.lowercased()) moment, kept."
+    }
+
+    private var sharePhoto: UIImage? {
+        ImagePipelineService.image(forRelativePath: liveEntry.mediumPreviewPath)
+            ?? ImagePipelineService.image(forRelativePath: liveEntry.thumbnailPath)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -444,12 +464,7 @@ private struct MemorySavedSheet: View {
                 .padding(.bottom, 12)
 
             Button {
-                let image = MemoryShareRenderer.render(
-                    narrative: entry.aiNarrative ?? entry.mood.title,
-                    mood: entry.mood,
-                    date: entry.createdAt
-                )
-                shareImage = image
+                MemoryInkHaptics.light()
                 showShareSheet = true
             } label: {
                 HStack(spacing: 10) {
@@ -491,12 +506,13 @@ private struct MemorySavedSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .sheet(isPresented: $showShareSheet) {
-            if let image = shareImage {
-                ShareSheet(items: [
-                    image,
-                    "I captured this moment with MemoryInk ✨"
-                ])
-            }
+            MemoryShareCardSheet(
+                narrative: shareNarrative,
+                mood: liveEntry.mood,
+                date: liveEntry.createdAt,
+                photo: sharePhoto,
+                caption: "I captured this moment with MemoryInk ✨"
+            )
         }
         .onAppear {
             checkmarkScale = 1.0
