@@ -1,105 +1,87 @@
 import SwiftUI
 
+/// Motion for the Cinematic Dark direction (C.6): things resolve out of and back into the dark
+/// rather than springing. Fade carries the change and a small defocus carries the depth; scale is
+/// reserved for direct manipulation, where the finger is the thing moving.
 enum MemoryInkMotion {
+    /// Immediate feedback — a press, a toggle. Short enough to feel attached to the finger.
     static func quick(reduceMotion: Bool) -> Animation {
         reduceMotion ? .linear(duration: 0.01) : .easeOut(duration: 0.20)
     }
 
+    /// The app's default. Slightly longer than the old 0.26s: a fade needs more time to read as
+    /// deliberate than a scale does, because there is no movement to track.
     static func standard(reduceMotion: Bool, delay: Double = 0) -> Animation {
         let animation = reduceMotion
             ? Animation.linear(duration: 0.01)
-            : Animation.easeInOut(duration: 0.26)
+            : Animation.easeInOut(duration: 0.32)
         return delay > 0 && !reduceMotion ? animation.delay(delay) : animation
+    }
+
+    /// For content arriving over something else — a detail opening, a sheet resolving.
+    static func cinematic(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .linear(duration: 0.01) : .easeInOut(duration: 0.42)
+    }
+
+    /// The house transition: fade plus a short defocus, no scale.
+    ///
+    /// `.blur` on the way in is what replaces the scale — it reads as the subject coming into
+    /// focus rather than growing, which is the difference between "cinematic" and "an alert box".
+    static func resolve(reduceMotion: Bool) -> AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+        return .opacity.combined(with: .modifier(
+            active: DefocusModifier(radius: 8),
+            identity: DefocusModifier(radius: 0)
+        ))
     }
 }
 
+/// Blur as a transition step. Kept separate so `reduceMotion` can drop it entirely rather than
+/// animating a blur radius at 0.01s, which reads as a flicker.
+struct DefocusModifier: ViewModifier {
+    let radius: CGFloat
+
+    func body(content: Content) -> some View {
+        content.blur(radius: radius)
+    }
+}
+
+/// The ground the whole app sits on (C.4).
+///
+/// This used to paint two drifting mood-coloured radial gradients over a three-stop parchment
+/// gradient, animating for 1.15s on every appearance. On a near-black ground that reads as a
+/// coloured haze behind the photographs — precisely the competition Cinematic Dark exists to
+/// remove. What is left is the ground itself and a single faint luminance falloff, so the eye has
+/// somewhere to rest without anything asking for attention.
+///
+/// `mood` and `intensity` are kept in the signature: every screen passes them, and a future
+/// direction may want them back. They are deliberately unused rather than removed, so that the
+/// call sites do not all have to churn for a decision that might reverse.
 struct MemoryInkAmbientBackdrop: View {
     let mood: MoodType?
     var intensity: Double = 1
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @State private var isSettled = false
-
-    private var primaryAccent: Color {
-        mood?.tint ?? MemoryInkColors.orchid
-    }
-
-    private var secondaryAccent: Color {
-        mood?.secondaryTint ?? MemoryInkColors.ocean
-    }
 
     var body: some View {
-        GeometryReader { proxy in
-            let width = max(proxy.size.width, 1)
-            let height = max(proxy.size.height, 1)
-            let colorStrength = reduceTransparency ? 0.12 : 0.28 * intensity
+        ZStack {
+            MemoryInkColors.parchment
 
-            ZStack {
+            if !reduceTransparency {
                 LinearGradient(
                     colors: [
+                        MemoryInkColors.paperWarm.opacity(0.5),
                         MemoryInkColors.parchment,
-                        MemoryInkColors.paperWarm,
                         MemoryInkColors.parchmentDeep
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-
-                RadialGradient(
-                    colors: [
-                        primaryAccent.opacity(colorStrength),
-                        primaryAccent.opacity(0)
-                    ],
-                    center: .center,
-                    startRadius: 8,
-                    endRadius: width * 0.62
-                )
-                .frame(width: width * 1.2, height: width * 1.2)
-                .offset(
-                    x: isSettled ? -width * 0.22 : width * 0.03,
-                    y: isSettled ? -height * 0.23 : -height * 0.12
-                )
-
-                RadialGradient(
-                    colors: [
-                        secondaryAccent.opacity(colorStrength * 0.88),
-                        secondaryAccent.opacity(0)
-                    ],
-                    center: .center,
-                    startRadius: 4,
-                    endRadius: width * 0.58
-                )
-                .frame(width: width * 1.08, height: width * 1.08)
-                .offset(
-                    x: isSettled ? width * 0.30 : width * 0.12,
-                    y: isSettled ? height * 0.27 : height * 0.18
-                )
-
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.14),
-                        Color.clear,
-                        MemoryInkColors.vignette.opacity(0.08)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
             }
-            .animation(
-                MemoryInkMotion.standard(reduceMotion: reduceMotion),
-                value: mood
-            )
-            .onAppear {
-                withAnimation(
-                    reduceMotion
-                        ? .linear(duration: 0.01)
-                        : .easeOut(duration: 1.15)
-                ) {
-                    isSettled = true
-                }
-            }
         }
+        .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -114,8 +96,7 @@ private struct MemoryInkEntranceModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(isVisible ? 1 : 0)
-            .scaleEffect(isVisible || reduceMotion ? 1 : 0.988)
-            .offset(y: isVisible || reduceMotion ? 0 : 12)
+            .blur(radius: isVisible || reduceMotion ? 0 : 6)
             .onAppear {
                 withAnimation(
                     MemoryInkMotion.standard(

@@ -521,6 +521,9 @@ Daily: find entries matching current month/day from previous years
 ### Visual Style
 - Nostalgic, cinematic, soft
 - Faded film tones, softer contrast, subtle blur
+  *(Superseded 2026-08-20 by Part C — Cinematic Dark. The photograph is the only bright object on
+  screen; the app supplies near-black ground and grey chrome, and no filter, gradient, or grain is
+  drawn over a user photo. See `tasks/PART_C_PLAN.md` and `MemoryInk/Common/Theme/Colors.swift`.)*
 
 ### Notification Limit
 ```

@@ -83,6 +83,16 @@ enum MemoryInkColors {
     /// "Nothing here" marks — empty calendar cells and similar.
     static var neutralMark: Color { taupe }
 
+    /// Text and icons drawn **on top of** a hue fill — a filled button, a mood chip, a gradient
+    /// pill. It must invert with the hue, not with the background.
+    ///
+    /// This is the one role that cannot be `.white`, which is what the whole app used before Part
+    /// C. That worked while the hues were dark enough to carry white text. They are not any more:
+    /// in dark mode a hue is *bright* (amber sits at 0.51 luminance), so white-on-amber falls to
+    /// about 1.9:1 — failing, and painful to look at. Flipping to near-black there restores it to
+    /// roughly 10:1, and light mode keeps near-white at about 4.7:1.
+    static var onAccent: Color { Color(Raw.onAccent) }
+
     // MARK: - Hues
     //
     // Bright variants are tuned for the near-black ground; light variants are the same hue solved
@@ -138,6 +148,7 @@ enum MemoryInkColors {
         static let parchment = dynamic(light: rgb(0.961, 0.953, 0.941), dark: rgb(0.055, 0.054, 0.059))
         static let paper = dynamic(light: rgb(1.000, 1.000, 1.000), dark: rgb(0.098, 0.096, 0.102))
         static let paperWarm = dynamic(light: rgb(0.980, 0.973, 0.961), dark: rgb(0.133, 0.129, 0.137))
+        static let onAccent = dynamic(light: rgb(1.000, 0.996, 0.988), dark: rgb(0.043, 0.041, 0.047))
         static let ink = dynamic(light: rgb(0.090, 0.086, 0.102), dark: rgb(0.957, 0.949, 0.937))
         static let secondaryInk = dynamic(light: rgb(0.333, 0.325, 0.310), dark: rgb(0.639, 0.631, 0.620))
         static let tertiaryInk = dynamic(light: rgb(0.395, 0.387, 0.372), dark: rgb(0.545, 0.537, 0.525))

@@ -26,7 +26,7 @@ struct MoodIntroView: View {
                         VStack(spacing: 7) {
                             Image(systemName: mood.symbolName)
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MemoryInkColors.onAccent)
                                 .frame(width: 38, height: 38)
                                 .background(
                                     LinearGradient(
@@ -59,7 +59,7 @@ struct MoodIntroView: View {
                 } label: {
                     Text("Get started")
                         .font(MemoryInkTypography.narrativeCompact.weight(.medium))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MemoryInkColors.onAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(

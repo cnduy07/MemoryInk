@@ -150,6 +150,36 @@ final class PaletteContrastTests: XCTestCase {
         )
     }
 
+    /// Filled controls: a button or chip painted with a hue, carrying text on top.
+    ///
+    /// Before Part C this text was always `.white`, which worked only because the hues were dark.
+    /// They invert now — a hue is bright in dark mode — so white-on-amber would sit at about
+    /// 1.9:1. `onAccent` has to flip the other way from the background to stay readable.
+    func testOnAccentIsReadableOnEveryHue() {
+        for traits in [light, dark] {
+            let appearance = traits.userInterfaceStyle == .dark ? "dark" : "light"
+            for hue in hues {
+                let ratio = contrastRatio(MemoryInkColors.Raw.onAccent, hue.color, traits)
+                XCTAssertGreaterThanOrEqual(
+                    ratio, 4.5,
+                    "\(appearance): onAccent on a \(hue.name) fill is \(rounded(ratio)):1 — filled controls would be unreadable"
+                )
+            }
+        }
+    }
+
+    /// The mistake `onAccent` exists to prevent, stated as a test so it cannot creep back: plain
+    /// white text fails on bright dark-mode hues. If this ever passes, the hues have gone dark
+    /// again and the whole Cinematic Dark palette has drifted.
+    func testPlainWhiteWouldFailOnDarkModeHues() {
+        let white = UIColor.white
+        let failing = hues.filter { contrastRatio(white, $0.color, dark) < 4.5 }
+        XCTAssertFalse(
+            failing.isEmpty,
+            "white now passes on every dark-mode hue, so onAccent may no longer be needed"
+        )
+    }
+
     // MARK: - Helpers
 
     private func componentsOf(_ color: UIColor) -> (red: CGFloat, green: CGFloat, blue: CGFloat) {

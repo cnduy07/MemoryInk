@@ -128,14 +128,20 @@ struct MemoryViewerPage: View {
 
                 // Text overlay: width comes from GeometryReader — guaranteed correct
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(entry.mood.title)
-                        .font(MemoryInkTypography.badge)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
-                        .background(entry.mood.tint.opacity(0.30))
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(entry.mood.tint)
+                            .frame(width: 6, height: 6)
+
+                        Text(entry.mood.title.uppercased())
+                            .font(MemoryInkTypography.badge)
+                            .kerning(0.6)
+                            .foregroundStyle(MemoryInkColors.ink)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
 
                     if let narrative = entry.aiNarrative, !narrative.isEmpty {
                         Text(narrative)

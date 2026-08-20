@@ -145,7 +145,7 @@ struct MemoryShareCardSheet: View {
                 Text("Share this memory")
                     .font(MemoryInkTypography.subtitle.weight(.semibold))
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(MemoryInkColors.onAccent)
             .frame(maxWidth: .infinity)
             .frame(height: 54)
             .background(

@@ -83,7 +83,7 @@ struct MemoryCreationView: View {
                             }
                         }
                         .font(MemoryInkTypography.badge.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MemoryInkColors.onAccent)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 9)
                         .background(
@@ -442,7 +442,7 @@ private struct MemorySavedSheet: View {
 
             Text(entry.mood.title)
                 .font(MemoryInkTypography.badge)
-                .foregroundStyle(.white)
+                .foregroundStyle(MemoryInkColors.onAccent)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
@@ -473,7 +473,7 @@ private struct MemorySavedSheet: View {
                     Text("Share this moment")
                         .font(MemoryInkTypography.subtitle.weight(.semibold))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MemoryInkColors.onAccent)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
                 .background(
@@ -759,7 +759,7 @@ private struct CreationSlideshowSheet: View {
                                  ? "Select at least 2 photos"
                                  : "Create 10-Second Slideshow")
                                 .font(MemoryInkTypography.subtitle.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MemoryInkColors.onAccent)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 52)
                                 .background(

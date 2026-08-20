@@ -57,7 +57,7 @@ struct TimelineCard: View {
                         .frame(width: 56, height: 56)
                     Image(systemName: "heart.fill")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MemoryInkColors.onAccent)
                 }
                 .scaleEffect(hintScale(for: dragX, positive: true))
                 .opacity(hintOpacity(for: dragX, positive: true))
@@ -300,17 +300,7 @@ struct TimelineCard: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: MemoryInkSpacing.cardCornerRadius, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.46),
-                            MemoryInkColors.hairline.opacity(0.18)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+                .stroke(MemoryInkColors.hairline.opacity(0.55), lineWidth: 0.5)
         }
         .task(id: memory.thumbnailPath) {
             thumbnail = nil
@@ -324,115 +314,58 @@ struct TimelineCard: View {
         }
     }
 
+    /// The photograph, and nothing on top of it.
+    ///
+    /// Part C removed eight layers that used to sit over every picture: a radial "light leak" on
+    /// `.screen`, a mood-tint gradient also on `.screen`, a masked accent wash along the bottom,
+    /// three decorative film strips, a white-to-vignette gradient, a blurred lens-flare circle, a
+    /// grain canvas, and a white edge stroke. Each was subtle enough to defend on its own; stacked,
+    /// they were a filter. Two of them used `.screen`, which *lifts blacks by definition* — against
+    /// a near-black ground that greyed out every photo in the app.
     private var placeholderImage: some View {
         ZStack {
             if let thumbnail {
                 Image(uiImage: thumbnail)
                     .resizable()
                     .scaledToFill()
-                    .opacity(imageRevealed || reduceMotion ? 1 : 0.72)
-                    .scaleEffect(imageRevealed || reduceMotion ? 1 : 1.035)
+                    .opacity(imageRevealed || reduceMotion ? 1 : 0)
             } else {
-                LinearGradient(
-                    colors: memory.palette,
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-
-            RadialGradient(
-                colors: [
-                    memory.lightLeak.opacity(0.68),
-                    memory.lightLeak.opacity(0.0)
-                ],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 190
-            )
-            .blendMode(.screen)
-
-            LinearGradient(
-                colors: [
-                    memory.mood.tint.opacity(0.12),
-                    Color.clear,
-                    memory.mood.secondaryTint.opacity(0.13)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .blendMode(.screen)
-
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-
-                LinearGradient(
-                    colors: [
-                        memory.accent.opacity(0.62),
-                        memory.accent.opacity(0.16)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: isExpanded ? 108 : (isCompact ? 78 : 92))
-                .mask(
-                    RoundedRectangle(cornerRadius: 56, style: .continuous)
-                        .offset(y: 46)
-                )
-            }
-
-            VStack {
-                Spacer()
-                HStack(spacing: 10) {
-                    ForEach(0..<3, id: \.self) { index in
-                        Capsule()
-                            .fill(Color.white.opacity(index == 1 ? 0.22 : 0.13))
-                            .frame(width: index == 1 ? 56 : 36, height: 2)
+                // A memory without a picture still needs a surface. One flat wash at badge weight
+                // — a mark, not a treatment.
+                MemoryInkColors.paperWarm
+                    .overlay(memory.mood.tint.opacity(0.14))
+                    .overlay {
+                        Image(systemName: memory.mood.symbolName)
+                            .font(.system(size: isCompact ? 22 : 26, weight: .light))
+                            .foregroundStyle(memory.mood.tint.opacity(0.55))
                     }
-                    Spacer()
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, isCompact ? 18 : 22)
             }
-
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.16),
-                    Color.clear,
-                    MemoryInkColors.vignette.opacity(0.32)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Circle()
-                        .fill(Color.white.opacity(0.14))
-                        .frame(width: 132, height: 132)
-                        .blur(radius: 18)
-                        .offset(x: 38, y: 28)
-                }
-            }
-
-            subtleGrain
         }
     }
 
+    /// Mood as a dot and a word (C.3). It used to tint the badge's whole background, the date
+    /// stamp, and — through `palette`/`accent`/`lightLeak` — the photo itself. Six moods each
+    /// colouring large areas meant the app had no consistent colour of its own; now the hue appears
+    /// once, small, where it is actually saying something.
     private var moodBadge: some View {
-        Text(memory.mood.title)
-            .font(MemoryInkTypography.badge)
-            .foregroundStyle(MemoryInkColors.ink.opacity(0.76))
-            .padding(.horizontal, isCompact ? 10 : 11)
-            .padding(.vertical, isCompact ? 5 : 6)
-            .background(.ultraThinMaterial)
-            .background(memory.mood.tint.opacity(0.28))
-            .overlay {
-                Capsule()
-                    .stroke(Color.white.opacity(0.28), lineWidth: 0.6)
-            }
-            .clipShape(Capsule())
+        HStack(spacing: 6) {
+            Circle()
+                .fill(memory.mood.tint)
+                .frame(width: 6, height: 6)
+
+            Text(memory.mood.title.uppercased())
+                .font(MemoryInkTypography.badge)
+                .kerning(0.6)
+                .foregroundStyle(MemoryInkColors.ink.opacity(0.88))
+        }
+        .padding(.horizontal, isCompact ? 9 : 10)
+        .padding(.vertical, isCompact ? 5 : 6)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(MemoryInkColors.hairline.opacity(0.4), lineWidth: 0.5)
+        }
     }
 
     private var dateStamp: some View {
@@ -443,11 +376,10 @@ struct TimelineCard: View {
                 .font(.system(size: 9, weight: .semibold))
                 .kerning(0.5)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(MemoryInkColors.ink)
         .padding(.horizontal, 9)
         .padding(.vertical, 7)
         .background(.ultraThinMaterial)
-        .background(memory.mood.tint.opacity(0.22))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
@@ -513,36 +445,6 @@ struct TimelineCard: View {
                 }
         }
         .buttonStyle(.plain)
-    }
-
-    private var subtleGrain: some View {
-        Canvas { context, size in
-            let safeWidth = finiteDimension(size.width)
-            let safeHeight = finiteDimension(size.height)
-
-            guard safeWidth > 0, safeHeight > 0 else {
-                return
-            }
-
-            let spacing: CGFloat = 11
-            var x: CGFloat = 4
-
-            while x < safeWidth {
-                var y: CGFloat = 5
-
-                while y < safeHeight {
-                    let opacity = ((Int(x + y) % 5) == 0) ? 0.030 : 0.016
-                    context.fill(
-                        Path(ellipseIn: CGRect(x: x, y: y, width: 1, height: 1)),
-                        with: .color(Color.white.opacity(opacity))
-                    )
-                    y += spacing
-                }
-
-                x += spacing
-            }
-        }
-        .allowsHitTesting(false)
     }
 
     private func finiteSize(_ size: CGSize) -> CGSize {

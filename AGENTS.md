@@ -253,8 +253,16 @@ See full design tokens in blueprint Section 11.
 - Card: 4:5 ratio · 20–24pt corner radius · soft shadow
 - Spacing: 28–36pt between cards · 16–20pt internal padding
 - Typography: SF Pro Display/Text · Narrative 17–19pt · Timestamp 12–13pt
-- Animation: 220–280ms · fade + scale + blur · ❌ bounce springs
-- Color: warm neutrals, film tones · ❌ neon, oversaturated
+- Animation: 260–420ms · fade + defocus · scale only for direct manipulation · ❌ bounce springs
+- Color: **Cinematic Dark** (Part C, 2026-08-20) — near-black ground, low-contrast greys, one
+  accent. Colour reaches the screen through the user's photograph, not through the chrome.
+  ❌ neon · ❌ oversaturated · ❌ gradients or filters over a photo
+- **Superseded:** "warm neutrals, film tones" described the pre-Part C palette. It is recorded here
+  because it was law for two milestones — do not restore it from an old commit or an old doc.
+- Never read a colour by hue name (`amber`, `teal`). Use the role: `accent`, `success`,
+  `destructive`, `onAccent`, `ink`, `secondaryInk`. Hue names exist for the mood system only.
+- Contrast floors are enforced by `MemoryInkTests/PaletteContrastTests`. If a palette change fails
+  it, the palette is wrong — the test is measuring WCAG, not taste.
 
 ---
 

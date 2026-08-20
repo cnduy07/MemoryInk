@@ -18,7 +18,7 @@
 > **How to tell Claude something is done:** just say so ("I added the App Group", "font looks fine") and it'll move the item to the archive.
 > ***Cách báo Claude là đã xong:** chỉ cần nói ra ("tôi thêm App Group rồi", "font nhìn ổn") là nó sẽ chuyển mục đó xuống lưu trữ.*
 
-**Last updated:** 2026-08-19 (session 6 — hero-transition fix + Part B device pass cleared) · *Cập nhật lần cuối: 19/08/2026 (phiên 6 — sửa hiệu ứng chuyển cảnh + kiểm tra xong Phần B trên máy thật)*
+**Last updated:** 2026-08-20 (session 6 — Part C Cinematic Dark complete) · *Cập nhật lần cuối: 20/08/2026 (phiên 6 — hoàn thành Phần C Cinematic Dark)*
 
 ---
 
@@ -63,15 +63,47 @@ A build passing proves it compiles, links, and bundles — not that it looks or 
 Roughly in order of how likely something is wrong:
 *Xếp gần đúng theo mức độ dễ có lỗi:*
 
-- [ ] **The Spectral serif on screen** (A.4) — kerning and weight at title sizes, on device.
+- [ ] **The whole app in Cinematic Dark** (Part C) — this is the big one. Every screen changed
+      ground, text, hue and motion. Look at it in **both light and dark mode**: the palette was
+      designed dark-first and light was derived from it, so light mode is the side more likely to
+      look off. Contrast is proven by tests; what tests cannot judge is whether it feels calm.
+      ***Toàn bộ app ở giao diện Cinematic Dark** (Phần C) — đây là mục lớn nhất. Mọi màn hình đều đổi
+      nền, chữ, màu nhấn và chuyển động. Hãy xem ở **cả chế độ sáng và tối**: bảng màu được thiết kế
+      cho nền tối trước rồi mới suy ra nền sáng, nên chế độ sáng dễ có chỗ chưa ổn hơn. Độ tương phản
+      đã được test chứng minh; thứ test không đánh giá được là cảm giác có "tĩnh" hay không.*
+- [ ] **Share cards after the palette change** (C.8) — all four themes again, please. Classic now
+      renders on a near-black ground instead of cream, and `Parchment` had a real bug: its light
+      artwork was asking for the app's ink, which after the change resolved to near-white — pale
+      text on pale parchment. Fixed, but never seen.
+      ***Thiệp chia sẻ sau khi đổi bảng màu** (C.8) — làm ơn kiểm tra lại cả bốn chủ đề. Chủ đề Classic
+      giờ hiện trên nền gần đen thay vì màu kem, và chủ đề `Parchment` từng có lỗi thật: phần artwork
+      sáng lại lấy màu chữ của app, mà sau thay đổi màu đó thành gần trắng — chữ nhạt trên nền nhạt.
+      Đã sửa nhưng chưa ai nhìn thấy.*
+- [ ] **The widget in both appearances** — it keeps its own copy of the palette with no compiler
+      link to the app's, so drift there is silent. It should now match the app, not the old look.
+      ***Widget ở cả hai chế độ sáng/tối** — widget giữ một bản sao bảng màu riêng, không có liên kết
+      biên dịch nào với app, nên lệch màu ở đó sẽ âm thầm xảy ra. Giờ nó phải trông giống app, không
+      còn giống giao diện cũ.*
+- [ ] **The Spectral serif on screen** (A.4) — kerning and weight at title sizes, on device. Note
+      it now also sets the *narrative*, which is a much bigger surface than titles were.
       ***Font serif Spectral trên màn hình** (A.4) — khoảng cách chữ và độ đậm ở cỡ tiêu đề, xem trên máy thật.*
 
 ---
 
 ## 🟢 Decisions waiting on you / 🟢 Quyết định đang chờ bạn
 
-*(none right now — both v2 approval checkpoints were cleared on 2026-08-19: Face ID go-ahead, and the widget snapshot approach over moving the Core Data store.)*
-*(hiện không có — cả hai điểm cần duyệt của v2 đã xong ngày 19/08/2026: đồng ý làm Face ID, và chọn phương án snapshot cho widget thay vì di chuyển kho Core Data.)*
+- [ ] **Add a lighter Spectral weight?** Only `Spectral-SemiBold.ttf` is bundled, so the narrative —
+      now set in the serif — is semibold at reading size. It works, but a Regular or Light weight
+      would read better for long text. Adding one needs you: drop the `.ttf` into `MemoryInk/Fonts`,
+      add it to the target, and add the filename to `UIAppFonts` in the gitignored `Info.plist`.
+      Spectral is SIL OFL, so the extra weights are free to bundle. Say the word and I'll wire the
+      code to use it. **Not urgent — nothing is broken without it.**
+      ***Có thêm một độ đậm nhẹ hơn của Spectral không?** Trong bundle chỉ có `Spectral-SemiBold.ttf`,
+      nên phần narrative — giờ dùng font serif — đang là semibold ở cỡ chữ đọc. Vẫn dùng được, nhưng
+      một weight Regular hoặc Light sẽ dễ đọc hơn với đoạn văn dài. Việc này cần bạn: bỏ file `.ttf`
+      vào `MemoryInk/Fonts`, thêm vào target, và thêm tên file vào `UIAppFonts` trong `Info.plist`
+      (file này bị gitignore). Spectral dùng giấy phép SIL OFL nên các weight khác được bundle miễn
+      phí. Bạn đồng ý thì tôi sẽ sửa code dùng nó. **Không gấp — thiếu nó cũng không hỏng gì.***
 
 ---
 
