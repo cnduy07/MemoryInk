@@ -5,8 +5,8 @@
 > Written so you can explain the project end-to-end without opening the code — and defend the
 > decisions, which is the part that gets asked about.
 >
-> Vietnamese edition: [`FEATURES_AND_TASKS.vi.md`](FEATURES_AND_TASKS.vi.md) · Companion document:
-> [`BUGS_AND_FIXES.md`](BUGS_AND_FIXES.md)
+> Vietnamese edition: [`FEATURES_AND_TASKS.vi.md`](FEATURES_AND_TASKS.vi.md) · Companion documents:
+> [`BUGS_AND_FIXES.md`](BUGS_AND_FIXES.md) · [`INTERVIEW_PREP.md`](INTERVIEW_PREP.md)
 >
 > **Last updated:** 2026-08-20
 

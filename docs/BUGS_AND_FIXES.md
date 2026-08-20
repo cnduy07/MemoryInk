@@ -7,8 +7,8 @@
 > answer is in here — and so is the reasoning that got to it, which is the part interviewers
 > actually want.
 >
-> Vietnamese edition: [`BUGS_AND_FIXES.vi.md`](BUGS_AND_FIXES.vi.md) · Companion document:
-> [`FEATURES_AND_TASKS.md`](FEATURES_AND_TASKS.md)
+> Vietnamese edition: [`BUGS_AND_FIXES.vi.md`](BUGS_AND_FIXES.vi.md) · Companion documents:
+> [`FEATURES_AND_TASKS.md`](FEATURES_AND_TASKS.md) · [`INTERVIEW_PREP.md`](INTERVIEW_PREP.md)
 >
 > **Last updated:** 2026-08-20
 

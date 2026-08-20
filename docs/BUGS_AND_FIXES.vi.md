@@ -8,7 +8,7 @@
 > muốn nghe.
 >
 > Bản tiếng Anh: [`BUGS_AND_FIXES.md`](BUGS_AND_FIXES.md) · Tài liệu đi kèm:
-> [`FEATURES_AND_TASKS.vi.md`](FEATURES_AND_TASKS.vi.md)
+> [`FEATURES_AND_TASKS.vi.md`](FEATURES_AND_TASKS.vi.md) · [`INTERVIEW_PREP.vi.md`](INTERVIEW_PREP.vi.md)
 >
 > **Cập nhật lần cuối:** 20/08/2026
 

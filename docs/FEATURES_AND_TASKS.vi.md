@@ -7,7 +7,7 @@
 > vốn mới là phần hay bị hỏi.
 >
 > Bản tiếng Anh: [`FEATURES_AND_TASKS.md`](FEATURES_AND_TASKS.md) · Tài liệu đi kèm:
-> [`BUGS_AND_FIXES.vi.md`](BUGS_AND_FIXES.vi.md)
+> [`BUGS_AND_FIXES.vi.md`](BUGS_AND_FIXES.vi.md) · [`INTERVIEW_PREP.vi.md`](INTERVIEW_PREP.vi.md)
 >
 > **Cập nhật lần cuối:** 20/08/2026
 
