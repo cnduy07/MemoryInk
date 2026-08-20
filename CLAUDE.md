@@ -167,7 +167,7 @@ This is what lets the user open a new session at the right time, with the right 
 | Where do I write tasks? | tasks/current-task.md |
 | Where's multi-session plan progress? | tasks/SESSION_HANDOFF.md |
 | Where do the user's manual steps go? | tasks/MANUAL_TODO.md (all parts, all sessions) |
-| Where's the project explained end-to-end? | docs/FEATURES_AND_TASKS.md + docs/BUGS_AND_FIXES.md — keep both current when shipping a feature or fixing a real bug. **Both are bilingual: every English line is followed by its Vietnamese meaning in italics. Match that format for anything added.** |
+| Where's the project explained end-to-end? | **Four files, two languages, kept in sync.** English: `docs/FEATURES_AND_TASKS.md` + `docs/BUGS_AND_FIXES.md`. Vietnamese: `docs/FEATURES_AND_TASKS.vi.md` + `docs/BUGS_AND_FIXES.vi.md`. Update all four when shipping a feature or fixing a real bug. **Each file is single-language — do not interleave translations inside a file (that was the format until 2026-08-20 and it made both languages hard to read straight through).** The Vietnamese files are full translations, not summaries; they carry the same sections and the same detail. |
 | What phase are we in? | Phase 3 — Monetization & Sync |
 | Who writes the code? | You (Claude Code) — no Codex anymore |
 | Who reviews the code? | You (Claude Code) — self-review before reporting done |

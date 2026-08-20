@@ -1,370 +1,556 @@
-# MemoryInk — Bugs & Fixes / Lỗi & Cách sửa
+# MemoryInk — Bugs & Fixes
 
-> A record of every significant bug in the project: what went wrong, **why** it went wrong, how it was fixed, and what it teaches.
-> *Ghi chép lại mọi lỗi đáng kể của dự án: chuyện gì đã xảy ra, **tại sao** xảy ra, sửa thế nào, và rút ra bài học gì.*
+> A record of every significant bug in the project: what went wrong, **why** it went wrong, how it
+> was fixed, and what it teaches.
 >
-> Written to be explainable out loud — if someone asks "tell me about a tricky bug you fixed," the answer is in here.
-> *Viết theo kiểu để bạn nói ra miệng được — nếu ai đó hỏi "kể về một lỗi khó mà bạn từng sửa", câu trả lời nằm ở đây.*
+> Written to be explainable out loud. If someone asks "tell me about a tricky bug you fixed," the
+> answer is in here — and so is the reasoning that got to it, which is the part interviewers
+> actually want.
 >
-> Companion document: [`FEATURES_AND_TASKS.md`](FEATURES_AND_TASKS.md).
-> *Tài liệu đi kèm: [`FEATURES_AND_TASKS.md`](FEATURES_AND_TASKS.md).*
+> Vietnamese edition: [`BUGS_AND_FIXES.vi.md`](BUGS_AND_FIXES.vi.md) · Companion document:
+> [`FEATURES_AND_TASKS.md`](FEATURES_AND_TASKS.md)
 >
-> **Last updated:** 2026-08-19 · *Cập nhật lần cuối: 19/08/2026*
+> **Last updated:** 2026-08-20
 
 ---
 
-## How to use this in an interview / Dùng tài liệu này khi phỏng vấn thế nào
+## How to use this in an interview
 
-Interviewers rarely want a bug list — they want to see how you *think*.
-*Người phỏng vấn hiếm khi cần một danh sách lỗi — họ muốn thấy cách bạn **tư duy**.*
+Interviewers rarely want a bug list. They want to see how you *think*. Every entry below is
+therefore written in the same shape:
 
-The strongest stories here, in order:
-*Những câu chuyện mạnh nhất ở đây, xếp theo thứ tự:*
+**Symptom** → what a user saw · **First theory** → what it looked like at first, including when
+that was wrong · **Root cause** → the actual mechanism · **Fix** → what changed · **Lesson** →
+the transferable idea.
 
-1. **The AI rate-limit bug** (§6) — a one-line move with real user-money consequences. Best "small change, big reasoning" story.
-   ***Lỗi giới hạn AI** (§6) — chỉ dời một dòng code nhưng ảnh hưởng trực tiếp tới tiền của người dùng. Câu chuyện "thay đổi nhỏ, lập luận lớn" tốt nhất.*
-2. **SwiftUI horizontal overflow** (§1) — shows you understand a layout system, not just its API.
-   ***Lỗi tràn ngang trong SwiftUI** (§1) — cho thấy bạn hiểu cơ chế layout, chứ không chỉ biết gọi API.*
-3. **Account deletion** (§7) — trust, server authority, and never lying to the user about success.
-   ***Xoá tài khoản** (§7) — nói về niềm tin, thẩm quyền phía server, và việc không bao giờ báo "thành công" giả với người dùng.*
-4. **The hero transition that never animated** (§9.4) — reading an animation API's *contract* rather than its signature; the diagnosis is the whole story.
-   ***Hiệu ứng hero không hề chuyển động** (§9.4) — đọc **hợp đồng** của một API hoạt ảnh chứ không chỉ đọc chữ ký hàm; giá trị nằm ở phần chẩn đoán.*
-5. **The build system lied to me** (§9.1) — shows you notice when your *verification* is wrong, which is rarer than noticing when your code is wrong.
-   ***Hệ thống build đã "nói dối"** (§9.1) — cho thấy bạn phát hiện được khi chính **cách kiểm thử** của mình sai, điều này hiếm hơn nhiều so với việc phát hiện code sai.*
+The "first theory" line matters most. Anyone can narrate a fix after the fact. Being able to say
+*"I thought it was X, here's what ruled that out"* is what separates someone who debugged it from
+someone who read about it.
+
+### The strongest stories here, in order
+
+1. **The AI rate-limit bug (§6)** — a one-line move with real user-money consequences. The best
+   "small change, big reasoning" story you have.
+2. **The palette that couldn't exist (§10.2)** — you proved a requirement was impossible with
+   arithmetic instead of arguing about it, then changed the design. Rare and memorable.
+3. **Account deletion (§7)** — trust, server authority, and never lying to the user about success.
+4. **The hero transition that never animated (§9.4)** — reading an API's *contract* rather than its
+   signature. The diagnosis is the whole story.
+5. **SwiftUI horizontal overflow (§1)** — shows you understand a layout *system*, not just its API.
+6. **The build system lied to me (§9.1)** — you noticed your *verification* was wrong, which is
+   rarer than noticing your code is wrong.
+
+### If you only memorise one sentence per story
+
+- §1 — "`scaledToFill` scales but does not clip, and an unbounded proposal makes the image's own
+  size become the container's size."
+- §6 — "Meter the outcome, not the attempt."
+- §7 — "Never optimistically report a destructive action as done."
+- §9.1 — "A typecheck is not a build; the file wasn't in the target."
+- §9.4 — "`matchedGeometryEffect` needs the source view to go away, and mine never did."
+- §10.1 — "`UIColor(Color)` flattens a dynamic colour, so my fix was a no-op that still compiled."
+- §10.2 — "No fixed colour can meet contrast against both near-black and white. The windows don't
+  overlap."
 
 ---
 
-## 1. Horizontal overflow in Detail and Browse screens / Tràn ngang ở màn hình Detail và Browse
+## 1. Horizontal overflow in Detail and Browse screens
 
 **Commits:** `27d09c1`, `d19225c` (2026-05-21)
 
-**Symptom.** The Memory Detail and Browse screens could be scrolled sideways. Content bled past the right edge of the screen.
-***Biểu hiện.** Màn hình Memory Detail và Browse có thể cuộn ngang được. Nội dung tràn ra khỏi mép phải màn hình.*
+**Symptom.** The Memory Detail and Browse screens could be scrolled sideways. Content bled past the
+right edge of the screen.
 
-It looked like a styling glitch; it wasn't.
-*Nhìn thì tưởng lỗi styling vặt, nhưng không phải.*
+**First theory.** A styling glitch — a stray padding or a negative margin. That was wrong, and
+chasing it wasted time. Nothing in the padding chain was unusual.
 
-**Root cause.** `scaledToFill()` on an image inside a `ZStack` that received an *unbounded width proposal*.
-***Nguyên nhân gốc.** `scaledToFill()` đặt trên ảnh nằm trong một `ZStack` nhận được **đề xuất chiều rộng không giới hạn**.*
+**Root cause.** `scaledToFill()` on an image inside a `ZStack` that received an *unbounded width
+proposal*.
 
-SwiftUI lays out by proposing a size to each child and asking what it wants.
-*SwiftUI bố trí giao diện bằng cách đề xuất một kích thước cho từng view con rồi hỏi nó muốn kích thước bao nhiêu.*
+SwiftUI lays out by proposing a size to each child and asking what it wants. A `ZStack` with no
+width constraint of its own passes the proposal straight down. `scaledToFill` answers with the
+image's scaled intrinsic size — which for a 1600px preview is far wider than the phone. That answer
+propagates back up and becomes the container's width.
 
-`ZStack` with no width constraint of its own passes the proposal down; `scaledToFill` answers with the image's scaled intrinsic size — which for a 1600px preview is far wider than the phone.
-*`ZStack` không tự ràng buộc chiều rộng nên đẩy đề xuất đó xuống dưới; `scaledToFill` trả lời bằng kích thước gốc đã scale của ảnh — với ảnh preview 1600px thì rộng hơn màn hình điện thoại rất nhiều.*
+The critical detail: **`scaledToFill` scales but does not clip.** It is happy to be enormous.
 
-That answer propagates back up and becomes the container's width. **`scaledToFill` scales but does not clip.**
-*Câu trả lời đó lan ngược lên trên và trở thành chiều rộng của container. **`scaledToFill` chỉ phóng to chứ không cắt (clip) ảnh.***
+**Fix.** Constrain first, then clip, and order the modifiers so the `ZStack` gets a bounded
+proposal to work with:
 
-**Fix.** Constrain first, then clip, and make sure the modifier order gives the ZStack a bounded proposal to work with:
-***Cách sửa.** Ràng buộc trước, cắt sau, và đảm bảo thứ tự modifier cho ZStack một đề xuất có giới hạn:*
+- `imageArea`: `.frame(height: 380).clipped()`, plus an explicit `UIScreen.main.bounds.width`
+- Long narrative text: `.fixedSize(horizontal: false, vertical: true)` so it wraps instead of
+  widening
 
-- `imageArea`: `.frame(height: 380).clipped()`, and an explicit `UIScreen.main.bounds.width`
-  *`imageArea`: dùng `.frame(height: 380).clipped()` và chỉ định rõ `UIScreen.main.bounds.width`*
-- `BrowseCardFace`: `.frame(maxWidth: .infinity)` **before** the height frame, so the ZStack proposes a bounded width to the image
-  *`BrowseCardFace`: đặt `.frame(maxWidth: .infinity)` **trước** frame chiều cao, để ZStack đề xuất một chiều rộng có giới hạn cho ảnh*
-- `MemoryViewerPage` text: explicit `frame(width: screenWidth - 44)` instead of `maxWidth` + `fixedSize`, which together re-created the unbounded case
-  *Phần text của `MemoryViewerPage`: dùng `frame(width: screenWidth - 44)` thay cho `maxWidth` + `fixedSize` — hai cái này kết hợp lại tạo ra đúng tình huống "không giới hạn" ban đầu*
-- `similarTile`: frame + clip the image *before* the ZStack frame
-  *`similarTile`: frame và clip ảnh **trước** frame của ZStack*
+**Lesson.** In SwiftUI, layout is a *negotiation*, not a set of style attributes. When something is
+too wide, the question is never "which padding is wrong" but **"who proposed an unbounded width,
+and which child answered with its intrinsic size?"**
 
-**Lesson.** In SwiftUI, layout bugs are usually a *proposal* problem, not a *rendering* problem.
-***Bài học.** Trong SwiftUI, lỗi layout thường là vấn đề của **đề xuất kích thước**, không phải vấn đề vẽ (rendering).*
-
-Ask "what size is being proposed to this view, and what is it answering?"
-*Hãy tự hỏi: "view này đang được đề xuất kích thước bao nhiêu, và nó đang trả lời bao nhiêu?"*
-
-And any `scaledToFill` without a `.frame(...)` + `.clipped()` next to it is an overflow waiting to happen.
-*Và bất kỳ `scaledToFill` nào không đi kèm `.frame(...)` + `.clipped()` đều là một lỗi tràn đang chờ xảy ra.*
+Learn to read a view tree as a conversation and this class of bug becomes obvious rather than
+mysterious.
 
 ---
 
-## 2. iPad and small-iPhone adaptivity / Thích ứng iPad và iPhone nhỏ
+## 2. iPad and small-iPhone adaptivity
 
-**Commits:** `d8c33d7`, `6fac36c`, `4530edd` (2026-05-23) — three rounds, because each fix exposed the next problem.
-*Ba đợt sửa, vì mỗi lần sửa lại lộ ra vấn đề tiếp theo.*
+**Commits:** `d8c33d7`, `6fac36c`, `4530edd` (2026-05-23) — three rounds, because each fix exposed
+the next problem.
 
-| Bug / Lỗi | Cause / Nguyên nhân | Fix / Cách sửa |
+| Bug | Cause | Fix |
 |---|---|---|
-| "Done" button unreachable on iPhone SE<br>*Nút "Done" không bấm tới được trên iPhone SE* | A `Spacer()` above it grew until the button was pushed off-screen<br>*`Spacer()` phía trên giãn ra khiến nút bị đẩy ra ngoài màn hình* | Cap the Spacer at 80pt; give the button `frame(maxWidth: .infinity, minHeight: 44)`<br>*Giới hạn Spacer ở 80pt; cho nút `frame(maxWidth: .infinity, minHeight: 44)`* |
-| Photo-picker dialog anchored to the wrong place on iPad<br>*Hộp thoại chọn ảnh hiện sai vị trí trên iPad* | `confirmationDialog` presents as a popover on iPad and needs an anchor it didn't have<br>*Trên iPad, `confirmationDialog` hiện dạng popover và cần một điểm neo mà nó không có* | Replaced with `Menu`, which anchors to its own label<br>*Thay bằng `Menu` — tự neo vào chính nút của nó* |
-| Onboarding stretched edge-to-edge on iPad<br>*Màn hình onboarding kéo giãn hết chiều ngang iPad* | No max width — a phone layout scaled up<br>*Không giới hạn chiều rộng — layout điện thoại bị phóng to* | Centered at max 560pt<br>*Căn giữa, tối đa 560pt* |
-| Type too small on iPad<br>*Chữ quá nhỏ trên iPad* | Font sizes were fixed constants<br>*Cỡ chữ là hằng số cố định* | All 7 styles compute at runtime from `UIDevice.userInterfaceIdiom`; iPad gets 13–20% larger (badges 12→14pt, narrative 18→20pt, title 36→44pt)<br>*Cả 7 style tính cỡ chữ lúc chạy theo `UIDevice.userInterfaceIdiom`; iPad to hơn 13–20%* |
-| Timeline cards looked lost on iPad<br>*Thẻ Timeline trông lọt thỏm trên iPad* | Width capped at 430pt<br>*Chiều rộng bị giới hạn 430pt* | 580pt when viewport width > 700<br>*Lên 580pt khi chiều rộng khung nhìn > 700* |
-| **Regression:** tapping the empty photo card stopped opening the picker<br>***Lỗi hồi quy:** chạm vào thẻ ảnh trống không mở được trình chọn ảnh nữa* | When the dialog became a `Menu`, the empty state wasn't wrapped in it — only the button was<br>*Khi đổi dialog sang `Menu`, chỉ có nút được bọc trong Menu, còn trạng thái rỗng thì không* | Wrapped `photoPreview`'s empty state in the same `Menu`<br>*Bọc luôn trạng thái rỗng của `photoPreview` vào cùng `Menu`* |
+| "Done" button unreachable on iPhone SE | A `Spacer()` above it grew until the button was pushed off-screen | Cap the Spacer at 80pt; give the button `frame(maxWidth: .infinity, minHeight: 44)` |
+| Photo-picker dialog anchored wrongly on iPad | `confirmationDialog` presents as a popover on iPad and needs an anchor it didn't have | Replaced with `Menu`, which anchors to its own label |
+| Onboarding stretched edge-to-edge on iPad | No max width — a phone layout scaled up | Centered at max 560pt |
+| Type too small on iPad | Font sizes were fixed constants | All styles compute at runtime from `UIDevice.userInterfaceIdiom`; iPad gets 13–20% larger |
+| Timeline cards looked lost on iPad | Width capped at 430pt | 580pt when viewport width > 700 |
+| **Regression:** tapping the empty photo card stopped opening the picker | When the dialog became a `Menu`, only the button was wrapped in it — not the empty state | Wrapped `photoPreview`'s empty state in the same `Menu` |
 
-**Lesson.** "Universal app" is not a build setting, it's a design decision per screen.
-***Bài học.** "Universal app" không phải một tuỳ chọn build, mà là một quyết định thiết kế cho từng màn hình.*
+**Lesson.** "Universal app" is not a build setting, it is a design decision *per screen*.
 
-Two things recur: **explicit max widths** (a phone layout stretched to iPad always looks wrong) and **44pt minimum tap targets** (Apple's HIG).
-*Hai điều lặp đi lặp lại: **giới hạn chiều rộng tối đa rõ ràng** (layout điện thoại kéo giãn lên iPad luôn xấu) và **vùng chạm tối thiểu 44pt** (theo chuẩn HIG của Apple).*
+Two things recur: **explicit max widths** (a phone layout stretched to iPad always looks wrong) and
+**44pt minimum tap targets** (Apple's HIG).
 
-Also note the regression: swapping a presentation API changes *where* the interaction lives, so every entry point has to be re-checked.
-*Cũng để ý lỗi hồi quy: đổi API hiển thị sẽ đổi luôn **nơi** chứa tương tác, nên phải kiểm tra lại mọi điểm vào.*
+Note the regression especially — **swapping a presentation API moves where the interaction lives.**
+`confirmationDialog` attaches to a modifier; `Menu` attaches to its label. Changing one meant every
+entry point had to be re-checked, and one was missed.
 
 ---
 
-## 3. App Store submission rejections / Bị từ chối khi nộp App Store
+## 3. App Store submission rejections
 
 **Commits:** `9115ce8`, `e4585c6`, `2acfcd4` (2026-05-23)
 
 Three failures that only appear at upload time, never during development:
-*Ba lỗi chỉ xuất hiện lúc upload, không bao giờ lộ ra khi đang phát triển:*
 
-1. **App icon rejected.** The 1024×1024 icon had an alpha channel. App Store Connect rejects transparency in the large icon.
-   ***Icon bị từ chối.** Icon 1024×1024 có kênh alpha. App Store Connect không chấp nhận icon lớn có nền trong suốt.*
-   *Fix:* stripped RGBA → RGB, composited on white (1.5MB → 920KB).
-   *Cách sửa: bỏ kênh alpha, chuyển RGBA → RGB, ghép trên nền trắng (1.5MB → 920KB).*
-2. **Portrait-only rejected on iPad.** Apple requires an iPad app to support all four orientations *unless* it opts out of multitasking.
-   ***Chỉ hỗ trợ dọc bị từ chối trên iPad.** Apple yêu cầu app iPad hỗ trợ cả 4 hướng xoay, **trừ khi** app từ chối chế độ đa nhiệm.*
-   *Fix:* `UIRequiresFullScreen = YES` in both Debug and Release configs.
-   *Cách sửa: đặt `UIRequiresFullScreen = YES` ở cả cấu hình Debug lẫn Release.*
-3. **Malformed privacy strings.** The usage-description strings contained stray quotes and a leading space, which produced broken values in the built plist.
-   ***Chuỗi mô tả quyền riêng tư bị lỗi định dạng.** Các chuỗi mô tả quyền có dấu nháy thừa và một khoảng trắng ở đầu, khiến giá trị trong plist build ra bị hỏng.*
+1. **App icon rejected.** The 1024×1024 icon had an alpha channel; App Store Connect rejects
+   transparency in the large icon. *Fix:* stripped RGBA → RGB, composited on white (1.5MB → 920KB).
+2. **Portrait-only rejected on iPad.** Apple requires an iPad app to support all four orientations
+   *unless* it opts out of multitasking. *Fix:* `UIRequiresFullScreen = YES` in Debug and Release.
+3. **Malformed privacy strings.** The usage-description strings contained stray quotes and a leading
+   space, producing broken values in the built plist.
 
-**Lesson.** Submission bugs are configuration bugs, and the feedback loop is brutally slow — you learn about them after a full archive and upload.
-***Bài học.** Lỗi lúc nộp app là lỗi cấu hình, và vòng phản hồi cực chậm — phải archive và upload xong mới biết.*
+**Lesson.** Submission bugs are configuration bugs, and the feedback loop is brutally slow — you
+find out after a full archive and upload, which can cost a day per rejection.
 
-Worth a pre-submission checklist rather than discovering them one rejection at a time.
-*Nên có một checklist trước khi nộp, thay vì phát hiện từng lỗi qua từng lần bị từ chối.*
+The response is a **pre-submission checklist**, not better luck. Anything the compiler cannot check
+and the simulator cannot show you needs a written gate.
 
 ---
 
-## 4. Slideshow video rendered upside down / Video slideshow bị lộn ngược
+## 4. Slideshow video rendered upside down
 
 **Commit:** `5f5c51a` (2026-05-23)
 
 **Symptom.** Exported slideshow videos came out vertically flipped.
-***Biểu hiện.** Video slideshow xuất ra bị lật ngược theo chiều dọc.*
 
 **Root cause.** A Y-axis flip applied during the `CVPixelBuffer` copy step.
-***Nguyên nhân gốc.** Có một phép lật trục Y được áp dụng ở bước copy `CVPixelBuffer`.*
 
-CoreVideo pixel buffers and UIKit's drawing context have opposite Y origins, so a flip is sometimes needed — but here the coordinate system had *already* been corrected upstream, and the second flip undid the correction.
-*CoreVideo và context vẽ của UIKit có gốc trục Y ngược nhau nên đôi khi cần lật — nhưng ở đây hệ toạ độ **đã** được chỉnh đúng từ bước trước, và phép lật thứ hai đã huỷ luôn phần chỉnh đó.*
+CoreVideo pixel buffers and UIKit's drawing context have opposite Y origins, so a flip is sometimes
+needed. Here the coordinate system had *already* been corrected upstream, and the second flip undid
+the correction.
 
 **Fix.** Removed the Y-flip from `renderFrame` and `renderImageFrame`.
-***Cách sửa.** Bỏ phép lật trục Y trong `renderFrame` và `renderImageFrame`.*
 
-**Lesson.** Classic double-correction bug.
-***Bài học.** Đây là lỗi kinh điển "sửa hai lần thành sai".*
-
-When bridging two frameworks with different coordinate conventions (UIKit ↔ CoreVideo ↔ AVFoundation), fix the orientation in exactly one place and know which one.
-*Khi nối hai framework có quy ước toạ độ khác nhau (UIKit ↔ CoreVideo ↔ AVFoundation), chỉ chỉnh hướng ở đúng **một** chỗ và phải biết rõ chỗ đó là chỗ nào.*
+**Lesson.** A classic double-correction bug. When bridging frameworks with different coordinate
+conventions (UIKit ↔ CoreVideo ↔ AVFoundation), fix orientation in **exactly one place** and know
+which one. Two correct-looking fixes in sequence produce a wrong result, and each one reviews well
+on its own.
 
 ---
 
-## 5. Gesture conflicts and a swipe crash / Xung đột cử chỉ và crash khi vuốt
+## 5. Gesture conflicts and a swipe crash
 
 **Commit:** `7099052` (2026-05-21)
 
-- **Swipe-to-favourite fought the scroll view.** A plain `.gesture` on the card competed with the parent ScrollView's pan.
-  ***Vuốt để yêu thích xung đột với ScrollView.** Dùng `.gesture` thường trên thẻ khiến nó tranh chấp với cử chỉ kéo của ScrollView cha.*
-  *Fix:* `simultaneousGesture` plus a directional guard so the card only claims horizontal movement and vertical drags still scroll.
-  *Cách sửa: dùng `simultaneousGesture` kèm một điều kiện kiểm tra hướng, để thẻ chỉ nhận chuyển động ngang, còn kéo dọc vẫn cuộn bình thường.*
-- **Crash on rapid swiping in Browse.** The card stack indexed into an array that mutated underneath the gesture — a fast swipe could read an index that no longer existed.
-  ***Crash khi vuốt nhanh ở Browse.** Chồng thẻ truy cập mảng theo chỉ số trong khi mảng đang bị thay đổi — vuốt nhanh có thể đọc vào chỉ số không còn tồn tại.*
-  *Fix:* bounds guard before access.
-  *Cách sửa: kiểm tra giới hạn chỉ số trước khi truy cập.*
-- **Browse couldn't be dismissed.** *Fix:* dismiss via `router.path.removeLast` rather than a local presentation flag, matching the app's single-source-of-truth navigation.
-  ***Không đóng được màn hình Browse.** Cách sửa: đóng bằng `router.path.removeLast` thay vì cờ hiển thị cục bộ, đúng với mô hình điều hướng một nguồn dữ liệu duy nhất của app.*
+- **Swipe-to-favourite fought the scroll view.** A plain `.gesture` on the card competed with the
+  parent ScrollView's pan. *Fix:* `simultaneousGesture` plus a directional guard, so the card only
+  claims horizontal movement and vertical drags still scroll.
+- **Crash on rapid swiping in Browse.** The card stack indexed into an array that mutated underneath
+  the gesture — a fast swipe could read an index that no longer existed. *Fix:* bounds guard before
+  access.
+- **Browse couldn't be dismissed.** *Fix:* dismiss via `router.path.removeLast` rather than a local
+  presentation flag, matching the app's single-source-of-truth navigation.
 
-**Lesson.** Custom gestures inside scroll views need explicit coexistence rules, and any gesture-driven index into a mutable collection is a crash waiting for a fast user.
-***Bài học.** Cử chỉ tuỳ chỉnh nằm trong scroll view cần quy tắc cùng tồn tại rõ ràng; và bất kỳ chỉ số mảng nào điều khiển bởi cử chỉ trên một collection thay đổi được đều là crash đang chờ một người dùng thao tác nhanh.*
+**Lesson.** Custom gestures inside scroll views need explicit coexistence rules. And any
+gesture-driven index into a mutable collection is a crash waiting for a fast user — the bug is not
+in the gesture or the array, it is in the assumption that they are in step.
 
 ---
 
-## 6. ⭐ AI rate-limit bug / Lỗi giới hạn AI — failed generations burned the user's daily quota
+## 6. ⭐ AI rate-limit bug — failed generations burned the user's daily quota
 
 **Recorded in `AGENTS.md`; fix visible at `NarrativeGenerationService.swift:134`**
-*Được ghi trong `AGENTS.md`; bản sửa nằm ở `NarrativeGenerationService.swift:134`.*
 
-**Symptom.** Free users get 3 AI narratives a day (15 monthly, 30 yearly). If generation failed — network drop, timeout, server error — the attempt *still* counted.
-***Biểu hiện.** Người dùng miễn phí có 3 lượt tạo narrative/ngày (gói tháng 15, gói năm 30). Nếu việc tạo thất bại — rớt mạng, timeout, lỗi server — lượt đó **vẫn bị tính**.*
+**Symptom.** Free users get 3 AI narratives a day (15 monthly, 30 yearly). If generation failed —
+network drop, timeout, server error — the attempt *still* counted.
 
-A user could lose their whole day's allowance without ever receiving a single narrative. On a paid tier, that's charging someone for nothing.
-*Người dùng có thể mất sạch hạn mức cả ngày mà không nhận được câu narrative nào. Với gói trả phí, đó là thu tiền mà không giao hàng.*
+A user could lose their whole day's allowance without ever receiving a single narrative. On a paid
+tier, that is charging someone for nothing.
 
-**Root cause.** The usage counter was incremented when the request was *sent*, not when it *succeeded*. Metering the attempt instead of the outcome.
-***Nguyên nhân gốc.** Bộ đếm tăng lên ngay khi **gửi** request, chứ không phải khi request **thành công**. Tức là đang đếm lần thử thay vì đếm kết quả.*
+**Root cause.** The usage counter was incremented when the request was *sent*, not when it
+*succeeded*. It was metering the attempt instead of the outcome.
 
 **Fix.** Move the increment to after the awaited call returns successfully:
-***Cách sửa.** Dời lệnh tăng bộ đếm xuống sau khi lệnh `await` trả về thành công:*
 
 ```swift
 let data = try await aiService.generateNarrative(request(for: entry))
 usageTracker.recordNarrativeRequest()   // only after success — a failed call costs nothing
-                                        // chỉ tính sau khi thành công — gọi lỗi thì không mất lượt
 repository.updateNarrative(data.narrative, generatedAt: data.generatedAt, for: entry.id)
 ```
 
-Because it sits after `try await`, a thrown error skips it entirely — no `catch` bookkeeping needed.
-*Vì nó nằm sau `try await`, nếu có lỗi ném ra thì dòng này bị bỏ qua hoàn toàn — không cần xử lý thêm trong `catch`.*
+Because it sits after `try await`, a thrown error skips it entirely. No `catch` bookkeeping is
+needed — the control flow does the work.
 
-**Lesson.** **Meter the outcome, not the attempt.** Any counter tied to a limit the user paid for belongs on the success path.
-***Bài học. Hãy đếm kết quả, đừng đếm lần thử.** Mọi bộ đếm gắn với hạn mức mà người dùng đã trả tiền đều phải nằm trên nhánh thành công.*
+**Lesson.** **Meter the outcome, not the attempt.** Any counter tied to a limit the user paid for
+belongs on the success path.
 
-This is a one-line change with direct money and trust consequences, which is exactly why it's a good interview story: small diff, clear reasoning about failure modes.
-*Đây là thay đổi một dòng nhưng ảnh hưởng trực tiếp tới tiền và niềm tin — chính vì vậy nó là câu chuyện phỏng vấn hay: diff nhỏ, lập luận rõ ràng về các tình huống lỗi.*
+**Why this is a good interview story.** One line moved, with direct money and trust consequences.
+It shows you reason about failure modes rather than only the happy path, and the fix is small
+enough to explain completely in thirty seconds.
 
 ---
 
-## 7. ⭐ Account deletion silently didn't delete / Xoá tài khoản nhưng thực ra không xoá
+## 7. ⭐ Account deletion silently didn't delete
 
 **Task:** `tasks/delete-account-task.md`; shipped in `91ada2f` (2026-07-11)
 
 **Symptom.** "Delete Account" reported success, but the account still existed on the server.
-***Biểu hiện.** Nút "Delete Account" báo thành công, nhưng tài khoản vẫn còn trên server.*
 
-**Root cause.** Supabase's GoTrue `DELETE /auth/v1/user` endpoint does **not** delete the calling user from a client context — it needs the service-role key, which must never be shipped in an app binary.
-***Nguyên nhân gốc.** Endpoint `DELETE /auth/v1/user` của Supabase GoTrue **không** xoá được người dùng khi gọi từ phía client — nó cần service-role key, mà key này tuyệt đối không được đóng gói trong app.*
+**Root cause.** Supabase's GoTrue `DELETE /auth/v1/user` endpoint does **not** delete the calling
+user from a client context. It needs the service-role key, which must never ship in an app binary.
 
-The client was calling an endpoint that could never work, and treating a non-error response as confirmation.
-*Client đang gọi một endpoint không bao giờ chạy được, rồi coi việc "không có lỗi trả về" là đã xoá thành công.*
+So the client was calling an endpoint that could never work, and treating a non-error response as
+confirmation. Two failures stacked: the wrong endpoint, and **treating "no error" as "success."**
 
-**Fix.** A dedicated authenticated Edge Function (`supabase/functions/delete-account`):
-***Cách sửa.** Viết riêng một Edge Function có xác thực (`supabase/functions/delete-account`):*
+**Fix.** A dedicated authenticated Edge Function (`supabase/functions/delete-account`) that:
 
-- accepts only `DELETE` and `OPTIONS` (405 otherwise), requires an `Authorization` header
-  *chỉ chấp nhận `DELETE` và `OPTIONS` (còn lại trả 405), bắt buộc có header `Authorization`*
+- accepts only `DELETE` and `OPTIONS` (405 otherwise) and requires an `Authorization` header
 - verifies the caller's identity server-side via `/auth/v1/user` with their bearer token
-  *xác minh danh tính người gọi ở phía server qua `/auth/v1/user` bằng bearer token của họ*
-- deletes **only that verified user** via `/auth/v1/admin/users/{user_id}`, using a service-role key that stays in server-side environment variables
-  *chỉ xoá **đúng người dùng đã được xác minh** qua `/auth/v1/admin/users/{user_id}`, dùng service-role key nằm trong biến môi trường phía server*
-- the client reports success **only after the server confirms**, and preserves the local session on any network, auth, config, or server failure so the user can retry
-  *client chỉ báo thành công **sau khi server xác nhận**, và giữ nguyên phiên đăng nhập nếu có lỗi mạng/xác thực/cấu hình/server để người dùng thử lại được*
+- deletes **only that verified user** via `/auth/v1/admin/users/{user_id}`, using a service-role key
+  held in server-side environment variables
+- reports success on the client **only after the server confirms**, and preserves the local session
+  on any network, auth, config, or server failure so the user can retry
 
-**Lesson.** Two things worth saying out loud: (1) privileged operations need a server that holds the privilege — a client can't be trusted with an admin key;
-***Bài học.** Hai điều đáng nói ra: (1) thao tác có đặc quyền phải do server nắm giữ đặc quyền thực hiện — không thể giao admin key cho client;*
+**Lesson.** Two things worth saying out loud:
 
-(2) never optimistically report a destructive action as done. A user who believes their account is deleted when it isn't has been lied to by the software, and that's a trust failure, not just a bug.
-*(2) tuyệt đối không báo "đã xong" một cách lạc quan với thao tác huỷ dữ liệu. Người dùng tin rằng tài khoản đã bị xoá trong khi thực tế chưa, tức là phần mềm đã nói dối họ — đó là sự cố về niềm tin, không chỉ là một cái bug.*
+1. **Privileged operations need a server that holds the privilege.** A client cannot be trusted
+   with an admin key, so any design that requires one on-device is already wrong.
+2. **Never optimistically report a destructive action as done.** A user who believes their account
+   is deleted when it is not has been lied to by the software. That is a trust failure, not just a
+   bug — and it is the kind regulators care about.
 
 ---
 
-## 8. Shared image was missing the memory's photo / Ảnh chia sẻ thiếu mất tấm ảnh kỷ niệm
+## 8. Shared image was missing the memory's photo
 
-**Commit:** `487dbfa` (2026-05-23, "Task W")
+**Commit:** `487dbfa` (2026-05-23)
 
-**Symptom.** Sharing a memory produced a card with the AI narrative on a plain gradient — the actual photo was absent, which made the feature nearly pointless.
-***Biểu hiện.** Chia sẻ một kỷ niệm chỉ ra được tấm thiệp có chữ narrative trên nền gradient — không có tấm ảnh thật, khiến tính năng gần như vô nghĩa.*
+**Symptom.** Sharing a memory produced a card with the AI narrative on a plain gradient. The actual
+photo was absent, which made the feature nearly pointless.
 
 **Root cause.** Not a logic error: `MemoryShareRenderer.render` **had no photo parameter at all.**
-***Nguyên nhân gốc.** Không phải lỗi logic: hàm `MemoryShareRenderer.render` **hoàn toàn không có tham số ảnh.***
-
 The share card had been built as a text-and-gradient design and nobody had revisited it.
-*Tấm thiệp chia sẻ vốn được thiết kế chỉ gồm chữ và gradient, và không ai quay lại xem xét nó nữa.*
 
-**Fix.** Optional photo drawn full-bleed with a dark gradient overlay and white text; entries with no photo (mood-backdrop and slideshow memories) keep the original gradient layout unchanged.
-***Cách sửa.** Thêm tham số ảnh tuỳ chọn, vẽ tràn viền kèm lớp phủ gradient tối và chữ trắng; những mục không có ảnh (kỷ niệm dùng nền cảm xúc và slideshow) giữ nguyên layout gradient cũ.*
+**Fix.** Optional photo drawn full-bleed with a dark gradient overlay and white text. Entries with
+no photo (mood-backdrop and slideshow memories) keep the original gradient layout unchanged.
 
 **Lesson.** The bug was in the *interface*, not the implementation.
-***Bài học.** Lỗi nằm ở **thiết kế hàm (interface)**, không phải ở phần cài đặt.*
 
-Worth remembering that "the function can't express what the feature needs" is a whole category of bug, and it hides well because every line of the existing code is correct.
-*Đáng nhớ: "hàm không diễn đạt được điều tính năng cần" là cả một loại lỗi riêng, và nó ẩn mình rất giỏi vì từng dòng code hiện có đều đúng.*
-
----
-
-## 9. Bugs found during the v2 upgrade / Lỗi phát hiện trong đợt nâng cấp v2 (2026-08)
-
-Included deliberately — these were caught in my own work-in-progress, and how they were caught matters more than the bugs themselves.
-*Đưa vào có chủ đích — đây là lỗi phát hiện ngay trong lúc làm, và **cách phát hiện** ra chúng còn quan trọng hơn bản thân cái lỗi.*
-
-### 9.1 ⭐ The verification method was lying / Cách kiểm thử đã "nói dối" (2026-08-18)
-
-**Symptom.** A newly added Swift file passed every check, then wasn't in the app.
-***Biểu hiện.** Một file Swift mới thêm vào vượt qua mọi bước kiểm tra, nhưng rốt cuộc lại không có trong app.*
-
-**Root cause.** Verification used `xcrun swiftc -typecheck` on the source files. That compiles **whatever is on disk**, regardless of whether the file is a member of the Xcode target.
-***Nguyên nhân gốc.** Việc kiểm tra dùng `xcrun swiftc -typecheck` trên các file nguồn. Lệnh này biên dịch **mọi thứ có trên ổ đĩa**, bất kể file đó có thuộc target Xcode hay không.*
-
-The file had never been registered in `project.pbxproj`, so the real build silently ignored it — while the check happily reported success.
-*File chưa từng được đăng ký trong `project.pbxproj`, nên bản build thật lặng lẽ bỏ qua nó — trong khi bước kiểm tra vẫn vui vẻ báo thành công.*
-
-**Fix.** Two changes: the verification standard became a **real `xcodebuild`**, and after adding any new file, confirm it appears in the built target's `SwiftFileList` in DerivedData.
-***Cách sửa.** Hai thay đổi: chuẩn kiểm thử đổi thành chạy **`xcodebuild` thật**, và sau khi thêm file mới phải xác nhận nó xuất hiện trong `SwiftFileList` của target trong DerivedData.*
-
-**Lesson.** A green check that doesn't test the real thing is worse than no check — it converts an obvious failure into a silent one. Ask what your test *actually* exercises.
-***Bài học.** Một dấu tích xanh không kiểm tra đúng thứ cần kiểm tra còn tệ hơn là không kiểm tra gì — nó biến một lỗi lộ liễu thành lỗi âm thầm. Hãy tự hỏi bài kiểm tra của bạn **thực sự** chạy qua cái gì.*
-
-### 9.2 Share preview re-rendered a 2160×2160 image on every layout pass / Bản xem trước vẽ lại ảnh 2160×2160 mỗi lần layout
-
-Found in self-review before shipping. The preview image was a computed property, so SwiftUI re-rendered an 18MB bitmap on every `body` evaluation.
-*Phát hiện khi tự review trước khi ship. Ảnh xem trước là một computed property, nên SwiftUI vẽ lại một bitmap 18MB mỗi lần `body` được tính lại.*
-
-Fixed by rendering once per theme into `@State` via `.task(id: selectedThemeId)`, with the share button disabled until it's ready.
-*Sửa bằng cách chỉ vẽ một lần cho mỗi theme, lưu vào `@State` qua `.task(id: selectedThemeId)`, và khoá nút chia sẻ cho tới khi ảnh sẵn sàng.*
-
-**Lesson.** In SwiftUI, `body` runs far more often than you think. Anything expensive belongs in state, keyed to what actually changes it.
-***Bài học.** Trong SwiftUI, `body` chạy nhiều hơn bạn tưởng rất nhiều. Mọi thứ tốn tài nguyên nên đưa vào state, gắn khoá theo đúng thứ làm nó thay đổi.*
-
-### 9.3 A patch script filed eight entries into the wrong place / Script vá file đặt nhầm 8 mục
-
-While adding the WidgetKit target by hand-editing `project.pbxproj` (no Xcode GUI available), the script searched for `\t\t<UUID>` to find a definition — but a 4-tab *child reference* line also contains that 2-tab substring.
-*Khi thêm target WidgetKit bằng cách sửa tay `project.pbxproj` (không có giao diện Xcode), script tìm chuỗi `\t\t<UUID>` để xác định phần định nghĩa — nhưng dòng tham chiếu con thụt 4 tab cũng chứa chuỗi con 2 tab đó.*
-
-Four files landed in the "Preview Content" group and four build entries in the Resources phase instead of Sources.
-*Kết quả: 4 file rơi vào nhóm "Preview Content" và 4 mục build rơi vào giai đoạn Resources thay vì Sources.*
-
-The first build caught it; the fix anchored on the definition line (`\n\t\t<UUID> ... = {`), and every placement was then re-audited programmatically rather than by eye.
-*Lần build đầu tiên đã phát hiện ra; bản sửa neo vào đúng dòng định nghĩa (`\n\t\t<UUID> ... = {`), và sau đó mọi vị trí đều được rà soát lại bằng script chứ không nhìn bằng mắt.*
-
-**Lesson.** When generating code or config with string matching, anchor on something structurally unique. And build immediately — the fastest way to find out a mechanical edit went wrong.
-***Bài học.** Khi sinh code hoặc cấu hình bằng cách so khớp chuỗi, hãy neo vào thứ gì đó độc nhất về mặt cấu trúc. Và build ngay — đó là cách nhanh nhất để biết một thao tác sửa máy móc đã sai.*
-
-### 9.4 ⭐ The hero transition pinned the photo wherever the card happened to be / Hiệu ứng hero ghim ảnh đúng chỗ thẻ đang đứng (2026-08-19)
-
-**Symptom.** Tapping a memory in the Timeline opened the detail overlay with the photo stuck at the source card's position on screen: card scrolled to the top → the image sat at the top of the overlay; card near the bottom → the image sat at the bottom. It was wrong the instant the overlay appeared, and nothing animated.
-***Biểu hiện.** Chạm vào một kỷ niệm ở Timeline thì lớp phủ chi tiết mở ra với tấm ảnh dính đúng vị trí của thẻ nguồn trên màn hình: thẻ đang ở trên đầu → ảnh nằm trên đầu lớp phủ; thẻ ở gần cuối → ảnh nằm dưới đáy. Nó sai ngay từ khoảnh khắc lớp phủ hiện ra, và không có chuyển động nào cả.*
-
-The "no animation" part was the tell. A hero transition that merely *ends* in the wrong place still animates; this one never moved.
-*Chi tiết "không có chuyển động" chính là manh mối. Một hiệu ứng hero chỉ **kết thúc** sai chỗ thì vẫn phải có chuyển động; cái này thì đứng yên hoàn toàn.*
-
-**Root cause.** `matchedGeometryEffect` is a hand-off API, not a "copy the frame once" API. It assumes exactly one source view is alive at a time: the source publishes its frame, the non-source view is laid out at that frame for as long as the source exists, and the effect only *reads* as a morph because the source disappears and the non-source view then relaxes into its own layout.
-***Nguyên nhân gốc.** `matchedGeometryEffect` là API **bàn giao** hình học, không phải API "chép khung một lần". Nó giả định tại mỗi thời điểm chỉ có đúng một view nguồn còn sống: view nguồn công bố khung của nó, view không-nguồn bị bố trí **tại** khung đó suốt thời gian view nguồn còn tồn tại, và ta **thấy** nó như một hiệu ứng biến hình chỉ vì view nguồn biến mất, rồi view không-nguồn mới giãn về layout của chính nó.*
-
-MemoryInk's overlay breaks that assumption. `selectedMemory` does not replace the Timeline — it adds a layer on top of it inside the same `ZStack`, and the scroll view stays mounted the whole time, merely blurred and `.allowsHitTesting(false)`. So the collapsed card (`isSource: true`) never leaves. The overlay card (`isSource: false`) was therefore not animating *from* the card's frame; it was being laid out *at* it, permanently, its own centred layout overridden for as long as the overlay was open.
-*Lớp phủ của MemoryInk phá vỡ giả định đó. `selectedMemory` không thay thế Timeline — nó chồng thêm một lớp lên trên, trong cùng một `ZStack`, còn scroll view vẫn nằm nguyên đó suốt thời gian ấy, chỉ bị làm mờ và `.allowsHitTesting(false)`. Nghĩa là thẻ thu gọn (`isSource: true`) không bao giờ rời đi. Vì vậy thẻ trong lớp phủ (`isSource: false`) không hề chuyển động **từ** khung của thẻ nguồn; nó bị bố trí **tại** khung đó, vĩnh viễn, layout căn giữa của chính nó bị ghi đè suốt thời gian lớp phủ còn mở.*
-
-That is also why it looked instant: there was no transition to watch, only a geometry override applied on the first frame.
-*Đó cũng là lý do nó trông như "nhảy" tức thì: không có transition nào để xem, chỉ có một lệnh ghi đè hình học áp dụng ngay ở khung hình đầu tiên.*
-
-**Fix.** Drop `matchedGeometryEffect` for this overlay entirely — the `timelineHeroEffect` helper, the `@Namespace`, the `namespace` parameter on `TimelineCard`, and all three call sites (list, grid, overlay). The overlay already carried `.transition(.opacity.combined(with: .scale(scale: 0.985)))` driven by `withAnimation(cinematicAnimation)`, which is the calm 260ms scale + fade the design system asks for; with the geometry override gone, that transition is simply free to run and the card lays out where its own layout puts it.
-***Cách sửa.** Bỏ hẳn `matchedGeometryEffect` cho lớp phủ này — bỏ helper `timelineHeroEffect`, bỏ `@Namespace`, bỏ tham số `namespace` của `TimelineCard`, và bỏ ở cả ba chỗ gọi (danh sách, lưới, lớp phủ). Bản thân lớp phủ vốn đã có sẵn `.transition(.opacity.combined(with: .scale(scale: 0.985)))` chạy bằng `withAnimation(cinematicAnimation)`, đúng kiểu phóng to + mờ dần 260ms êm ái mà hệ thống thiết kế yêu cầu; khi lệnh ghi đè hình học biến mất, transition đó được tự do chạy và thẻ nằm đúng chỗ layout của nó quy định.*
-
-The right shape for a real matched-geometry hero here would be a `fullScreenCover`-style presentation where the Timeline card is genuinely removed while the detail is up. That is a bigger change to the overlay's whole presentation model than the effect was worth.
-*Muốn có hiệu ứng matched-geometry thật sự đúng nghĩa ở đây thì phải trình bày kiểu `fullScreenCover`, nơi thẻ ở Timeline thực sự bị gỡ đi trong lúc màn chi tiết đang mở. Đó là thay đổi lớn về toàn bộ mô hình hiển thị của lớp phủ, không đáng so với giá trị mà hiệu ứng mang lại.*
-
-**Lesson.** Before reaching for an animation API, check whether your view hierarchy satisfies the assumption it is built on. `matchedGeometryEffect` needs the source to *go away*; an overlay that keeps everything mounted underneath can never give it that. And when a transition shows no motion at all, stop looking for a wrong destination and start asking whether a transition is running in the first place.
-***Bài học.** Trước khi dùng một API hoạt ảnh, hãy kiểm tra xem cây view của bạn có thoả mãn giả định mà API đó dựa vào hay không. `matchedGeometryEffect` cần view nguồn **biến mất**; một lớp phủ giữ nguyên mọi thứ bên dưới thì không bao giờ đáp ứng được điều đó. Và khi một transition hoàn toàn không có chuyển động, đừng đi tìm "điểm đến sai" — hãy hỏi trước xem có transition nào đang chạy hay không.*
-
-**Caught by:** device testing by the user, on the app's most-used interaction. A build and a typecheck both passed happily — the code was valid, the assumption was not.
-***Phát hiện bởi:** người dùng test trên máy thật, ngay ở thao tác được dùng nhiều nhất của app. Cả build lẫn kiểm tra kiểu dữ liệu đều qua ngon lành — code hợp lệ, chỉ có giả định là sai.*
+"The function cannot express what the feature needs" is a whole category of bug, and it hides
+extremely well **because every line of the existing code is correct.** Code review will not catch
+it. Only using the feature will.
 
 ---
 
-## Patterns across all of these / Các mô-típ lặp lại
+## 9. Bugs found during the v2 upgrade (2026-08)
 
-| Pattern / Mô-típ | Where it showed up / Xuất hiện ở đâu |
+### 9.1 ⭐ The verification method was lying
+
+**Symptom.** A task was reported complete and verified. The next real build failed immediately with
+missing-symbol errors.
+
+**Root cause.** Verification had been a `swiftc`-based *typecheck* over a file list, not a real
+build. A newly added file was never registered in the Xcode target, so:
+
+- the typecheck passed, because it was handed the file explicitly
+- the real build failed, because the target did not include it
+
+The verification and the product were looking at two different sets of files.
+
+**Fix.** Two changes. The verification standard became a **real `xcodebuild`**. And after adding any
+new file, confirm it appears in the built target's `SwiftFileList` in DerivedData.
+
+**Lesson.** **Verify the real artifact, not a proxy for it.** A proxy that is cheaper than the real
+thing is usually cheaper because it skips the step that fails.
+
+This is the rarer skill: noticing that your *method of checking* is wrong, not that your code is
+wrong. Everything downstream of a broken check is unverified, including the things that passed.
+
+### 9.2 Share preview re-rendered a 2160×2160 image on every layout pass
+
+**Symptom.** Caught by reading the diff before calling the task done — never shipped.
+
+The themed share sheet called `MemoryShareRenderer.render(...)` directly inside `body`. SwiftUI
+re-evaluates `body` on every state change, so a full 2160×2160 image render ran on each pass.
+
+**Fix.** Render once per theme, store it in `@State` via `.task(id: selectedThemeId)`, and disable
+the share button until the image is ready.
+
+**Lesson.** In SwiftUI, `body` runs far more often than you think. Anything expensive belongs in
+state, keyed to whatever actually changes it. Treat `body` as a pure function that may be called at
+any time, for any reason.
+
+### 9.3 A patch script filed eight entries into the wrong place
+
+**Symptom.** While adding the WidgetKit target by hand-editing `project.pbxproj` (no Xcode GUI
+available), four files landed in the "Preview Content" group and four build entries in the Resources
+phase instead of Sources.
+
+**Root cause.** The script searched for `\t\t<UUID>` to find a definition — but a 4-tab *child
+reference* line also contains that 2-tab substring.
+
+**Fix.** Anchor on the definition line's full structure (`\n\t\t<UUID> ... = {`), and re-audit every
+placement programmatically rather than by eye.
+
+**Lesson.** When generating code or config by string matching, anchor on something **structurally
+unique**, not merely present. And build immediately — a real build is the fastest way to find out a
+mechanical edit went wrong.
+
+### 9.4 ⭐ The hero transition pinned the photo wherever the card happened to be
+
+**Fixed 2026-08-19, commit `7123b47`**
+
+**Symptom.** Tapping a memory in the Timeline opened the detail overlay with the photo stuck at the
+source card's position on screen: card scrolled to the top → the image sat at the top of the
+overlay; card near the bottom → the image sat at the bottom. It was wrong the instant the overlay
+appeared, and nothing animated.
+
+**First theory — and the clue that killed it.** The obvious reading is "the transition ends in the
+wrong place." But **a hero transition that merely lands wrong still animates.** This one never
+moved. That single observation redirected the whole diagnosis: the question stopped being *"why is
+the destination wrong"* and became *"is a transition running at all?"*
+
+**Root cause.** `matchedGeometryEffect` is a **hand-off** API, not a "copy the frame once" API. It
+assumes exactly one source view is alive at a time:
+
+- the source publishes its frame
+- the non-source view is laid out **at** that frame for as long as the source exists
+- it only *reads* as a morph because the source then disappears and the non-source view relaxes
+  into its own layout
+
+MemoryInk's overlay breaks that assumption. Setting `selectedMemory` does not replace the Timeline —
+it adds a layer on top inside the same `ZStack`, and the scroll view stays mounted the whole time,
+merely blurred and `allowsHitTesting(false)`.
+
+So the collapsed card (`isSource: true`) never left. The overlay card was not animating *from* the
+card's frame; it was being laid out *at* it, permanently, its own centred layout overridden for as
+long as the overlay was open. Hence no animation: there was no transition, just a geometry override
+applied on the first frame.
+
+**Fix.** Drop `matchedGeometryEffect` for this overlay entirely — the helper, the `@Namespace`, the
+`namespace` parameter on `TimelineCard`, and all three call sites. The overlay already carried
+`.transition(.opacity.combined(with: .scale(scale: 0.985)))` driven by `withAnimation`. With the
+geometry override gone, that transition was simply free to run.
+
+A correct matched-geometry hero here would need a `fullScreenCover`-style presentation where the
+Timeline card is genuinely removed while the detail is up — a much bigger change to the overlay's
+presentation model than the effect was worth.
+
+**Lesson.** Before reaching for an animation API, check whether your view hierarchy satisfies **the
+assumption it is built on**. `matchedGeometryEffect` needs the source to *go away*; an overlay that
+keeps everything mounted underneath can never give it that.
+
+And when a transition shows *no motion at all*, stop looking for a wrong destination and start
+asking whether a transition is running in the first place.
+
+**Caught by:** device testing by the user, on the app's most-used interaction. A build and a
+typecheck both passed happily — the code was valid; the assumption was not.
+
+---
+
+## 10. Bugs found during Part C — the Cinematic Dark rebuild (2026-08-20)
+
+Part C rewrote the app's colour, type and motion system for a dark-first design. Four of these bugs
+share a trait worth naming: **they were all invisible to the compiler and to a passing build.**
+
+### 10.1 ⭐ `UIColor(Color)` silently flattens a dynamic colour
+
+**Symptom.** A contrast test reported all twelve mood hues as having *identical* luminance in light
+and dark mode — a value of `0.1733` in both, which was exactly the light-mode target.
+
+**Why that number was the clue.** Identical luminance in both appearances is only possible if the
+adaptation had already been thrown away before the measurement. The colours were not failing to
+adapt; they had been *flattened* somewhere upstream.
+
+**Root cause.** The palette defines each colour as a dynamic `UIColor` (a closure resolved against
+the trait collection), wrapped for SwiftUI as `Color(dynamicUIColor)`. Converting *back* with
+`UIColor(someColor)` does not recover the closure — it resolves to whatever appearance is current
+and returns a static colour. After that round-trip, `resolvedColor(with:)` is a **no-op**: it
+returns the same value for both traits.
+
+**What that broke in the product.** `MemoryShareRenderer` bakes mood colour into exported 1080×1080
+PNGs. To keep a shared card looking the same for everyone, the renderer pinned colours to a fixed
+appearance:
+
+```swift
+UIColor(mood.tint).resolvedColor(with: exportTraits)   // looked right, did nothing
+```
+
+Because of the flattening, this compiled, ran, and had no effect. A card exported from a phone in
+light mode would carry different colours than the same memory exported from a phone in dark mode,
+and the recipient would see whichever the sender happened to be in.
+
+**Fix.** Make the dynamic `UIColor` the source of truth (`MemoryInkColors.Raw`) and let `Color`
+values wrap *it*, never the reverse. Anything that renders to an image reaches for `Raw` and
+resolves it explicitly. `MoodType` gained a `tintRaw: UIColor` for the same reason.
+
+There is now a test asserting that the flattening **still happens** — so if Apple ever changes the
+behaviour, the indirection can be removed rather than cargo-culted forever.
+
+**Lesson.** A fix that compiles is not a fix. This one looked correct in review, in the diff, and in
+the running app — the only thing that exposed it was measuring the actual output values.
+
+Bridging between two type systems (SwiftUI `Color` ↔ UIKit `UIColor`) can be **lossy in one
+direction**, and the loss is silent. Whenever you convert across such a boundary, ask what the
+target type cannot represent.
+
+### 10.2 ⭐ The palette requirement was arithmetically impossible
+
+**Symptom.** The design goal was one fixed set of hues that works on both a near-black and a white
+background. Every attempt either looked muddy or failed contrast.
+
+**How it was settled.** Instead of continuing to tune by eye, the requirement was checked directly.
+WCAG contrast is `(L1 + 0.05) / (L2 + 0.05)` on relative luminance, so the bounds can be solved:
+
+- to clear AA (4.5:1) against the near-black ground, a colour needs luminance **≥ 0.195**
+- to clear AA against white, it needs luminance **≤ 0.161**
+
+Those windows **do not overlap**. No fixed colour is accessible in both appearances. It is
+arithmetic, not taste, and no amount of tuning would ever have found a value.
+
+Dropping to the 3:1 graphical floor *does* admit fixed values — but only muddy ones. Solving amber
+into that window produces `0.59, 0.46, 0.27`, a brown, which defeats the entire design direction.
+
+**Fix.** Every hue adapts: a bright variant for the dark ground, a deeper one for the light ground.
+The export-determinism problem that fixed hues were meant to solve moved to where it belonged —
+pinning the renderer (§10.1).
+
+**A second bug fell out of the same maths.** Once the hues invert, every filled control in the app
+broke. They all drew `.foregroundStyle(.white)` on a hue background, which was safe while hues were
+dark. In dark mode a hue is now *bright* — amber sits at 0.51 luminance — so white-on-amber fell to
+about **1.9:1**: failing, and painful to look at.
+
+The fix was a new semantic role, `onAccent`, that flips **opposite the fill** rather than opposite
+the background: near-black on bright dark-mode hues, near-white on deeper light-mode ones. It was
+applied to 17 filled controls across 9 files.
+
+**Lesson.** When a design requirement resists every attempt, check whether it is *satisfiable*
+before tuning further. Constraints in accessibility, layout and performance are often arithmetic,
+and arithmetic can be solved rather than argued about.
+
+Also: a palette change is never local. Inverting the hues silently changed the correct text colour
+for every filled control in the app, and nothing in the compiler knew.
+
+### 10.3 The share theme with light artwork asked for the app's ink
+
+**Symptom.** The `Parchment` share theme would have rendered near-white text on a pale parchment
+background — effectively invisible.
+
+**Root cause.** Share cards come in two kinds: scene-backed themes with fixed gradient artwork, and
+Classic, which uses the app's own ground colour. The renderer chose ink with a single flag,
+`usesLightInk`, falling back to the app palette's `ink` when false.
+
+Once export was pinned to the dark appearance (§10.1), the palette's `ink` resolved to *near-white*.
+The `Parchment` scene is light artwork with `usesLightInk: false`, so it asked for the palette ink
+and got white.
+
+The deeper error: **card ink was being derived from the app's appearance at all.** A share card is a
+fixed picture. Its background is either hardcoded scene artwork or a pinned ground — neither follows
+the user's light/dark setting, so neither should its text.
+
+**Fix.** Two fixed constants, `inkOnDarkArtwork` and `inkOnLightArtwork`, chosen by the artwork the
+text sits on and nothing else. Classic's flag was also corrected: since Part C its ground is
+near-black, so it now truthfully declares that it needs light ink.
+
+While in there, the mood tint was made to carry the badge on *every* theme. It had been falling back
+to flat white on light-ink themes, quietly dropping the one piece of colour the card was built
+around.
+
+**Lesson.** Ask what a value should *follow*. Text on a rendered image follows the image; text in
+the UI follows the UI. Sharing one token between them couples two things that only looked alike.
+
+### 10.4 `Font.custom` fails silently, and nearly deleted the serif from the app
+
+**Symptom.** None — caught before the build, by checking the bundle.
+
+The new type scale was written assuming `Spectral-Regular` and `Spectral-Medium` existed, because a
+lighter weight reads better for long-form narrative text. Only `Spectral-SemiBold.ttf` is bundled.
+
+**Why it would not have been noticed.** `Font.custom` **falls back to the system face silently** when
+a font name is missing. No crash, no warning, no log. Titles and narrative would simply have rendered
+in SF Pro, and the "bundled display serif" the app had shipped two milestones earlier would have
+vanished from every screen — with a green build and passing tests.
+
+**Fix.** The helper takes no weight argument at all now; it can only request the face that exists.
+Sizes were re-chosen for a semibold face, which reads heavier than a regular at the same point size.
+Adding a lighter weight is queued as a real task, since font files also need an `Info.plist` entry
+and that file is gitignored.
+
+**Lesson.** Know which APIs fail loudly and which fail quietly. A silent fallback is a *feature* for
+robustness and a *trap* for correctness — and it is worth grepping your own assumptions against the
+bundle before trusting them.
+
+### 10.5 Three rounds of contrast values that looked right and were not
+
+**Symptom.** Text colours tuned by eye against the standard background passed inspection three times
+and failed the arithmetic three times: **4.23:1**, then **4.25:1**, then **4.28:1** — all under the
+4.5:1 floor.
+
+**Root cause.** Each round measured the text against the *standard* ground only. But the app has
+four surfaces — `parchmentDeep`, `parchment`, `paper`, `paperWarm` — and the worst case is not the
+standard one. In dark mode the worst surface is `paperWarm` (the lightest dark surface); in light
+mode it is `parchmentDeep` (the darkest light surface).
+
+**Fix.** `tertiaryInk` was solved against the worst surface in each appearance rather than the
+common one. The check became a permanent test suite (`PaletteContrastTests`) covering every text
+role × every surface × both appearances, plus hue floors, ramp ordering, export determinism, and
+`onAccent` on every hue.
+
+**Lesson.** Contrast is not a property of a colour, it is a property of a **pair**. Checking against
+the common case will pass while the real worst case fails.
+
+More generally: three rounds of careful human judgement lost to one arithmetic check. When a
+correctness property can be computed, compute it — and put the computation somewhere it will run
+again, because it will regress silently otherwise.
+
+---
+
+## Patterns across all of these
+
+| Pattern | Where it showed up |
 |---|---|
-| **Meter/report the outcome, not the attempt**<br>***Đếm và báo cáo kết quả, đừng đếm lần thử*** | AI rate limit (§6), account deletion (§7)<br>*Giới hạn AI (§6), xoá tài khoản (§7)* |
-| **Layout systems need constraints, not just styling**<br>***Hệ thống layout cần ràng buộc, không chỉ cần styling*** | Overflow (§1), iPad adaptivity (§2)<br>*Tràn màn hình (§1), thích ứng iPad (§2)* |
-| **Framework boundaries are where bugs live**<br>***Lỗi hay nằm ở ranh giới giữa các framework*** | Video Y-flip (§4), gesture conflicts (§5), GoTrue client limits (§7)<br>*Lật trục Y video (§4), xung đột cử chỉ (§5), giới hạn client của GoTrue (§7)* |
-| **Config bugs surface late and cost the most time**<br>***Lỗi cấu hình lộ ra muộn và tốn thời gian nhất*** | App Store rejections (§3), pbxproj registration (§9.1, §9.3)<br>*Bị App Store từ chối (§3), đăng ký file trong pbxproj (§9.1, §9.3)* |
-| **Changing a presentation API moves the interaction**<br>***Đổi API hiển thị là dời luôn chỗ chứa tương tác*** | Dialog → Menu regression (§2)<br>*Lỗi hồi quy khi đổi Dialog → Menu (§2)* |
-| **An API's contract assumes a view hierarchy — check you provide it**<br>***Mỗi API đều giả định một cấu trúc view — hãy kiểm tra bạn có đáp ứng không*** | `matchedGeometryEffect` needing the source to unmount (§9.4)<br>*`matchedGeometryEffect` cần view nguồn bị gỡ bỏ (§9.4)* |
-| **Verify the real artifact, not a proxy for it**<br>***Hãy kiểm tra sản phẩm thật, đừng kiểm tra thứ thay thế nó*** | §9.1, and why every v2 task ends in a real `xcodebuild`<br>*§9.1, và đó là lý do mọi task v2 đều kết thúc bằng `xcodebuild` thật* |
+| **Meter and report the outcome, not the attempt** | AI rate limit (§6), account deletion (§7) |
+| **Layout systems need constraints, not styling** | Overflow (§1), iPad adaptivity (§2) |
+| **Framework boundaries are where bugs live** | Video Y-flip (§4), gesture conflicts (§5), GoTrue client limits (§7), `Color` ↔ `UIColor` (§10.1) |
+| **Config bugs surface late and cost the most** | App Store rejections (§3), pbxproj registration (§9.1, §9.3) |
+| **Changing a presentation API moves the interaction** | Dialog → Menu regression (§2) |
+| **Verify the real artifact, not a proxy** | §9.1, and why every v2/v3 task ends in a real `xcodebuild` |
+| **An API's contract assumes a structure — check you provide it** | `matchedGeometryEffect` needing the source to unmount (§9.4) |
+| **Silent failure is worse than loud failure** | `UIColor(Color)` flattening (§10.1), `Font.custom` fallback (§10.4) |
+| **If a property can be computed, compute it** | Impossible palette (§10.2), contrast floors (§10.5) |
 
-## How bugs actually got caught / Lỗi thực sự được phát hiện bằng cách nào
+## How bugs actually got caught
 
-1. **Device testing by the user** — every layout, tap-target, and iPad bug. No substitute for it.
-   ***Người dùng test trên máy thật** — toàn bộ lỗi layout, vùng chạm và iPad. Không có gì thay thế được.*
-2. **App Store validation** — three config bugs nothing else would have found.
-   ***Khâu kiểm duyệt App Store** — ba lỗi cấu hình mà không cách nào khác tìm ra được.*
-3. **A real build** — the pbxproj bugs; a typecheck missed one entirely.
-   ***Một bản build thật** — các lỗi pbxproj; kiểm tra kiểu dữ liệu đã bỏ sót hoàn toàn một lỗi.*
-4. **Targeted unit tests against the real source file** — how the export's privacy guarantees (no photo bytes, no EXIF, no GPS) were verified without a simulator.
-   ***Unit test nhắm thẳng vào file nguồn thật** — đây là cách kiểm chứng các cam kết riêng tư của tính năng export (không có dữ liệu ảnh, không EXIF, không GPS) mà không cần simulator.*
-5. **Reading your own diff before calling it done** — the 2160×2160 re-render never shipped.
-   ***Đọc lại diff của chính mình trước khi coi là xong** — nhờ vậy lỗi vẽ lại ảnh 2160×2160 không bao giờ lọt ra bản phát hành.*
+1. **Device testing by the user** — every layout, tap-target and iPad bug, plus the hero transition
+   (§9.4). No substitute for it.
+2. **Automated measurement** — the entire §10 cluster. Three of those four were invisible to a
+   build, a review, and a running app.
+3. **App Store validation** — three config bugs nothing else would have found.
+4. **A real build** — the pbxproj bugs; a typecheck missed one entirely.
+5. **Targeted unit tests against real source files** — how the export's privacy guarantees (no photo
+   bytes, no EXIF, no GPS) were verified before a test target existed.
+6. **Reading your own diff before calling it done** — the 2160×2160 re-render (§9.2) never shipped.
+
+Worth noticing how the mix shifted. Early bugs were caught by *looking* at the app. The Part C bugs
+could not be caught that way at all — a wrong-but-plausible colour looks fine to anyone who does not
+already know what it should be. As the failure modes got quieter, the verification had to get more
+mechanical.
