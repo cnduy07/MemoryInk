@@ -206,7 +206,7 @@ struct OnThisDayView: View {
                     HStack {
                         Text(year.yearsAgoLabel)
                             .font(MemoryInkTypography.badge)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MemoryInkColors.onAccent)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .background(MemoryInkColors.rosewood.opacity(0.70))
@@ -256,14 +256,20 @@ struct OnThisDayView: View {
 
     private func bottomOverlay(for entry: JournalEntry) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(entry.mood.title)
-                .font(MemoryInkTypography.badge)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 6)
-                .background(.ultraThinMaterial)
-                .background(entry.mood.tint.opacity(0.30))
-                .clipShape(Capsule())
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(entry.mood.tint)
+                    .frame(width: 6, height: 6)
+
+                Text(entry.mood.title.uppercased())
+                    .font(MemoryInkTypography.badge)
+                    .kerning(0.6)
+                    .foregroundStyle(MemoryInkColors.ink)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
 
             if let narrative = entry.aiNarrative, !narrative.isEmpty {
                 Text(narrative)

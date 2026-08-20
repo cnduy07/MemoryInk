@@ -40,7 +40,7 @@ struct AppLockView: View {
                 } label: {
                     Text(service.isAuthenticating ? "Unlocking…" : "Unlock")
                         .font(MemoryInkTypography.subtitle.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MemoryInkColors.onAccent)
                         .frame(width: 200, height: 52)
                         .background(MemoryInkColors.rosewood.opacity(0.88))
                         .clipShape(RoundedRectangle(cornerRadius: MemoryInkSpacing.radiusMedium, style: .continuous))

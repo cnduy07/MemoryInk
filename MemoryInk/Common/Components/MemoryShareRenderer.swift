@@ -17,7 +17,11 @@ struct MemoryShareTheme: Identifiable, Equatable {
         return BackgroundScene.all.first { $0.id == sceneId }
     }
 
-    static let classic = MemoryShareTheme(id: "classic", name: "Classic", sceneId: nil, usesLightInk: false)
+    /// `usesLightInk: true` describes Classic's artwork rather than driving it — Classic has no
+    /// scene, so it renders through the `drawBackground` path and never reads this flag. It is set
+    /// truthfully anyway: since Part C its ground is the pinned `parchment`, which is near-black.
+    /// If Classic is ever routed through the framed layout, the correct value is already here.
+    static let classic = MemoryShareTheme(id: "classic", name: "Classic", sceneId: nil, usesLightInk: true)
 
     static let all: [MemoryShareTheme] = [
         classic,
@@ -91,7 +95,7 @@ struct MemoryShareRenderer {
     ) {
         scene.render(size: rect.size).draw(in: rect)
 
-        let ink: UIColor = usesLightInk ? .white : UIColor(MemoryInkColors.ink)
+        let ink: UIColor = usesLightInk ? Self.inkOnDarkArtwork : Self.inkOnLightArtwork
         let margin: CGFloat = 92
         var cursorY: CGFloat = margin
 
@@ -167,9 +171,9 @@ struct MemoryShareRenderer {
         let textSize = text.size(withAttributes: attributes)
         let badgeRect = CGRect(x: origin.x, y: origin.y, width: textSize.width + 42, height: 48)
 
-        let fill = usesLightInk
-            ? UIColor.white.withAlphaComponent(0.20)
-            : UIColor(mood.tint).withAlphaComponent(0.26)
+        // The mood tint carries the badge on every theme. This used to fall back to flat white on
+        // light-ink themes, which quietly dropped the one piece of colour the card was built around.
+        let fill = exportColor(mood.tintRaw).withAlphaComponent(usesLightInk ? 0.34 : 0.26)
         fill.setFill()
         UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
         text.draw(at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11), withAttributes: attributes)
@@ -258,8 +262,8 @@ struct MemoryShareRenderer {
 
     private static func drawBackground(in rect: CGRect, mood: MoodType, context: CGContext) {
         let colors = [
-            UIColor(mood.tint).withAlphaComponent(0.18).cgColor,
-            UIColor(MemoryInkColors.parchment).cgColor
+            exportColor(mood.tintRaw).withAlphaComponent(0.18).cgColor,
+            exportColor(MemoryInkColors.Raw.parchment).cgColor
         ] as CFArray
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0, 1])
@@ -278,7 +282,7 @@ struct MemoryShareRenderer {
         let badgeText = mood.title.uppercased()
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
-            .foregroundColor: UIColor(MemoryInkColors.ink).withAlphaComponent(0.78)
+            .foregroundColor: exportColor(MemoryInkColors.Raw.ink).withAlphaComponent(0.78)
         ]
         let textSize = badgeText.size(withAttributes: attributes)
         let badgeRect = CGRect(
@@ -288,7 +292,7 @@ struct MemoryShareRenderer {
             height: 48
         )
 
-        UIColor(mood.tint).withAlphaComponent(0.22).setFill()
+        exportColor(mood.tintRaw).withAlphaComponent(0.22).setFill()
         UIBezierPath(roundedRect: badgeRect, cornerRadius: 24).fill()
         badgeText.draw(
             at: CGPoint(x: badgeRect.minX + 21, y: badgeRect.minY + 11),
@@ -303,7 +307,7 @@ struct MemoryShareRenderer {
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 42, weight: .medium),
-            .foregroundColor: UIColor(MemoryInkColors.ink),
+            .foregroundColor: exportColor(MemoryInkColors.Raw.ink),
             .paragraphStyle: paragraph
         ]
         let attributed = NSAttributedString(string: narrative, attributes: attributes)
@@ -318,7 +322,7 @@ struct MemoryShareRenderer {
         let dateText = date.formatted(date: .abbreviated, time: .omitted)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 24, weight: .regular),
-            .foregroundColor: UIColor(MemoryInkColors.tertiaryInk)
+            .foregroundColor: exportColor(MemoryInkColors.Raw.tertiaryInk)
         ]
 
         dateText.draw(at: CGPoint(x: 92, y: 842), withAttributes: attributes)
@@ -328,7 +332,7 @@ struct MemoryShareRenderer {
         let watermark = "MemoryInk"
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 22, weight: .medium),
-            .foregroundColor: UIColor(MemoryInkColors.tertiaryInk)
+            .foregroundColor: exportColor(MemoryInkColors.Raw.tertiaryInk)
         ]
         let size = watermark.size(withAttributes: attributes)
         watermark.draw(
@@ -336,4 +340,28 @@ struct MemoryShareRenderer {
             withAttributes: attributes
         )
     }
+
+    /// Resolves an adaptive colour against a **pinned** appearance.
+    ///
+    /// Part C made every palette colour adapt to light/dark (it has to — no fixed colour can meet
+    /// contrast against both a near-black and a white ground). Rendered output must not inherit
+    /// that: a card exported from a phone in light mode would otherwise carry different colours
+    /// than the same memory exported from a phone in dark mode, and the recipient sees whichever
+    /// the sender happened to be in. Pinning makes a shared card look the same for everyone.
+    /// Ink for artwork whose background is dark — the scene gradients and, since Part C, Classic.
+    ///
+    /// Deliberately *not* the palette's `ink`. A share card is a fixed picture: its background is
+    /// either a hardcoded scene gradient or the pinned ground, neither of which follows the app's
+    /// appearance. Reading ink from the palette meant the light `warm_parchment` scene asked for
+    /// the palette's ink, which after pinning resolved to near-white — white text on pale
+    /// parchment. Ink follows the artwork it sits on, nothing else.
+    private static let inkOnDarkArtwork = UIColor.white
+
+    /// Ink for artwork whose background is light (the `warm_parchment` scene).
+    private static let inkOnLightArtwork = UIColor(red: 0.10, green: 0.09, blue: 0.08, alpha: 1)
+
+    private static func exportColor(_ color: UIColor) -> UIColor {
+        color.resolvedColor(with: MemoryInkColors.exportTraits)
+    }
+
 }

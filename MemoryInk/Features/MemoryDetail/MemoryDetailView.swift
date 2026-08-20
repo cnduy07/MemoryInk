@@ -182,14 +182,20 @@ private struct MemoryDetailContentView: View {
                 .frame(width: screenWidth, height: 380)
 
                 HStack {
-                    Text(entry.mood.title)
-                        .font(MemoryInkTypography.badge)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(.ultraThinMaterial)
-                        .background(entry.mood.tint.opacity(0.30))
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(entry.mood.tint)
+                            .frame(width: 6, height: 6)
+
+                        Text(entry.mood.title.uppercased())
+                            .font(MemoryInkTypography.badge)
+                            .kerning(0.6)
+                            .foregroundStyle(MemoryInkColors.ink)
+                    }
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
 
                     Spacer()
 

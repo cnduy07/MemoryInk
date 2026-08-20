@@ -205,7 +205,7 @@ struct SlideshowPickerView: View {
                     .frame(width: tileSize, height: tileSize)
                 Text("\((selectionIndex ?? 0) + 1)")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MemoryInkColors.onAccent)
                     .frame(width: 28, height: 28)
                     .background(MemoryInkColors.amber)
                     .clipShape(Circle())
@@ -269,7 +269,7 @@ struct SlideshowPickerView: View {
                         ? "Select at least 2 memories"
                         : "Create Slideshow (\(selectedIds.count))")
                         .font(MemoryInkTypography.subtitle.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MemoryInkColors.onAccent)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(

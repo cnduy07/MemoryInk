@@ -1,6 +1,6 @@
 # Part C — Cinematic Dark: UI/UX Rebuild
 
-> **Status:** planned, not started · **Branch:** `memoryink-v2-part-c` (to be created off `main`)
+> **Status:** ✅ **complete — C.1–C.8 done 2026-08-20** · **Branch:** `memoryink-v3-part-c`
 > **Direction chosen by you, 2026-08-19:** Cinematic dark
 > **Ships as:** v3. v2 (2.0, build 5) is on `main` and goes to the App Store first.
 
@@ -42,17 +42,39 @@ That long tail of nine barely-used accents is most of why the current UI reads a
 Each item is independently buildable and verifiable. Do them in order — later items depend on
 the palette existing.
 
-### C.1 — Dark-first palette
-Rewrite `Common/Theme/Colors.swift`. Design the **dark** values first and derive light from them
-(today it is the reverse, which is why dark mode reads as "light mode dimmed").
-- Ground: true near-black `#0B0B0C`-ish, one elevated surface, one raised surface
-- Text: near-white primary → two grey steps, hitting WCAG AA on the ground colour
-- One accent (amber, retuned so it doesn't glow against black)
-- Delete the nine long-tail accents from the public API
-- **Files:** `Colors.swift` only. Nothing else changes yet; the app should still build and run,
-  just darker and flatter.
+### C.1 — Dark-first palette ✅ **done 2026-08-20**
+Rewrote `Common/Theme/Colors.swift` dark-first: a four-step ground ramp that actually steps (the
+old one spanned 0.89–0.99 lightness, which is why cards never separated from the background), three
+text roles, and role-named aliases (`accent`, `success`, `destructive`, `accentBright`,
+`neutralMark`) so screens stop picking colours by hue name.
 
-### C.2 — Strip the photo effect stack
+**Three things the plan got wrong, corrected during the work:**
+
+1. *"Delete the nine long-tail accents."* They are the **mood system** — `MoodType.tint` maps
+   teal→peaceful, orchid→nostalgic, gold→happy, coral→proud, ocean→sad, twilight→reflective, with
+   sage/rosewood/mistBlue carrying `SlideshowStyle`, plus `rosewood` = destructive and `sage` =
+   success. Deleting them would have deleted the mood system C.3 exists to keep. The real defect
+   was never the count: it was that tokens are **named by hue instead of by role**, so the same
+   colour meant "mood: proud" on one screen and "vintage slideshow" on another. Hence the aliases.
+2. *"Hues stay fixed so exports stay deterministic."* Impossible. For a colour to clear AA (4.5:1)
+   on near-black it needs luminance ≥ 0.195; on white, ≤ 0.161. Those windows do not overlap, so
+   **no fixed colour is accessible in both appearances** — arithmetic, not taste. Dropping to the
+   3:1 graphical floor does admit fixed values, but only muddy ones (amber lands on a brown). So
+   every hue adapts, and export determinism is solved where it belongs, by pinning the renderer.
+3. *"Files: `Colors.swift` only."* Two companions were mandatory: `MemoryShareRenderer` (pinning)
+   and `MemoryInkWidget` (its own hardcoded palette copy, no compiler link to the app's).
+
+**Also fixed:** `UIColor(someColor)` silently flattens a dynamic colour, which made the first
+version of the export pinning a no-op. The dynamic `UIColor` is now the source of truth
+(`MemoryInkColors.Raw`) and `Color` values wrap it.
+
+**Files:** `Colors.swift`, `MemoryShareRenderer.swift`, `MoodType.swift` (`tintRaw`),
+`MemoryInkWidget.swift`, `MemoryInkTests/PaletteContrastTests.swift` (new, 5 tests).
+
+**Verified:** 28 tests pass incl. contrast floors on every text role × every surface × both
+appearances; Release `xcodebuild` → BUILD SUCCEEDED. **Not seen on screen.**
+
+### C.2 — Strip the photo effect stack ✅
 `TimelineCard.imageArea` / `placeholderImage` currently layer: radial light leak, mood tint
 gradient, `.screen` blend mode, subtle grain, vignette, and a masked accent gradient — six
 effects on one photograph. Against black, all of them fight the image.
@@ -60,38 +82,38 @@ effects on one photograph. Against black, all of them fight the image.
 - Retire `TimelineMemory.lightLeak` and its `lightLeak(for:)` factory in `TimelineViewModel`
 - **Files:** `TimelineCard.swift`, `TimelineViewModel.swift`
 
-### C.3 — Demote mood from surface treatment to a mark
+### C.3 — Demote mood from surface treatment to a mark ✅
 Mood currently tints whole cards through `MoodType.tint` / `secondaryTint` / `palette`. Under
 this direction mood becomes a small, precise signal: a coloured dot and label, nothing more.
 - Keep the six mood hues (they carry real meaning) but restrict them to badge-scale use
 - **Files:** `MoodType.swift`, `TimelineCard.swift`, `MoodPickerView.swift`
 
-### C.4 — Ambient backdrop
+### C.4 — Ambient backdrop ✅
 `MemoryInkAmbientBackdrop` paints mood-derived gradients app-wide. Replace with a near-black
 ground carrying at most a very faint luminance falloff.
 - **Files:** `CinematicVisualSystem.swift`
 
-### C.5 — Typography scale
+### C.5 — Typography scale ✅
 Today: Spectral SemiBold titles, then system 12–20 with almost no weight contrast.
 - Move the serif onto the *narrative* (the emotional content), not just headers
 - Larger sizes, lighter weights, more line-height; metadata drops to small tight grey
 - Define a 5-step scale so screens stop inventing sizes
 - **Files:** `Typography.swift`, then the screens that hardcode fonts
 
-### C.6 — Motion pass
+### C.6 — Motion pass ✅
 Current motion is scale + opacity springs. This direction wants slow fades and depth-of-field.
 - Standard transition becomes opacity + a small blur ramp; drop scale from most transitions
 - Keep every `reduceMotion` branch working — it is already wired throughout
 - **Files:** `CinematicVisualSystem.swift`, then transition call sites
 
-### C.7 — Screen sweep (18 views)
+### C.7 — Screen sweep ✅
 Apply the new system screen by screen. Suggested batches, biggest-impact first:
 1. Timeline, TimelineCard, MemoryDetail *(the app's core loop)*
 2. MemoryCreation, MoodPicker, MemoryViewer
 3. OnThisDay, Recap, Calendar, YearlyReview, EmotionGraph
 4. Settings, Subscription, Onboarding ×3, AppLock, Browse, SlideshowPicker
 
-### C.8 — Downstream re-tuning
+### C.8 — Downstream re-tuning ✅
 Two things bake the old palette into rendered output and will look wrong until redone:
 - **Themed share cards** (`MemoryShareRenderer`) — four hand-drawn themes on parchment
 - **Home/Lock Screen widgets** — separate target, own colour usage
@@ -125,3 +147,55 @@ hand-placed drawing code. Budget for a second pass.
 - [ ] Light mode still renders correctly on every screen
 - [ ] `xcodebuild` Release → BUILD SUCCEEDED after each item
 - [ ] Every `reduceMotion` branch still resolves to a non-animating path
+
+
+---
+
+## What C.2–C.8 actually found
+
+**The photo carried eight layers, not six.** The plan counted a light leak, a mood gradient, a
+`.screen` blend, grain, a vignette and a masked accent. It missed three decorative "film strip"
+capsules and a blurred lens-flare circle, and counted the blend mode as its own layer when it was
+an attribute of two others. The important one: **two layers used `.screen`, which lifts blacks by
+definition** — on a near-black ground that greyed out every photograph in the app. Removing them
+also retired `TimelineMemory.palette`, `.lightLeak` and `.accent` and their three factories, since
+this view was their only consumer.
+
+**White text stopped working.** Every filled control in the app drew `.foregroundStyle(.white)` on
+a hue background. That was safe while hues were dark; they invert now, so white-on-amber fell to
+about 1.9:1 — failing and unpleasant. Added an `onAccent` role that flips opposite the fill
+(near-black on bright dark-mode hues, near-white on deeper light-mode ones) and applied it to the
+17 filled controls across 9 files. Two tests lock it in, one of which asserts that plain white
+*would* fail — if that test ever passes, the palette has drifted back.
+
+**Four mood chips were misdiagnosed.** They matched the "white on a hue" search but sit on
+`.ultraThinMaterial` over a photo, where `onAccent` would have made them near-black on a dark chip.
+They got the C.3 treatment instead — a dot plus an `ink` label — which also made the four screens
+consistent with the Timeline for the first time.
+
+**The share renderer had a live bug.** The `Parchment` theme has light artwork but took its ink
+from the app palette, which after pinning resolved to near-white: pale text on pale parchment. Card
+ink now follows the *artwork* it sits on, via two fixed constants, because a share card is a
+picture and its background never adapts. The mood tint also now carries the badge on every theme
+rather than falling back to flat white on light-ink ones.
+
+**Only one Spectral weight is bundled.** C.5 was written assuming Regular and Medium existed.
+`Font.custom` falls back to the system face *silently*, so requesting them would have removed the
+serif from the app without any error. Sizes are now chosen for the semibold face that exists;
+adding a lighter weight is queued as a decision in `MANUAL_TODO.md`.
+
+**`MemoryInkAmbientBackdrop` kept its unused parameters.** Every screen passes `mood:` and
+`intensity:`; churning all those call sites for a decision that may reverse was not worth it.
+
+## Verified
+
+- 30 tests pass, including 7 palette tests: text roles × 4 surfaces × 2 appearances, hue floors,
+  ramp ordering, export determinism, `onAccent` on every hue, and the white-fails guard
+- Release-configuration `xcodebuild` → BUILD SUCCEEDED
+- `AGENTS.md` and blueprint §11 updated, with the superseded rule recorded rather than deleted
+
+## Not verified
+
+**Nothing here has been seen on a screen.** Contrast is arithmetic and it is proven; whether the
+result feels calm is not something a test can answer. Queued in `MANUAL_TODO.md`, with light mode
+called out as the likelier side to look wrong since it was derived rather than designed.
